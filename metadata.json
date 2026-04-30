@@ -1,10 +1,10 @@
 {
-    "uuid": "find-my-mouse@example.com",
+    "uuid": "find-my-mouse@herve-brun.github.io",
     "name": "Find My Mouse",
     "description": "Spotlight feature that focuses on the cursor position, inspired by PowerToys Find My Mouse",
     "shell-version": ["46", "47", "48", "49", "50"],
     "url": "https://github.com",
-    "gettext-domain": "find-my-mouse@example.com",
+    "gettext-domain": "find-my-mouse@herve-brun.github.io",
     "settings-schema": "org.gnome.shell.extensions.find-my-mouse",
     "session-modes": ["user"]
 }
