@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist>
+  <schema id="org.gnome.shell.extensions.find-my-mouse" path="/org/gnome/shell/extensions/find-my-mouse/">
+    <key name="activation-method" type="s">
+      <default>'ctrl-l'</default>
+      <summary>Activation method</summary>
+      <description>How to activate the spotlight: ctrl-l, ctrl-r, shake, custom</description>
+    </key>
+    <key name="activation-shortcut" type="s">
+      <default>'<Ctrl><Alt>f'</default>
+      <summary>Custom activation shortcut</summary>
+      <description>Custom keyboard shortcut to activate the spotlight</description>
+    </key>
+    <key name="only-with-windows-key" type="b">
+      <default>false</default>
+      <summary>Only activate with Windows key</summary>
+      <description>Require holding Windows key when using Ctrl activation method</description>
+    </key>
+    <key name="shake-distance" type="i">
+      <default>2000</default>
+      <summary>Minimum distance to shake</summary>
+      <description>Adjust sensitivity for shake detection</description>
+    </key>
+    <key name="shake-interval" type="i">
+      <default>1000</default>
+      <summary>Shake detection interval</summary>
+      <description>Time window in ms to monitor mouse movement for shake detection</description>
+    </key>
+    <key name="shake-sensitivity" type="i">
+      <default>2000</default>
+      <summary>Shake sensitivity factor</summary>
+      <description>Determines how far the pointer must move relative to screen diagonal</description>
+    </key>
+    <key name="do-not-activate-gamemode" type="b">
+      <default>true</default>
+      <summary>Do not activate in Game Mode</summary>
+      <description>Prevents spotlight when Game Mode is on</description>
+    </key>
+    <key name="background-color" type="s">
+      <default>'#000000B4'</default>
+      <summary>Background color</summary>
+      <description>Color of the spotlight backdrop (with alpha for transparency)</description>
+    </key>
+    <key name="spotlight-color" type="s">
+      <default>'#FFFFFF50'</default>
+      <summary>Spotlight color</summary>
+      <description>Color of the circle that centers on the cursor</description>
+    </key>
+    <key name="spotlight-radius" type="i">
+      <default>100</default>
+      <summary>Spotlight radius</summary>
+      <description>Radius of the circle in pixels</description>
+    </key>
+    <key name="spotlight-zoom" type="d">
+      <default>2.0</default>
+      <summary>Spotlight initial zoom</summary>
+      <description>Animation zoom factor</description>
+    </key>
+    <key name="animation-duration" type="i">
+      <default>500</default>
+      <summary>Animation duration</summary>
+      <description>Time for the spotlight animation in ms</description>
+    </key>
+    <key name="excluded-apps" type="as">
+      <default>[]</default>
+      <summary>Excluded applications</summary>
+      <description>List of application names to exclude from activation</description>
+    </key>
+  </schema>
+</schemalist>

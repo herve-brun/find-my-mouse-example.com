@@ -1,0 +1,10 @@
+/* Find My Mouse Extension Styles */
+
+.spotlight-overlay {
+    background-color: rgba(0, 0, 0, 0.7);
+}
+
+.spotlight-circle {
+    border-radius: 50%;
+    border: 2px solid rgba(255, 255, 255, 0.5);
+}
