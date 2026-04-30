@@ -62,6 +62,42 @@ export default class FindMyMousePreferences extends ExtensionPreferences {
         });
         activationGroup.add(shortcutRow);
 
+        const timingGroup = new Adw.PreferencesGroup({
+            title: _('Timing'),
+            description: _('Configure timeouts and delays'),
+        });
+        page.add(timingGroup);
+
+        const idleRow = new Adw.SpinRow({
+            title: _('Idle Timeout (ms)'),
+            subtitle: _('Wait time after mouse stops before hiding (PowerToys default: 1000)'),
+            adjustment: new Gtk.Adjustment({
+                lower: 100,
+                upper: 10000,
+                step_increment: 100,
+                value: settings.get_int('idle-timeout') || 1000,
+            }),
+        });
+        idleRow.connect('notify::value', () => {
+            settings.set_int('idle-timeout', idleRow.value);
+        });
+        timingGroup.add(idleRow);
+
+        const durationRow = new Adw.SpinRow({
+            title: _('Animation Duration (ms)'),
+            subtitle: _('Fade-out animation time (PowerToys default: 500)'),
+            adjustment: new Gtk.Adjustment({
+                lower: 100,
+                upper: 5000,
+                step_increment: 100,
+                value: settings.get_int('animation-duration') || 500,
+            }),
+        });
+        durationRow.connect('notify::value', () => {
+            settings.set_int('animation-duration', durationRow.value);
+        });
+        timingGroup.add(durationRow);
+
         const shakeGroup = new Adw.PreferencesGroup({
             title: _('Shake Detection'),
             description: _('Settings for mouse shake detection'),
@@ -69,13 +105,13 @@ export default class FindMyMousePreferences extends ExtensionPreferences {
         page.add(shakeGroup);
 
         const distanceRow = new Adw.SpinRow({
-            title: _('Minimum Distance to Shake'),
-            subtitle: _('Adjust sensitivity for shake detection'),
+            title: _('Minimum Distance (px)'),
+            subtitle: _('Minimum travel distance to detect shake (PowerToys default: 1000)'),
             adjustment: new Gtk.Adjustment({
                 lower: 100,
                 upper: 10000,
                 step_increment: 100,
-                value: settings.get_int('shake-distance') || 2000,
+                value: settings.get_int('shake-distance') || 1000,
             }),
         });
         distanceRow.connect('notify::value', () => {
@@ -85,7 +121,7 @@ export default class FindMyMousePreferences extends ExtensionPreferences {
 
         const intervalRow = new Adw.SpinRow({
             title: _('Shake Detection Interval (ms)'),
-            subtitle: _('Time window to monitor mouse movement'),
+            subtitle: _('Time window to monitor mouse movement (PowerToys default: 1000)'),
             adjustment: new Gtk.Adjustment({
                 lower: 100,
                 upper: 5000,
@@ -99,13 +135,13 @@ export default class FindMyMousePreferences extends ExtensionPreferences {
         shakeGroup.add(intervalRow);
 
         const sensitivityRow = new Adw.SpinRow({
-            title: _('Shake Sensitivity Factor (%)'),
-            subtitle: _('How far the pointer must move relative to screen diagonal'),
+            title: _('Shake Sensitivity (%)'),
+            subtitle: _('Distance must be this % of movement diagonal (PowerToys default: 400%)'),
             adjustment: new Gtk.Adjustment({
-                lower: 500,
+                lower: 100,
                 upper: 10000,
                 step_increment: 100,
-                value: settings.get_int('shake-sensitivity') || 2000,
+                value: settings.get_int('shake-sensitivity') || 400,
             }),
         });
         sensitivityRow.connect('notify::value', () => {
@@ -124,7 +160,7 @@ export default class FindMyMousePreferences extends ExtensionPreferences {
             subtitle: _('Color of the spotlight backdrop'),
         });
         const bgColorButton = new Gtk.ColorButton({
-            rgba: this._parseColor(settings.get_string('background-color') || '#000000'),
+            rgba: this._parseColor(settings.get_string('background-color') || '#00000080'),
             use_alpha: true,
         });
         bgColorButton.connect('color-set', () => {
@@ -140,7 +176,7 @@ export default class FindMyMousePreferences extends ExtensionPreferences {
             subtitle: _('Color of the circle that centers on the cursor'),
         });
         const spotColorButton = new Gtk.ColorButton({
-            rgba: this._parseColor(settings.get_string('spotlight-color') || '#FFFFFF'),
+            rgba: this._parseColor(settings.get_string('spotlight-color') || '#FFFFFF80'),
             use_alpha: true,
         });
         spotColorButton.connect('color-set', () => {
@@ -153,7 +189,7 @@ export default class FindMyMousePreferences extends ExtensionPreferences {
 
         const radiusRow = new Adw.SpinRow({
             title: _('Spotlight Radius (px)'),
-            subtitle: _('Radius of the circle that centers on the cursor'),
+            subtitle: _('Radius of the circle (PowerToys default: 100)'),
             adjustment: new Gtk.Adjustment({
                 lower: 50,
                 upper: 500,
@@ -166,35 +202,30 @@ export default class FindMyMousePreferences extends ExtensionPreferences {
         });
         appearanceGroup.add(radiusRow);
 
-        const durationRow = new Adw.SpinRow({
-            title: _('Animation Duration (ms)'),
-            subtitle: _('Time for the spotlight animation'),
-            adjustment: new Gtk.Adjustment({
-                lower: 100,
-                upper: 5000,
-                step_increment: 100,
-                value: settings.get_int('animation-duration') || 500,
-            }),
-        });
-        durationRow.connect('notify::value', () => {
-            settings.set_int('animation-duration', durationRow.value);
-        });
-        appearanceGroup.add(durationRow);
-
         const zoomRow = new Adw.SpinRow({
             title: _('Spotlight Initial Zoom'),
-            subtitle: _('Zoom factor for the animation'),
+            subtitle: _('Starts big and shrinks (PowerToys default: 9x)'),
             adjustment: new Gtk.Adjustment({
                 lower: 1,
-                upper: 5,
+                upper: 20,
                 step_increment: 0.5,
-                value: settings.get_double('spotlight-zoom') || 2.0,
+                value: settings.get_double('spotlight-zoom') || 9.0,
             }),
         });
         zoomRow.connect('notify::value', () => {
             settings.set_double('spotlight-zoom', zoomRow.value);
         });
         appearanceGroup.add(zoomRow);
+
+        const gamemodeRow = new Adw.SwitchRow({
+            title: _('Do not activate in Game Mode'),
+            subtitle: _('Prevents spotlight when Game Mode is on'),
+            active: settings.get_boolean('do-not-activate-gamemode'),
+        });
+        gamemodeRow.connect('notify::active', () => {
+            settings.set_boolean('do-not-activate-gamemode', gamemodeRow.active);
+        });
+        appearanceGroup.add(gamemodeRow);
     }
 
     _parseColor(colorStr) {

@@ -7,7 +7,7 @@
       <description>How to activate the spotlight: ctrl-l, ctrl-r, shake, custom</description>
     </key>
     <key name="activation-shortcut" type="s">
-      <default>'<Ctrl><Alt>f'</default>
+      <default>'&lt;Ctrl&gt;&lt;Alt&gt;f'</default>
       <summary>Custom activation shortcut</summary>
       <description>Custom keyboard shortcut to activate the spotlight</description>
     </key>
@@ -17,19 +17,19 @@
       <description>Require holding Windows key when using Ctrl activation method</description>
     </key>
     <key name="shake-distance" type="i">
-      <default>2000</default>
-      <summary>Minimum distance to shake</summary>
-      <description>Adjust sensitivity for shake detection</description>
+      <default>1000</default>
+      <summary>Minimum shake distance</summary>
+      <description>Minimum distance in pixels the pointer must travel to detect shake (PowerToys default: 1000)</description>
     </key>
     <key name="shake-interval" type="i">
       <default>1000</default>
       <summary>Shake detection interval</summary>
-      <description>Time window in ms to monitor mouse movement for shake detection</description>
+      <description>Time window in ms to monitor mouse movement for shake detection (PowerToys default: 1000)</description>
     </key>
     <key name="shake-sensitivity" type="i">
-      <default>2000</default>
+      <default>400</default>
       <summary>Shake sensitivity factor</summary>
-      <description>Determines how far the pointer must move relative to screen diagonal</description>
+      <description>How much farther the pointer must travel than the diagonal of movement rectangle (PowerToys default: 400% = 4x)</description>
     </key>
     <key name="do-not-activate-gamemode" type="b">
       <default>true</default>
@@ -37,29 +37,34 @@
       <description>Prevents spotlight when Game Mode is on</description>
     </key>
     <key name="background-color" type="s">
-      <default>'#000000B4'</default>
+      <default>'#00000080'</default>
       <summary>Background color</summary>
-      <description>Color of the spotlight backdrop (with alpha for transparency)</description>
+      <description>Color of the spotlight backdrop with alpha (PowerToys default: #00000080 = black 50%)</description>
     </key>
     <key name="spotlight-color" type="s">
-      <default>'#FFFFFF50'</default>
+      <default>'#FFFFFF80'</default>
       <summary>Spotlight color</summary>
-      <description>Color of the circle that centers on the cursor</description>
+      <description>Color of the circle that centers on the cursor (PowerToys default: #FFFFFF80 = white 50%)</description>
     </key>
     <key name="spotlight-radius" type="i">
       <default>100</default>
       <summary>Spotlight radius</summary>
-      <description>Radius of the circle in pixels</description>
+      <description>Radius of the circle in pixels (PowerToys default: 100)</description>
     </key>
     <key name="spotlight-zoom" type="d">
-      <default>2.0</default>
+      <default>9.0</default>
       <summary>Spotlight initial zoom</summary>
-      <description>Animation zoom factor</description>
+      <description>Initial zoom factor for animation - starts big and shrinks (PowerToys default: 9x)</description>
+    </key>
+    <key name="idle-timeout" type="i">
+      <default>1000</default>
+      <summary>Idle timeout</summary>
+      <description>Time in ms to wait after mouse stops moving before hiding spotlight (PowerToys default: 1000)</description>
     </key>
     <key name="animation-duration" type="i">
       <default>500</default>
       <summary>Animation duration</summary>
-      <description>Time for the spotlight animation in ms</description>
+      <description>Duration of fade-out animation in ms (PowerToys default: 500)</description>
     </key>
     <key name="excluded-apps" type="as">
       <default>[]</default>
