@@ -42,8 +42,6 @@ export default class FindMyMouseExtension extends Extension {
         this._settings = null;
         this._keybindingHandler = 0;
         this._pointerWatch = null;
-        this._cursorTracker = null;
-        this._cursorTrackerSignalId = 0;
         this._settingsChangedId = 0;
         this._mousePressHandler = 0;
         this._spotlightVisible = false;
@@ -142,26 +140,13 @@ export default class FindMyMouseExtension extends Extension {
     }
 
     _setupMouseTracking() {
-        const isWayland = Meta.is_wayland_compositor();
-        
-        if (isWayland && Meta.CursorTracker) {
-            // Wayland: instantiate CursorTracker (for Wayland compliance)
-            // Use pointerWatcher for event-driven polling with global.get_pointer()
-            try {
-                this._cursorTracker = new Meta.CursorTracker();
-                const watcher = getPointerWatcher();
-                this._pointerWatch = watcher.addWatch(50, (x, y) => {
-                    this._handleMouseMovement(x, y);
-                });
-                console.log('Find My Mouse: Using Mutter CursorTracker + pointerWatcher (Wayland)');
-            } catch (e) {
-                console.log('Find My Mouse: Failed to use CursorTracker, falling back to pointerWatcher:', e);
-                this._setupPointerWatcher();
-            }
-        } else {
-            // X11: use pointerWatcher
-            this._setupPointerWatcher();
-        }
+        // Use GNOME Shell's built-in pointerWatcher for efficient mouse tracking
+        // Works on both Wayland and X11 - event-driven, automatically stops polling when idle
+        const watcher = getPointerWatcher();
+        this._pointerWatch = watcher.addWatch(50, (x, y) => {
+            this._handleMouseMovement(x, y);
+        });
+        console.log('Find My Mouse: Using pointerWatcher for mouse tracking');
     }
 
     _setupPointerWatcher() {
@@ -192,11 +177,6 @@ export default class FindMyMouseExtension extends Extension {
         if (this._pointerWatch) {
             this._pointerWatch.remove();
             this._pointerWatch = null;
-        }
-        if (this._cursorTracker && this._cursorTrackerSignalId) {
-            this._cursorTracker.disconnect(this._cursorTrackerSignalId);
-            this._cursorTracker = null;
-            this._cursorTrackerSignalId = 0;
         }
     }
 
