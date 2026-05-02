@@ -30,37 +30,180 @@ export default class FindMyMousePreferences extends ExtensionPreferences {
             title: _('Activation Method'),
             subtitle: _('Choose how to activate the spotlight'),
             model: Gtk.StringList.new([
-                _('Press Left Ctrl twice'),
-                _('Press Right Ctrl twice'),
-                _('Shake mouse'),
-                _('Custom shortcut')
+                _('Keyboard Shortcut'),
+                _('Mouse Shake'),
+                _('Mouse Click'),
+                _('Always Visible')
             ]),
         });
         
         const activationMap = {
-            'ctrl-l': 0,
-            'ctrl-r': 1,
-            'shake': 2,
-            'custom': 3,
+            'shortcut': 0,
+            'shake': 1,
+            'click': 2,
+            'always': 3,
         };
         
-        const currentMethod = settings.get_string('activation-method') || 'ctrl-l';
-        activationRow.selected = activationMap[currentMethod] || 0;
+        const currentMethod = settings.get_string('activation-method') || 'shake';
+        activationRow.selected = activationMap[currentMethod] || 1; // shake is index 1
         
         activationRow.connect('notify::selected', () => {
-            const methods = ['ctrl-l', 'ctrl-r', 'shake', 'custom'];
+            const methods = ['shortcut', 'shake', 'click', 'always'];
             settings.set_string('activation-method', methods[activationRow.selected]);
         });
         activationGroup.add(activationRow);
 
-        const shortcutRow = new Adw.EntryRow({
-            title: _('Custom Shortcut'),
-            text: settings.get_string('activation-shortcut') || '',
+        // Shortcut row with proper GNOME-style shortcut capture
+        const shortcutRow = new Adw.ActionRow({
+            title: _('Keyboard Shortcut'),
+            subtitle: _('Press a key combination to set the shortcut'),
         });
-        shortcutRow.connect('notify::text', () => {
-            settings.set_string('activation-shortcut', shortcutRow.text);
+        
+        // Use Gtk.ShortcutLabel for proper display
+        const shortcutLabel = new Gtk.ShortcutLabel({
+            accelerator: settings.get_string('activation-shortcut') || '',
+            halign: Gtk.Align.END,
         });
+        shortcutRow.add_suffix(shortcutLabel);
+        
+        // Button to trigger shortcut capture
+        const setShortcutButton = new Gtk.Button({
+            label: _('Set Shortcut…'),
+            halign: Gtk.Align.END,
+        });
+        shortcutRow.add_suffix(setShortcutButton);
+        
+        // Clear button
+        const clearButton = new Gtk.Button({
+            label: _('Clear'),
+            halign: Gtk.Align.END,
+        });
+        clearButton.connect('clicked', () => {
+            shortcutLabel.set_accelerator('');
+            settings.set_string('activation-shortcut', '');
+        });
+        shortcutRow.add_suffix(clearButton);
+        
+        // Create a proper shortcut capture dialog
+        const shortcutDialog = new Gtk.Dialog({
+            title: _('Set Shortcut'),
+            transient_for: window,
+            modal: true,
+            use_header_bar: true,
+        });
+        shortcutDialog.add_button(_('Cancel'), Gtk.ResponseType.CANCEL);
+        
+        const dialogBox = new Gtk.Box({
+            orientation: Gtk.Orientation.VERTICAL,
+            spacing: 12,
+            margin_top: 12,
+            margin_bottom: 12,
+            margin_start: 12,
+            margin_end: 12,
+        });
+        shortcutDialog.get_content_area().append(dialogBox);
+        
+        const dialogLabel = new Gtk.Label({
+            label: _('Press a key combination to set the shortcut.'),
+            wrap: true,
+            xalign: 0.5,
+        });
+        dialogBox.append(dialogLabel);
+        
+        const shortcutDisplay = new Gtk.ShortcutLabel({
+            accelerator: '',
+            halign: Gtk.Align.CENTER,
+        });
+        dialogBox.append(shortcutDisplay);
+        
+        // Modifier keys to ignore (prevent setting modifier-only shortcuts)
+        const MODIFIER_KEYS = [
+            Gdk.KEY_Shift_L, Gdk.KEY_Shift_R,
+            Gdk.KEY_Control_L, Gdk.KEY_Control_R,
+            Gdk.KEY_Alt_L, Gdk.KEY_Alt_R,
+            Gdk.KEY_Super_L, Gdk.KEY_Super_R,
+            Gdk.KEY_Meta_L, Gdk.KEY_Meta_R,
+            Gdk.KEY_Caps_Lock, Gdk.KEY_Num_Lock
+        ];
+        
+        // Handle key press in dialog
+        shortcutDialog.connect('key-press-event', (widget, event) => {
+            const keyval = event.keyval;
+            const state = event.state;
+            
+            // Ignore modifier-only keys
+            if (MODIFIER_KEYS.includes(keyval)) {
+                return Gdk.EVENT_PROPAGATE;
+            }
+            
+            // Handle Escape to cancel
+            if (keyval === Gdk.KEY_Escape) {
+                shortcutDialog.close();
+                return Gdk.EVENT_STOP;
+            }
+            
+            // Get the key name
+            let keyName = Gdk.keyval_name(keyval);
+            if (!keyName) return Gdk.EVENT_PROPAGATE;
+            
+            // Normalize Tab
+            if (keyval === Gdk.KEY_ISO_Left_Tab) {
+                keyName = 'Tab';
+            }
+            
+            // Build the accelerator string (GNOME format: <Ctrl><Alt>f)
+            const modifiers = [];
+            if (state & Gdk.ModifierType.CONTROL_MASK) modifiers.push('Ctrl');
+            if (state & Gdk.ModifierType.SHIFT_MASK) modifiers.push('Shift');
+            if (state & Gdk.ModifierType.ALT_MASK) modifiers.push('Alt');
+            if (state & Gdk.ModifierType.SUPER_MASK) modifiers.push('Super');
+            
+            let accelerator = '';
+            for (const mod of modifiers) {
+                accelerator += `<${mod}>`;
+            }
+            accelerator += keyName;
+            
+            // Update display
+            shortcutDisplay.set_accelerator(accelerator);
+            
+            // Accept the shortcut
+            shortcutDialog.response(Gtk.ResponseType.OK);
+            
+            // Update the main label and settings
+            shortcutLabel.set_accelerator(accelerator);
+            settings.set_string('activation-shortcut', accelerator);
+            
+            return Gdk.EVENT_STOP;
+        });
+        
+        // Connect button to open dialog
+        setShortcutButton.connect('clicked', () => {
+            shortcutDisplay.set_accelerator('');
+            shortcutDialog.present();
+        });
+        
         activationGroup.add(shortcutRow);
+
+        const clickButtonRow = new Adw.ComboRow({
+            title: _('Click Activation Button'),
+            subtitle: _('Which mouse button activates the spotlight'),
+            model: Gtk.StringList.new([
+                _('Left Button'),
+                _('Middle Button'),
+                _('Right Button')
+            ]),
+        });
+        
+        const buttonMap = { 1: 0, 2: 1, 3: 2 };
+        const currentButton = settings.get_int('click-activation-button') || 1;
+        clickButtonRow.selected = buttonMap[currentButton] || 0;
+        
+        clickButtonRow.connect('notify::selected', () => {
+            const buttons = [1, 2, 3];
+            settings.set_int('click-activation-button', buttons[clickButtonRow.selected]);
+        });
+        activationGroup.add(clickButtonRow);
 
         const timingGroup = new Adw.PreferencesGroup({
             title: _('Timing'),
@@ -103,21 +246,6 @@ export default class FindMyMousePreferences extends ExtensionPreferences {
             description: _('Settings for mouse shake detection'),
         });
         page.add(shakeGroup);
-
-        const distanceRow = new Adw.SpinRow({
-            title: _('Minimum Distance (px)'),
-            subtitle: _('Minimum travel distance to detect shake (PowerToys default: 1000)'),
-            adjustment: new Gtk.Adjustment({
-                lower: 100,
-                upper: 10000,
-                step_increment: 100,
-                value: settings.get_int('shake-distance') || 1000,
-            }),
-        });
-        distanceRow.connect('notify::value', () => {
-            settings.set_int('shake-distance', distanceRow.value);
-        });
-        shakeGroup.add(distanceRow);
 
         const intervalRow = new Adw.SpinRow({
             title: _('Shake Detection Interval (ms)'),
@@ -226,6 +354,22 @@ export default class FindMyMousePreferences extends ExtensionPreferences {
             settings.set_boolean('do-not-activate-gamemode', gamemodeRow.active);
         });
         appearanceGroup.add(gamemodeRow);
+
+        const multiMonitorGroup = new Adw.PreferencesGroup({
+            title: _('Multi-Monitor'),
+            description: _('Settings for multi-monitor setups'),
+        });
+        page.add(multiMonitorGroup);
+
+        const allMonitorsRow = new Adw.SwitchRow({
+            title: _('Show on All Monitors'),
+            subtitle: _('When enabled, spotlight covers all connected monitors'),
+            active: settings.get_boolean('show-on-all-monitors'),
+        });
+        allMonitorsRow.connect('notify::active', () => {
+            settings.set_boolean('show-on-all-monitors', allMonitorsRow.active);
+        });
+        multiMonitorGroup.add(allMonitorsRow);
     }
 
     _parseColor(colorStr) {

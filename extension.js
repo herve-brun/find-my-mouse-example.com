@@ -9,7 +9,7 @@ import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
 const SHAKE_DETECTION_INTERVAL = 1000;
-const SHAKE_SENSITIVITY = 2000;
+const FADE_STEPS = 30;
 
 function parseColor(colorStr, defaultAlpha = 255) {
     if (!colorStr || colorStr === '') return [0, 0, 0, defaultAlpha];
@@ -28,60 +28,51 @@ export default class FindMyMouseExtension extends Extension {
     constructor(metadata) {
         super(metadata);
         this._spotlight = null;
-        this._keyPressTime = 0;
         this._lastX = -1;
         this._lastY = -1;
         this._shakeCount = 0;
         this._shakeTimeoutId = 0;
         this._spotlightTimeout = 0;
         this._idleTimeoutId = 0;
+        this._fadeTimeoutId = 0;
         this._settings = null;
         this._keybindingHandler = 0;
         this._mouseTracker = 0;
+        this._mousePressHandler = 0;
         this._spotlightVisible = false;
+        this._alwaysVisibleHandler = 0;
+        this._currentAlpha = 0;
+        this._targetAlpha = 255;
+        this._fadeStep = 0;
+        this._mappedSignalId = 0;
     }
 
     enable() {
         this._settings = this.getSettings();
         this._setupKeybindings();
         this._setupMouseTracking();
+        this._setupClickActivation();
+        this._setupAlwaysVisible();
         console.log('Find My Mouse: Extension enabled');
     }
 
     disable() {
         this._removeKeybindings();
         this._removeMouseTracking();
+        this._removeClickActivation();
+        this._removeAlwaysVisible();
         this._hideSpotlight();
         this._settings = null;
         console.log('Find My Mouse: Extension disabled');
     }
 
     _setupKeybindings() {
-        this._keybindingHandler = global.stage.connect('captured-event', (actor, event) => {
-            const eventType = event.type();
-            if (eventType !== Clutter.EventType.KEY_PRESS) {
-                return Clutter.EVENT_PROPAGATE;
-            }
-            
-            const key = event.get_key_symbol();
-            const now = GLib.get_monotonic_time() / 1000;
-            
-            if (key === Clutter.KEY_Control_L || key === Clutter.KEY_Control_R) {
-                const timeSinceLast = now - this._keyPressTime;
-                
-                if (this._keyPressTime > 0 && timeSinceLast < 500) {
-                    console.log('Find My Mouse: DOUBLE CTRL DETECTED!');
-                    this._showSpotlight();
-                    this._keyPressTime = 0;
-                    return Clutter.EVENT_STOP;
-                } else {
-                    this._keyPressTime = now;
-                }
-            }
-            return Clutter.EVENT_PROPAGATE;
-        });
+        const method = this._settings.get_string('activation-method');
         
-        this._addKeybinding();
+        // Only setup shortcut keybinding if method is 'shortcut'
+        if (method === 'shortcut') {
+            this._addKeybinding();
+        }
     }
     
     _addKeybinding() {
@@ -90,13 +81,13 @@ export default class FindMyMouseExtension extends Extension {
             try {
                 const mode = Shell.ActionMode.NORMAL;
                 Main.wm.addKeybinding(
-                    'activation-shortcut',
+                    'find-my-mouse-activation',
                     this._settings,
                     Meta.KeyBindingFlags.NONE,
                     mode,
                     () => {
-                        console.log('Find My Mouse: Custom shortcut activated!');
-                        this._showSpotlight();
+                        console.log('Find My Mouse: Shortcut activated!');
+                        this._toggleSpotlight();
                     }
                 );
                 console.log(`Find My Mouse: Added keybinding: ${shortcut}`);
@@ -107,12 +98,8 @@ export default class FindMyMouseExtension extends Extension {
     }
 
     _removeKeybindings() {
-        if (this._keybindingHandler) {
-            global.stage.disconnect(this._keybindingHandler);
-            this._keybindingHandler = 0;
-        }
         try {
-            Main.wm.removeKeybinding('activation-shortcut');
+            Main.wm.removeKeybinding('find-my-mouse-activation');
         } catch (e) {
             // Ignore errors if keybinding wasn't set
         }
@@ -128,7 +115,8 @@ export default class FindMyMouseExtension extends Extension {
                 return Clutter.EVENT_PROPAGATE;
             }
 
-            if (this._settings.get_string('activation-method') === 'shake') {
+            const method = this._settings.get_string('activation-method');
+            if (method === 'shake') {
                 this._detectShake(x, y);
             }
             return Clutter.EVENT_PROPAGATE;
@@ -142,6 +130,53 @@ export default class FindMyMouseExtension extends Extension {
         }
     }
 
+    _setupClickActivation() {
+        const method = this._settings.get_string('activation-method');
+        if (method === 'click') {
+            this._mousePressHandler = global.stage.connect('button-press-event', (_, event) => {
+                const button = event.get_button();
+                const expectedButton = this._settings.get_int('click-activation-button') || 1;
+                
+                if (button === expectedButton) {
+                    console.log(`Find My Mouse: Click activation (button ${button})`);
+                    this._toggleSpotlight();
+                    return Clutter.EVENT_STOP;
+                }
+                return Clutter.EVENT_PROPAGATE;
+            });
+        }
+    }
+
+    _removeClickActivation() {
+        if (this._mousePressHandler) {
+            global.stage.disconnect(this._mousePressHandler);
+            this._mousePressHandler = 0;
+        }
+    }
+
+    _setupAlwaysVisible() {
+        const method = this._settings.get_string('activation-method');
+        if (method === 'always') {
+            this._showSpotlight();
+        }
+        // Toujours connecter le handler pour gérer les changements futurs
+        this._alwaysVisibleHandler = this._settings.connect('changed::activation-method', () => {
+            const newMethod = this._settings.get_string('activation-method');
+            if (newMethod === 'always') {
+                this._showSpotlight();
+            } else if (this._spotlightVisible && newMethod !== 'always') {
+                this._hideSpotlight();
+            }
+        });
+    }
+
+    _removeAlwaysVisible() {
+        if (this._alwaysVisibleHandler) {
+            this._settings.disconnect(this._alwaysVisibleHandler);
+            this._alwaysVisibleHandler = 0;
+        }
+    }
+
     _detectShake(x, y) {
         const now = GLib.get_monotonic_time() / 1000;
         
@@ -149,10 +184,12 @@ export default class FindMyMouseExtension extends Extension {
             const dx = Math.abs(x - this._lastX);
             const dy = Math.abs(y - this._lastY);
             const distance = Math.sqrt(dx * dx + dy * dy);
-            const screen = global.display.get_monitor_geometry(global.display.get_primary_monitor());
-            const diagonal = Math.sqrt(screen.width * screen.width + screen.height * screen.height);
+            const monitor = global.display.get_current_monitor();
+            const geometry = global.display.get_monitor_geometry(monitor);
+            const diagonal = Math.sqrt(geometry.width * geometry.width + geometry.height * geometry.height);
+            const sensitivity = this._settings.get_int('shake-sensitivity') || 400;
             
-            if (distance > diagonal / (this._settings.get_int('shake-sensitivity') || SHAKE_SENSITIVITY)) {
+            if (distance > diagonal / (sensitivity / 100)) {
                 this._shakeCount++;
             }
         }
@@ -167,7 +204,8 @@ export default class FindMyMouseExtension extends Extension {
         this._shakeTimeoutId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 
             this._settings.get_int('shake-interval') || SHAKE_DETECTION_INTERVAL, () => {
             if (this._shakeCount >= 2) {
-                this._showSpotlight();
+                console.log('Find My Mouse: Shake detected!');
+                this._toggleSpotlight();
             }
             this._shakeCount = 0;
             this._shakeTimeoutId = 0;
@@ -175,15 +213,54 @@ export default class FindMyMouseExtension extends Extension {
         });
     }
 
+    _toggleSpotlight() {
+        const method = this._settings.get_string('activation-method');
+        
+        // In 'always' mode, don't toggle - just show if not visible
+        if (method === 'always') {
+            if (!this._spotlightVisible) {
+                this._showSpotlight();
+            }
+            return;
+        }
+        
+        if (this._spotlightVisible) {
+            this._hideSpotlight();
+        } else {
+            this._showSpotlight();
+        }
+    }
+
     _showSpotlight() {
+        const method = this._settings.get_string('activation-method');
+        
+        // If already visible and not in always mode, don't show again
+        if (this._spotlightVisible && method !== 'always') {
+            return;
+        }
+        
+        // Cancel any ongoing fade
+        this._cancelFade();
+        
+        // Destroy existing spotlights
         if (this._spotlight) {
             this._spotlight.destroy();
+            this._spotlight = null;
         }
 
+        // Check if we should show on all monitors or just current
+        const showOnAllMonitors = this._settings.get_boolean('show-on-all-monitors') || false;
+        
+        if (showOnAllMonitors) {
+            this._showOnAllMonitors();
+        } else {
+            this._showOnCurrentMonitor();
+        }
+    }
+
+    _showOnCurrentMonitor() {
         const monitor = global.display.get_current_monitor();
         const geometry = global.display.get_monitor_geometry(monitor);
-        
-        console.log(`Find My Mouse: Creating spotlight for monitor ${monitor}, geometry: ${geometry.x},${geometry.y} ${geometry.width}x${geometry.height}`);
         
         this._spotlight = new St.DrawingArea({
             x: geometry.x,
@@ -192,50 +269,93 @@ export default class FindMyMouseExtension extends Extension {
             height: geometry.height,
             reactive: true
         });
+        this._setupSpotlightCommon(geometry);
+    }
+
+    _showOnAllMonitors() {
+        // Create a container for all monitors
+        const allMonitors = global.display.get_all_monitors();
+        const geometries = allMonitors.map(monitor => global.display.get_monitor_geometry(monitor));
+        
+        // Calculate bounding box for all monitors
+        let minX = Infinity;
+        let minY = Infinity;
+        let maxX = -Infinity;
+        let maxY = -Infinity;
+        
+        for (const geom of geometries) {
+            minX = Math.min(minX, geom.x);
+            minY = Math.min(minY, geom.y);
+            maxX = Math.max(maxX, geom.x + geom.width);
+            maxY = Math.max(maxY, geom.y + geom.height);
+        }
+        
+        const geometry = {
+            x: minX,
+            y: minY,
+            width: maxX - minX,
+            height: maxY - minY
+        };
+        
+        this._spotlight = new St.DrawingArea({
+            x: geometry.x,
+            y: geometry.y,
+            width: geometry.width,
+            height: geometry.height,
+            reactive: true
+        });
+        this._setupSpotlightCommon(geometry);
+    }
+
+    _setupSpotlightCommon(geometry) {
+        // Store geometry for repaint
+        this._spotlightGeometry = geometry;
 
         const settings = this._settings;
         const zoom = settings.get_double('spotlight-zoom') || 9.0;
+        const animationDuration = settings.get_int('animation-duration') || 500;
         
-        console.log('Find My Mouse: Connecting repaint signal');
-        console.log(`Find My Mouse: DrawingArea created - x:${geometry.x}, y:${geometry.y}, w:${geometry.width}, h:${geometry.height}`);
+        // Start with transparent
+        this._currentAlpha = 0;
+        this._targetAlpha = 255;
         
         this._spotlight.connect('repaint', (area) => {
-            console.log('Find My Mouse: Repainting spotlight');
             const cr = area.get_context();
             if (!cr) {
-                console.log('Find My Mouse: ERROR - Cairo context is null!');
                 return;
             }
-            console.log('Find My Mouse: Cairo context obtained successfully');
             
-            // Get area size for debugging
-            const [w, h] = area.get_size();
-            console.log(`Find My Mouse: Area size: ${w}x${h}`);
+            const geom = this._spotlightGeometry;
             const [mx, my] = global.get_pointer();
-            
             const radius = settings.get_int('spotlight-radius') || 100;
             const bgColor = parseColor(settings.get_string('background-color') || '#00000080');
             const spotlightColor = parseColor(settings.get_string('spotlight-color') || '#FFFFFF80');
             
+            // Apply current alpha to background
+            const currentBgAlpha = (bgColor[3] / 255) * (this._currentAlpha / 255);
+            const currentSpotAlpha = (spotlightColor[3] / 255) * (this._currentAlpha / 255);
+            
             // Draw semi-transparent background
             cr.setOperator(Cairo.Operator.SOURCE);
-            cr.setSourceRGBA(bgColor[0]/255, bgColor[1]/255, bgColor[2]/255, bgColor[3]/255);
+            cr.setSourceRGBA(bgColor[0]/255, bgColor[1]/255, bgColor[2]/255, currentBgAlpha);
             cr.paint();
             
             // Clear the spotlight circle area (make it transparent)
             const currentRadius = radius * zoom;
             cr.setOperator(Cairo.Operator.CLEAR);
-            cr.arc(mx - geometry.x, my - geometry.y, currentRadius, 0, 2 * Math.PI);
+            cr.arc(mx - geom.x, my - geom.y, currentRadius, 0, 2 * Math.PI);
             cr.fill();
             
-            // Draw white border around the spotlight
+            // Draw spotlight border
             cr.setOperator(Cairo.Operator.OVER);
-            cr.setSourceRGBA(spotlightColor[0]/255, spotlightColor[1]/255, spotlightColor[2]/255, spotlightColor[3]/255);
-            cr.arc(mx - geometry.x, my - geometry.y, currentRadius, 0, 2 * Math.PI);
+            cr.setSourceRGBA(spotlightColor[0]/255, spotlightColor[1]/255, spotlightColor[2]/255, currentSpotAlpha);
+            cr.arc(mx - geom.x, my - geom.y, currentRadius, 0, 2 * Math.PI);
             cr.setLineWidth(2);
             cr.stroke();
-            console.log(`Find My Mouse: Drew spotlight at ${mx},${my} with radius ${currentRadius}`);
         });
+        
+        // Start fade-in animation
+        this._startFadeIn(animationDuration);
 
         this._spotlight.connect('button-press-event', () => {
             this._hideSpotlight();
@@ -247,81 +367,143 @@ export default class FindMyMouseExtension extends Extension {
             trackFullscreen: true
         });
 
-        // Make sure it's visible
         this._spotlight.show();
-        console.log('Find My Mouse: Spotlight visibility: ' + this._spotlight.visible + ', mapped: ' + this._spotlight.mapped);
 
-        // Wait for the actor to be realized before repainting
+        // Wait for the actor to be mapped before repainting
         if (this._spotlight.mapped) {
             this._spotlight.queue_repaint();
-            console.log('Find My Mouse: Forced initial repaint (already mapped)');
         } else {
-            console.log('Find My Mouse: Waiting for spotlight to map...');
-            const signalId = this._spotlight.connect('notify::mapped', () => {
-                console.log('Find My Mouse: Spotlight mapped, now repainting');
+            this._mappedSignalId = this._spotlight.connect('notify::mapped', () => {
                 this._spotlight.queue_repaint();
-                this._spotlight.disconnect(signalId);
+                if (this._mappedSignalId) {
+                    this._spotlight.disconnect(this._mappedSignalId);
+                    this._mappedSignalId = 0;
+                }
             });
         }
 
         this._spotlight.grab_key_focus();
         
         this._spotlight.connect('key-press-event', () => {
-            this._hideSpotlight();
+            const method = this._settings.get_string('activation-method');
+            // Don't hide on key press if in always mode
+            if (method !== 'always') {
+                this._hideSpotlight();
+            }
             return Clutter.EVENT_STOP;
         });
 
         this._spotlightVisible = true;
-        console.log(`Find My Mouse [${GLib.get_monotonic_time() / 1000}ms]: Spotlight shown, visible=${this._spotlight.visible}, mapped=${this._spotlight.mapped}`);
         this._resetIdleTimeout();
     }
 
+    _cancelFade() {
+        if (this._fadeTimeoutId) {
+            GLib.source_remove(this._fadeTimeoutId);
+            this._fadeTimeoutId = 0;
+        }
+    }
+
     _resetIdleTimeout() {
+        const method = this._settings.get_string('activation-method');
+        
+        // Don't set idle timeout in always mode
+        if (method === 'always') {
+            return;
+        }
+        
         if (this._idleTimeoutId) {
             GLib.source_remove(this._idleTimeoutId);
         }
         
         const timeoutMs = this._settings.get_int('idle-timeout') || 1000;
-        console.log(`Find My Mouse [${GLib.get_monotonic_time() / 1000}ms]: Resetting idle timeout (${timeoutMs}ms)`);
         
         this._idleTimeoutId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 
             timeoutMs, () => {
-            console.log(`Find My Mouse [${GLib.get_monotonic_time() / 1000}ms]: Idle timeout triggered!`);
             this._startFadeOut();
             this._idleTimeoutId = 0;
             return GLib.SOURCE_REMOVE;
         });
     }
 
+    _startFadeIn(duration) {
+        this._cancelFade();
+        
+        const stepDuration = duration / FADE_STEPS;
+        this._fadeStep = 255 / FADE_STEPS;
+        this._currentAlpha = 0;
+        
+        this._fadeTimeoutId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, stepDuration, () => {
+            this._currentAlpha = Math.min(255, this._currentAlpha + this._fadeStep);
+            if (this._spotlight) {
+                this._spotlight.queue_repaint();
+            }
+            
+            if (this._currentAlpha >= 255) {
+                this._fadeTimeoutId = 0;
+                return GLib.SOURCE_REMOVE;
+            }
+            return GLib.SOURCE_CONTINUE;
+        });
+    }
+
     _startFadeOut() {
         if (!this._spotlight || !this._spotlightVisible) {
-            console.log(`Find My Mouse [${GLib.get_monotonic_time() / 1000}ms]: NOT starting fade-out - spotlight not visible`);
             return;
         }
-        
-        console.log(`Find My Mouse [${GLib.get_monotonic_time() / 1000}ms]: Starting fade-out animation`);
         
         if (this._idleTimeoutId) {
             GLib.source_remove(this._idleTimeoutId);
             this._idleTimeoutId = 0;
         }
         
-        this._spotlightTimeout = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 
-            this._settings.get_int('animation-duration') || 500, () => {
-            this._hideSpotlight();
-            this._spotlightTimeout = 0;
-            return GLib.SOURCE_REMOVE;
+        const method = this._settings.get_string('activation-method');
+        
+        // Don't fade out in always mode
+        if (method === 'always') {
+            return;
+        }
+        
+        const duration = this._settings.get_int('animation-duration') || 500;
+        const stepDuration = duration / FADE_STEPS;
+        this._fadeStep = 255 / FADE_STEPS;
+        
+        this._fadeTimeoutId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, stepDuration, () => {
+            this._currentAlpha = Math.max(0, this._currentAlpha - this._fadeStep);
+            if (this._spotlight) {
+                this._spotlight.queue_repaint();
+            }
+            
+            if (this._currentAlpha <= 0) {
+                this._hideSpotlight();
+                this._fadeTimeoutId = 0;
+                return GLib.SOURCE_REMOVE;
+            }
+            return GLib.SOURCE_CONTINUE;
         });
     }
 
     _hideSpotlight() {
+        const method = this._settings.get_string('activation-method');
+        
+        // Don't hide in always mode
+        if (method === 'always') {
+            return;
+        }
+        
+        this._cancelFade();
+        
+        // Cleanup mapped signal handler
+        if (this._mappedSignalId) {
+            this._spotlight.disconnect(this._mappedSignalId);
+            this._mappedSignalId = 0;
+        }
+        
         if (this._spotlight) {
-            console.log(`Find My Mouse [${GLib.get_monotonic_time() / 1000}ms]: Hiding spotlight`);
             Main.layoutManager.removeChrome(this._spotlight);
             this._spotlight.destroy();
             this._spotlight = null;
             this._spotlightVisible = false;
-            console.log(`Find My Mouse [${GLib.get_monotonic_time() / 1000}ms]: Spotlight hidden`);
         }
         
         if (this._spotlightTimeout) {
@@ -333,5 +515,7 @@ export default class FindMyMouseExtension extends Extension {
             GLib.source_remove(this._idleTimeoutId);
             this._idleTimeoutId = 0;
         }
+        
+        this._currentAlpha = 0;
     }
 }
