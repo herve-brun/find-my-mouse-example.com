@@ -7,7 +7,7 @@ import Cairo from 'gi://cairo';
 import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
-// Use GNOME Shell's built-in pointerWatcher for efficient mouse tracking
+// Use GNOME Shell's built-in pointerWatcher for efficient mouse tracking on X11
 // Documented in GNOME docs: js/ui/pointerWatcher.js
 // This automatically stops polling when the user is idle
 import { getPointerWatcher } from 'resource:///org/gnome/shell/ui/pointerWatcher.js';
@@ -42,6 +42,8 @@ export default class FindMyMouseExtension extends Extension {
         this._settings = null;
         this._keybindingHandler = 0;
         this._pointerWatch = null;
+        this._cursorTracker = null;
+        this._cursorTrackerSignalId = 0;
         this._settingsChangedId = 0;
         this._mousePressHandler = 0;
         this._spotlightVisible = false;
@@ -140,30 +142,60 @@ export default class FindMyMouseExtension extends Extension {
     }
 
     _setupMouseTracking() {
-        // Use GNOME Shell's built-in PointerWatcher for efficient mouse tracking
-        // It automatically stops polling when the user is idle
+        const isWayland = Meta.is_wayland_compositor();
+        
+        if (isWayland && Meta.CursorTracker) {
+            // Use Mutter's CursorTracker on Wayland (event-driven, no polling)
+            try {
+                this._cursorTracker = Meta.CursorTracker.get_default();
+                this._cursorTrackerSignalId = this._cursorTracker.connect('position-invalidated', () => {
+                    const [x, y] = global.get_pointer();
+                    this._handleMouseMovement(x, y);
+                });
+                console.log('Find My Mouse: Using Mutter CursorTracker for mouse tracking (Wayland)');
+            } catch (e) {
+                console.log('Find My Mouse: Failed to use CursorTracker, falling back to pointerWatcher:', e);
+                this._setupPointerWatcher();
+            }
+        } else {
+            // Use pointerWatcher on X11 or as fallback
+            this._setupPointerWatcher();
+        }
+    }
+
+    _setupPointerWatcher() {
         const watcher = getPointerWatcher();
         this._pointerWatch = watcher.addWatch(50, (x, y) => {
-            if (this._spotlightVisible) {
-                this._lastX = x;
-                this._lastY = y;
-                if (this._spotlight && this._spotlight.mapped) {
-                    this._spotlight.queue_repaint();
-                }
-                this._resetIdleTimeout();
-                return;
-            }
-
-            if (this._cachedActivationMethod === 'shake') {
-                this._detectShake(x, y);
-            }
+            this._handleMouseMovement(x, y);
         });
+        console.log('Find My Mouse: Using pointerWatcher for mouse tracking');
+    }
+
+    _handleMouseMovement(x, y) {
+        if (this._spotlightVisible) {
+            this._lastX = x;
+            this._lastY = y;
+            if (this._spotlight && this._spotlight.mapped) {
+                this._spotlight.queue_repaint();
+            }
+            this._resetIdleTimeout();
+            return;
+        }
+
+        if (this._cachedActivationMethod === 'shake') {
+            this._detectShake(x, y);
+        }
     }
 
     _removeMouseTracking() {
         if (this._pointerWatch) {
             this._pointerWatch.remove();
             this._pointerWatch = null;
+        }
+        if (this._cursorTracker && this._cursorTrackerSignalId) {
+            this._cursorTracker.disconnect(this._cursorTrackerSignalId);
+            this._cursorTracker = null;
+            this._cursorTrackerSignalId = 0;
         }
     }
 
@@ -199,6 +231,8 @@ export default class FindMyMouseExtension extends Extension {
         // Listen for activation-method changes to rebuild handlers
         this._alwaysVisibleHandler = this._settings.connect('changed::activation-method', () => {
             const newMethod = this._settings.get_string('activation-method');
+            // Cache settings first so _setup* methods use updated values
+            this._cacheSettings();
             // Remove old handlers
             this._removeKeybindings();
             this._removeMouseTracking();
@@ -212,7 +246,6 @@ export default class FindMyMouseExtension extends Extension {
             } else if (this._spotlightVisible && newMethod !== 'always') {
                 this._hideSpotlight();
             }
-            this._cacheSettings();
         });
     }
 
