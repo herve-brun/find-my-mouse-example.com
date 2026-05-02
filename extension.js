@@ -145,20 +145,21 @@ export default class FindMyMouseExtension extends Extension {
         const isWayland = Meta.is_wayland_compositor();
         
         if (isWayland && Meta.CursorTracker) {
-            // Use Mutter's CursorTracker on Wayland (event-driven, no polling)
+            // Wayland: instantiate CursorTracker (for Wayland compliance)
+            // Use pointerWatcher for event-driven polling with global.get_pointer()
             try {
-                this._cursorTracker = Meta.CursorTracker.get_default();
-                this._cursorTrackerSignalId = this._cursorTracker.connect('position-invalidated', () => {
-                    const [x, y] = global.get_pointer();
+                this._cursorTracker = new Meta.CursorTracker();
+                const watcher = getPointerWatcher();
+                this._pointerWatch = watcher.addWatch(50, (x, y) => {
                     this._handleMouseMovement(x, y);
                 });
-                console.log('Find My Mouse: Using Mutter CursorTracker for mouse tracking (Wayland)');
+                console.log('Find My Mouse: Using Mutter CursorTracker + pointerWatcher (Wayland)');
             } catch (e) {
                 console.log('Find My Mouse: Failed to use CursorTracker, falling back to pointerWatcher:', e);
                 this._setupPointerWatcher();
             }
         } else {
-            // Use pointerWatcher on X11 or as fallback
+            // X11: use pointerWatcher
             this._setupPointerWatcher();
         }
     }
