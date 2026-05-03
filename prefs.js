@@ -61,7 +61,7 @@ export default class FindMyMousePreferences extends ExtensionPreferences {
         
         // Use Gtk.ShortcutLabel for proper display
         const shortcutLabel = new Gtk.ShortcutLabel({
-            accelerator: settings.get_string('activation-shortcut') || '',
+            accelerator: settings.get_string('find-my-mouse-activation') || '',
             halign: Gtk.Align.END,
         });
         shortcutRow.add_suffix(shortcutLabel);
@@ -80,7 +80,7 @@ export default class FindMyMousePreferences extends ExtensionPreferences {
         });
         clearButton.connect('clicked', () => {
             shortcutLabel.set_accelerator('');
-            settings.set_string('activation-shortcut', '');
+            settings.set_string('find-my-mouse-activation', '');
         });
         shortcutRow.add_suffix(clearButton);
         
@@ -125,55 +125,56 @@ export default class FindMyMousePreferences extends ExtensionPreferences {
             Gdk.KEY_Meta_L, Gdk.KEY_Meta_R,
             Gdk.KEY_Caps_Lock, Gdk.KEY_Num_Lock
         ];
-        
+
+        // Create an event controller for key presses
+        const keyController = new Gtk.EventControllerKey();
+        shortcutDialog.add_controller(keyController);
+
         // Handle key press in dialog
-        shortcutDialog.connect('key-press-event', (widget, event) => {
-            const keyval = event.keyval;
-            const state = event.state;
-            
+        keyController.connect('key-pressed', (controller, keyval, keycode, state) => {
             // Ignore modifier-only keys
             if (MODIFIER_KEYS.includes(keyval)) {
                 return Gdk.EVENT_PROPAGATE;
             }
-            
+
             // Handle Escape to cancel
             if (keyval === Gdk.KEY_Escape) {
                 shortcutDialog.close();
                 return Gdk.EVENT_STOP;
             }
-            
+
             // Get the key name
             let keyName = Gdk.keyval_name(keyval);
             if (!keyName) return Gdk.EVENT_PROPAGATE;
-            
+
             // Normalize Tab
             if (keyval === Gdk.KEY_ISO_Left_Tab) {
                 keyName = 'Tab';
             }
-            
+
             // Build the accelerator string (GNOME format: <Ctrl><Alt>f)
             const modifiers = [];
             if (state & Gdk.ModifierType.CONTROL_MASK) modifiers.push('Ctrl');
             if (state & Gdk.ModifierType.SHIFT_MASK) modifiers.push('Shift');
             if (state & Gdk.ModifierType.ALT_MASK) modifiers.push('Alt');
             if (state & Gdk.ModifierType.SUPER_MASK) modifiers.push('Super');
-            
+
             let accelerator = '';
             for (const mod of modifiers) {
                 accelerator += `<${mod}>`;
             }
             accelerator += keyName;
-            
+
             // Update display
             shortcutDisplay.set_accelerator(accelerator);
-            
+
             // Accept the shortcut
             shortcutDialog.response(Gtk.ResponseType.OK);
-            
+
             // Update the main label and settings
             shortcutLabel.set_accelerator(accelerator);
-            settings.set_string('activation-shortcut', accelerator);
-            
+            settings.set_string('find-my-mouse-activation', accelerator);
+
             return Gdk.EVENT_STOP;
         });
         

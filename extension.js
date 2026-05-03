@@ -2,6 +2,7 @@ import Clutter from 'gi://Clutter';
 import St from 'gi://St';
 import GLib from 'gi://GLib';
 import Meta from 'gi://Meta';
+import Shell from 'gi://Shell';
 import Cairo from 'gi://cairo';
 
 import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
@@ -68,6 +69,12 @@ export default class FindMyMouseExtension extends Extension {
         this._settingsChangedId = this._settings.connect('changed', () => {
             this._cacheSettings();
         });
+        this._shortcutChangedId = this._settings.connect('changed::find-my-mouse-activation', () => {
+            if (this._cachedActivationMethod === 'shortcut') {
+                this._removeKeybindings();
+                this._addKeybinding();
+            }
+        });
         this._setupKeybindings();
         this._setupMouseTracking();
         this._setupClickActivation();
@@ -83,6 +90,10 @@ export default class FindMyMouseExtension extends Extension {
         if (this._settingsChangedId) {
             this._settings.disconnect(this._settingsChangedId);
             this._settingsChangedId = 0;
+        }
+        if (this._shortcutChangedId) {
+            this._settings.disconnect(this._shortcutChangedId);
+            this._shortcutChangedId = 0;
         }
         this._hideSpotlight();
         this._settings = null;
@@ -110,7 +121,7 @@ export default class FindMyMouseExtension extends Extension {
     }
     
     _addKeybinding() {
-        const shortcut = this._settings.get_string('activation-shortcut');
+        const shortcut = this._settings.get_string('find-my-mouse-activation');
         if (shortcut && shortcut !== '') {
             try {
                 const mode = Shell.ActionMode.NORMAL;

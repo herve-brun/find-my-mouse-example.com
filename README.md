@@ -130,7 +130,17 @@ A GNOME Shell extension that replicates the **Find My Mouse** feature from Micro
 
 Test in a nested Wayland session:
 ```bash
-dbus-run-session gnome-shell --nested --wayland
+MUTTER_DEBUG_DUMMY_MONITOR_RESOLUTION=1920x1080 dbus-run-session gnome-shell --nested --wayland
+```
+
+Test in a nested X11 session (requires Xephyr):
+```bash
+# Install Xephyr first:
+#   Ubuntu/Debian: sudo apt install xserver-xephyr
+#   Fedora/RHEL:   sudo dnf install xorg-x11-server-Xephyr
+#   Arch:          sudo pacman -S xorg-server-xephyr
+Xephyr :1 -screen 1920x1080 &
+DISPLAY=:1 dbus-run-session gnome-shell
 ```
 
 View logs:

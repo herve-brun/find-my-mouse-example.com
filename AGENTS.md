@@ -12,7 +12,15 @@
 glib-compile-schemas schemas/
 
 # Test in nested Wayland session (no shell restart needed)
-dbus-run-session gnome-shell --nested --wayland
+MUTTER_DEBUG_DUMMY_MONITOR_RESOLUTION=1920x1080 dbus-run-session gnome-shell --nested --wayland
+
+# Test in nested X11 session (requires Xephyr)
+# Install Xephyr first:
+#   Ubuntu/Debian: sudo apt install xserver-xephyr
+#   Fedora/RHEL:   sudo dnf install xorg-x11-server-Xephyr
+#   Arch:          sudo pacman -S xorg-server-xephyr
+Xephyr :1 -screen 1920x1080 &
+DISPLAY=:1 dbus-run-session gnome-shell
 
 # View extension logs
 journalctl --user -f | grep "Find My Mouse"
