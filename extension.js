@@ -47,7 +47,7 @@ export default class FindMyMouseExtension extends Extension {
         this._mousePressHandler = 0;
         this._spotlightVisible = false;
         this._alwaysVisibleHandler = 0;
-        this._currentAlpha = 0;
+        this._currentAlpha = 0; // Define initial state for alpha, 0/255 scale
         this._targetAlpha = 255;
         this._fadeStep = 0;
         this._mappedSignalId = 0;
@@ -427,12 +427,10 @@ export default class FindMyMouseExtension extends Extension {
 
             const startRadius = Math.max(10, this._cachedRadius / this._cachedZoom);
             const endRadius = this._cachedRadius;
-            const radiusChange = (currentAlpha / 255) * (endRadius - startRadius);
-        const startRadius = Math.max(10, this._cachedRadius / this._cachedZoom);
-        const endRadius = this._cachedRadius;
-        // Calculate the current radius proportional to the current alpha (0 to 255)
-        // The radius should transition smoothly from min to max size as alpha goes from 0 to 255.
-        const currentRadius = startRadius + (this._currentAlpha / 255) * (endRadius - startRadius);
+            const radiusChange = (this._currentAlpha / 255) * (endRadius - startRadius);
+            // Calculate the current radius proportional to the current alpha (0 to 255)
+            // The radius should transition smoothly from min to max size as alpha goes from 0 to 255.
+            const currentRadius = startRadius + (this._currentAlpha / 255) * (endRadius - startRadius);
 
             // Draw semi-transparent background
             cr.setOperator(Cairo.Operator.SOURCE);
