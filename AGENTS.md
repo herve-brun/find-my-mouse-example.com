@@ -34,7 +34,7 @@ journalctl --user -f | grep "Find My Mouse"
 
 ## Architecture
 - `extension.js` - Core logic: spotlight rendering, mouse/keyboard tracking, Cairo painting
-- `prefs.js` - Adwaita/GTK4 preferences UI
+- `prefs.js` - Adwaita/GTK4 preferences UI with separate pages for General, Appearance, Timing, and Shake Detection settings
 - `metadata.json` - Extension metadata (uuid, supported GNOME versions)
 - `schemas/` - GSettings schema (XML + compiled)
 
@@ -58,3 +58,10 @@ journalctl --user -f | grep "Find My Mouse"
 - Look for "Find My Mouse:" prefixed messages
 - Spotlight visibility tracked via `_spotlightVisible` boolean
 - View extension logs with: `journalctl --user --no-pager | grep "Find My Mouse"
+
+## Recent Changes
+- Preferences UI reorganized into separate pages for better usability:
+  - General: Activation methods, multi-monitor settings
+  - Appearance: Spotlight colors, radius, zoom, game mode toggle
+  - Timing: Idle timeout and animation duration
+  - Shake Detection: Shake interval and sensitivity settings
