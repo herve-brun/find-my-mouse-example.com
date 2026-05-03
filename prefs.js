@@ -14,17 +14,18 @@ export default class FindMyMousePreferences extends ExtensionPreferences {
     fillPreferencesWindow(window) {
         const settings = this.getSettings();
         
-        const page = new Adw.PreferencesPage({
+        // General page
+        const generalPage = new Adw.PreferencesPage({
             title: _('General'),
             icon_name: 'preferences-system-symbolic',
         });
-        window.add(page);
+        window.add(generalPage);
 
         const activationGroup = new Adw.PreferencesGroup({
             title: _('Activation'),
             description: _('Configure how Find My Mouse is activated'),
         });
-        page.add(activationGroup);
+        generalPage.add(activationGroup);
 
         const activationRow = new Adw.ComboRow({
             title: _('Activation Method'),
@@ -206,83 +207,34 @@ export default class FindMyMousePreferences extends ExtensionPreferences {
         });
         activationGroup.add(clickButtonRow);
 
-        const timingGroup = new Adw.PreferencesGroup({
-            title: _('Timing'),
-            description: _('Configure timeouts and delays'),
+        const multiMonitorGroup = new Adw.PreferencesGroup({
+            title: _('Multi-Monitor'),
+            description: _('Settings for multi-monitor setups'),
         });
-        page.add(timingGroup);
+        generalPage.add(multiMonitorGroup);
 
-        const idleRow = new Adw.SpinRow({
-            title: _('Idle Timeout (ms)'),
-            subtitle: _('Wait time after mouse stops before hiding (PowerToys default: 1000)'),
-            adjustment: new Gtk.Adjustment({
-                lower: 100,
-                upper: 10000,
-                step_increment: 100,
-                value: settings.get_int('idle-timeout') || 1000,
-            }),
+        const allMonitorsRow = new Adw.SwitchRow({
+            title: _('Show on All Monitors'),
+            subtitle: _('When enabled, spotlight covers all connected monitors'),
+            active: settings.get_boolean('show-on-all-monitors'),
         });
-        idleRow.connect('notify::value', () => {
-            settings.set_int('idle-timeout', idleRow.value);
+        allMonitorsRow.connect('notify::active', () => {
+            settings.set_boolean('show-on-all-monitors', allMonitorsRow.active);
         });
-        timingGroup.add(idleRow);
+        multiMonitorGroup.add(allMonitorsRow);
 
-        const durationRow = new Adw.SpinRow({
-            title: _('Animation Duration (ms)'),
-            subtitle: _('Fade-out animation time (PowerToys default: 500)'),
-            adjustment: new Gtk.Adjustment({
-                lower: 100,
-                upper: 5000,
-                step_increment: 100,
-                value: settings.get_int('animation-duration') || 500,
-            }),
+        // Appearance page
+        const appearancePage = new Adw.PreferencesPage({
+            title: _('Appearance'),
+            icon_name: 'preferences-desktop-symbolic',
         });
-        durationRow.connect('notify::value', () => {
-            settings.set_int('animation-duration', durationRow.value);
-        });
-        timingGroup.add(durationRow);
-
-        const shakeGroup = new Adw.PreferencesGroup({
-            title: _('Shake Detection'),
-            description: _('Settings for mouse shake detection'),
-        });
-        page.add(shakeGroup);
-
-        const intervalRow = new Adw.SpinRow({
-            title: _('Shake Detection Interval (ms)'),
-            subtitle: _('Time window to monitor mouse movement (PowerToys default: 1000)'),
-            adjustment: new Gtk.Adjustment({
-                lower: 100,
-                upper: 5000,
-                step_increment: 100,
-                value: settings.get_int('shake-interval') || 1000,
-            }),
-        });
-        intervalRow.connect('notify::value', () => {
-            settings.set_int('shake-interval', intervalRow.value);
-        });
-        shakeGroup.add(intervalRow);
-
-        const sensitivityRow = new Adw.SpinRow({
-            title: _('Shake Sensitivity (%)'),
-            subtitle: _('Distance must be this % of movement diagonal (PowerToys default: 400%)'),
-            adjustment: new Gtk.Adjustment({
-                lower: 100,
-                upper: 10000,
-                step_increment: 100,
-                value: settings.get_int('shake-sensitivity') || 400,
-            }),
-        });
-        sensitivityRow.connect('notify::value', () => {
-            settings.set_int('shake-sensitivity', sensitivityRow.value);
-        });
-        shakeGroup.add(sensitivityRow);
+        window.add(appearancePage);
 
         const appearanceGroup = new Adw.PreferencesGroup({
             title: _('Appearance'),
             description: _('Customize the spotlight appearance'),
         });
-        page.add(appearanceGroup);
+        appearancePage.add(appearanceGroup);
 
         const bgColorRow = new Adw.ActionRow({
             title: _('Background Color'),
@@ -356,21 +308,91 @@ export default class FindMyMousePreferences extends ExtensionPreferences {
         });
         appearanceGroup.add(gamemodeRow);
 
-        const multiMonitorGroup = new Adw.PreferencesGroup({
-            title: _('Multi-Monitor'),
-            description: _('Settings for multi-monitor setups'),
+        // Timing page
+        const timingPage = new Adw.PreferencesPage({
+            title: _('Timing'),
+            icon_name: 'preferences-system-time-symbolic',
         });
-        page.add(multiMonitorGroup);
+        window.add(timingPage);
 
-        const allMonitorsRow = new Adw.SwitchRow({
-            title: _('Show on All Monitors'),
-            subtitle: _('When enabled, spotlight covers all connected monitors'),
-            active: settings.get_boolean('show-on-all-monitors'),
+        const timingGroup = new Adw.PreferencesGroup({
+            title: _('Timing'),
+            description: _('Configure timeouts and delays'),
         });
-        allMonitorsRow.connect('notify::active', () => {
-            settings.set_boolean('show-on-all-monitors', allMonitorsRow.active);
+        timingPage.add(timingGroup);
+
+        const idleRow = new Adw.SpinRow({
+            title: _('Idle Timeout (ms)'),
+            subtitle: _('Wait time after mouse stops before hiding (PowerToys default: 1000)'),
+            adjustment: new Gtk.Adjustment({
+                lower: 100,
+                upper: 10000,
+                step_increment: 100,
+                value: settings.get_int('idle-timeout') || 1000,
+            }),
         });
-        multiMonitorGroup.add(allMonitorsRow);
+        idleRow.connect('notify::value', () => {
+            settings.set_int('idle-timeout', idleRow.value);
+        });
+        timingGroup.add(idleRow);
+
+        const durationRow = new Adw.SpinRow({
+            title: _('Animation Duration (ms)'),
+            subtitle: _('Fade-out animation time (PowerToys default: 500)'),
+            adjustment: new Gtk.Adjustment({
+                lower: 100,
+                upper: 5000,
+                step_increment: 100,
+                value: settings.get_int('animation-duration') || 500,
+            }),
+        });
+        durationRow.connect('notify::value', () => {
+            settings.set_int('animation-duration', durationRow.value);
+        });
+        timingGroup.add(durationRow);
+
+        // Shake Detection page
+        const shakePage = new Adw.PreferencesPage({
+            title: _('Shake Detection'),
+            icon_name: 'input-mouse-symbolic',
+        });
+        window.add(shakePage);
+
+        const shakeGroup = new Adw.PreferencesGroup({
+            title: _('Shake Detection'),
+            description: _('Settings for mouse shake detection'),
+        });
+        shakePage.add(shakeGroup);
+
+        const intervalRow = new Adw.SpinRow({
+            title: _('Shake Detection Interval (ms)'),
+            subtitle: _('Time window to monitor mouse movement (PowerToys default: 1000)'),
+            adjustment: new Gtk.Adjustment({
+                lower: 100,
+                upper: 5000,
+                step_increment: 100,
+                value: settings.get_int('shake-interval') || 1000,
+            }),
+        });
+        intervalRow.connect('notify::value', () => {
+            settings.set_int('shake-interval', intervalRow.value);
+        });
+        shakeGroup.add(intervalRow);
+
+        const sensitivityRow = new Adw.SpinRow({
+            title: _('Shake Sensitivity (%)'),
+            subtitle: _('Distance must be this % of movement diagonal (PowerToys default: 400%)'),
+            adjustment: new Gtk.Adjustment({
+                lower: 100,
+                upper: 10000,
+                step_increment: 100,
+                value: settings.get_int('shake-sensitivity') || 400,
+            }),
+        });
+        sensitivityRow.connect('notify::value', () => {
+            settings.set_int('shake-sensitivity', sensitivityRow.value);
+        });
+        shakeGroup.add(sensitivityRow);
     }
 
     _parseColor(colorStr) {
