@@ -130,7 +130,13 @@ A GNOME Shell extension that replicates the **Find My Mouse** feature from Micro
 
 Test in a nested Wayland session:
 ```bash
-MUTTER_DEBUG_DUMMY_MONITOR_RESOLUTION=1920x1080 dbus-run-session gnome-shell --nested --wayland
+# For GNOME Shell 49+, use the devkit mode for better debugging
+# For older versions, use the nested mode with backtrace warnings
+if [ "$(gnome-shell --version | awk '{print int($3)}')" -ge 49 ]; then
+    dbus-run-session gnome-shell --devkit --wayland
+else
+    SHELL_DEBUG=backtrace-warnings dbus-run-session gnome-shell --nested --wayland
+fi
 ```
 
 Test in a nested X11 session (requires Xephyr):
@@ -153,6 +159,7 @@ journalctl --user -f | grep "Find My Mouse"
 - Extension logs appear in `journalctl --user -f`
 - Look for messages prefixed with "Find My Mouse:"
 - Use `console.log()` in the code for debugging
+- View extension logs with: `journalctl --user --no-pager | grep "Find My Mouse"
 
 ## Troubleshooting
 

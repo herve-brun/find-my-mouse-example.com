@@ -12,7 +12,13 @@
 glib-compile-schemas schemas/
 
 # Test in nested Wayland session (no shell restart needed)
-MUTTER_DEBUG_DUMMY_MONITOR_RESOLUTION=1920x1080 dbus-run-session gnome-shell --nested --wayland
+# For GNOME Shell 49+, use the devkit mode for better debugging
+# For older versions, use the nested mode with backtrace warnings
+if [ "$(gnome-shell --version | awk '{print int($3)}')" -ge 49 ]; then
+    dbus-run-session gnome-shell --devkit --wayland
+else
+    SHELL_DEBUG=backtrace-warnings dbus-run-session gnome-shell --nested --wayland
+fi
 
 # Test in nested X11 session (requires Xephyr)
 # Install Xephyr first:
@@ -51,3 +57,4 @@ journalctl --user -f | grep "Find My Mouse"
 - Extension logs via `console.log()` appear in `journalctl --user -f`
 - Look for "Find My Mouse:" prefixed messages
 - Spotlight visibility tracked via `_spotlightVisible` boolean
+- View extension logs with: `journalctl --user --no-pager | grep "Find My Mouse"
