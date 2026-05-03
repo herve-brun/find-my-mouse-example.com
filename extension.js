@@ -425,21 +425,30 @@ export default class FindMyMouseExtension extends Extension {
             const currentBgAlpha = (bgColor[3] / 255) * (this._currentAlpha / 255);
             const currentSpotAlpha = (spotlightColor[3] / 255) * (this._currentAlpha / 255);
 
+            const startRadius = Math.max(10, this._cachedRadius / this._cachedZoom);
+            const endRadius = this._cachedRadius;
+            const radiusChange = (currentAlpha / 255) * (endRadius - startRadius);
+        const startRadius = Math.max(10, this._cachedRadius / this._cachedZoom);
+        const endRadius = this._cachedRadius;
+        // Calculate the current radius proportional to the current alpha (0 to 255)
+        // The radius should transition smoothly from min to max size as alpha goes from 0 to 255.
+        const currentRadius = startRadius + (this._currentAlpha / 255) * (endRadius - startRadius);
+
             // Draw semi-transparent background
             cr.setOperator(Cairo.Operator.SOURCE);
             cr.setSourceRGBA(bgColor[0]/255, bgColor[1]/255, bgColor[2]/255, currentBgAlpha);
             cr.paint();
 
             // Clear the spotlight circle area (make it transparent)
-            const currentRadius = radius * zoom;
+            const currentSpotRadius = radius * zoom;
             cr.setOperator(Cairo.Operator.CLEAR);
-            cr.arc(mx - geom.x, my - geom.y, currentRadius, 0, 2 * Math.PI);
+            cr.arc(mx - geom.x, my - geom.y, currentSpotRadius, 0, 2 * Math.PI);
             cr.fill();
 
             // Draw spotlight border
             cr.setOperator(Cairo.Operator.OVER);
             cr.setSourceRGBA(spotlightColor[0]/255, spotlightColor[1]/255, spotlightColor[2]/255, currentSpotAlpha);
-            cr.arc(mx - geom.x, my - geom.y, currentRadius, 0, 2 * Math.PI);
+            cr.arc(mx - geom.x, my - geom.y, currentSpotRadius, 0, 2 * Math.PI);
             cr.setLineWidth(2);
             cr.stroke();
         });
