@@ -2,7 +2,7 @@
 <schemalist>
   <schema id="org.gnome.shell.extensions.find-my-mouse" path="/org/gnome/shell/extensions/find-my-mouse/">
     <key name="activation-method" type="s">
-      <default>'shortcut'</default>
+      <default>'shake'</default>
       <summary>Activation method</summary>
       <description>How to activate the spotlight: shortcut, shake, click, always</description>
     </key>
