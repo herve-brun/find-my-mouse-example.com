@@ -93,8 +93,3 @@ GPL-3.0 – [Voir LICENSE](LICENSE).
 
 ## 🤝 Contribuer
 Pull Requests et Issues bienvenus sur [GitHub](https://github.com/herve-brun/find-my-mouse-example.com).
-
----
-
-## 📧 Contact
-[Hervé Brun](mailto:herve.brun85@orange.fr)
