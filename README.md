@@ -7,7 +7,7 @@ Extension GNOME pour localiser instantanément le pointeur de la souris avec un 
 ## 📌 À propos
 
 **Find My Mouse** est une extension légère pour **GNOME 46+** qui :
-- Met en évidence le pointeur avec un **spotlight OpenGL**.
+- Met en évidence le pointeur avec un **spotlight dessiné via Cairo**.
 - Utilise des **événements push** pour un suivi en temps réel sans latence.
 - Intègre des **animations configurables** (easing fadein/fadeout).
 - Permet aux **clics de passer à travers** le spotlight (accès aux fenêtres en dessous).
@@ -41,11 +41,13 @@ Extension GNOME pour localiser instantanément le pointeur de la souris avec un 
 
 ## ⚙️ Fonctionnalités
 
-- **Spotlight OpenGL** : Mise en évidence du pointeur avec taille, couleur et opacité configurables.
+- **Spotlight Cairo** : Mise en évidence du pointeur avec taille, couleur et opacité configurables.
 - **Suivi précis** : Capture des mouvements et clics de la souris avec une latence minimale.
 - **Animations fluides** : Easing fadein/fadeout pour le spotlight.
 - **Non intrusif** : Les clics passent à travers le spotlight.
 - **Événements push** : Réactivité immédiate aux actions de la souris.
+- **Activation par raccourci** : Double Ctrl ou raccourci personnalisable.
+- **Détection de secousse** : Active le spotlight en secouant la souris.
 
 ---
 
@@ -57,6 +59,8 @@ Extension GNOME pour localiser instantanément le pointeur de la souris avec un 
    - Activation/désactivation du spotlight.
    - Taille, couleur, opacité du spotlight.
    - Durée et type d'animation (easing).
+   - Sensibilité de la détection de secousse.
+   - Raccourci clavier.
 
 ---
 
