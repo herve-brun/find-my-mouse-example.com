@@ -14,7 +14,6 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import { getPointerWatcher } from 'resource:///org/gnome/shell/ui/pointerWatcher.js';
 
 const SHAKE_DETECTION_INTERVAL = 1000;
-const FADE_STEPS = 30;
 
 function parseColor(colorStr, defaultAlpha = 255) {
     if (!colorStr || colorStr === '') return [0, 0, 0, defaultAlpha];
@@ -47,13 +46,19 @@ export default class FindMyMouseExtension extends Extension {
         this._mousePressHandler = 0;
         this._spotlightVisible = false;
         this._alwaysVisibleHandler = 0;
-        this._currentAlpha = 0; // Define initial state for alpha, 0/255 scale
+        this._currentAlpha = 0;
         this._targetAlpha = 255;
         this._fadeStep = 0;
         this._mappedSignalId = 0;
+        this._repaintPending = false;
+        this._mouseX = -1;
+        this._mouseY = -1;
+        
         // Cached settings for performance
         this._cachedBgColor = null;
         this._cachedSpotlightColor = null;
+        this._cachedBgColorNormalized = [0, 0, 0, 0.5];
+        this._cachedSpotlightColorNormalized = [1, 1, 1, 0.5];
         this._cachedRadius = 100;
         this._cachedZoom = 9.0;
         this._cachedAnimationDuration = 500;
@@ -102,8 +107,26 @@ export default class FindMyMouseExtension extends Extension {
 
     _cacheSettings() {
         if (!this._settings) return;
-        this._cachedBgColor = parseColor(this._settings.get_string('background-color') || '#00000080');
-        this._cachedSpotlightColor = parseColor(this._settings.get_string('spotlight-color') || '#FFFFFF80');
+        
+        const bgColorStr = this._settings.get_string('background-color') || '#00000080';
+        const spotlightColorStr = this._settings.get_string('spotlight-color') || '#FFFFFF80';
+        
+        this._cachedBgColor = parseColor(bgColorStr);
+        this._cachedSpotlightColor = parseColor(spotlightColorStr);
+        
+        this._cachedBgColorNormalized = [
+            this._cachedBgColor[0] / 255,
+            this._cachedBgColor[1] / 255,
+            this._cachedBgColor[2] / 255,
+            this._cachedBgColor[3] / 255
+        ];
+        this._cachedSpotlightColorNormalized = [
+            this._cachedSpotlightColor[0] / 255,
+            this._cachedSpotlightColor[1] / 255,
+            this._cachedSpotlightColor[2] / 255,
+            this._cachedSpotlightColor[3] / 255
+        ];
+        
         this._cachedRadius = this._settings.get_int('spotlight-radius') || 100;
         this._cachedZoom = this._settings.get_double('spotlight-zoom') || 9.0;
         this._cachedAnimationDuration = this._settings.get_int('animation-duration') || 500;
@@ -114,7 +137,6 @@ export default class FindMyMouseExtension extends Extension {
     }
 
     _setupKeybindings() {
-        // Only setup shortcut keybinding if method is 'shortcut'
         if (this._cachedActivationMethod === 'shortcut') {
             this._addKeybinding();
         }
@@ -151,8 +173,6 @@ export default class FindMyMouseExtension extends Extension {
     }
 
     _setupMouseTracking() {
-        // Use GNOME Shell's built-in pointerWatcher for efficient mouse tracking
-        // Works on both Wayland and X11 - event-driven, automatically stops polling when idle
         const watcher = getPointerWatcher();
         this._pointerWatch = watcher.addWatch(50, (x, y) => {
             this._handleMouseMovement(x, y);
@@ -169,16 +189,36 @@ export default class FindMyMouseExtension extends Extension {
     }
 
     _handleMouseMovement(x, y) {
+        // Met toujours à jour _mouseX/_mouseY
+        this._mouseX = x;
+        this._mouseY = y;
+
+        // Si le spotlight est visible, on gère le repaint
         if (this._spotlightVisible) {
+            const dx = Math.abs(x - this._lastX);
+            const dy = Math.abs(y - this._lastY);
+
+            if (dx < 5 && dy < 5) return;
+
             this._lastX = x;
             this._lastY = y;
             if (this._spotlight && this._spotlight.mapped) {
-                this._spotlight.queue_repaint();
+                if (!this._repaintPending) {
+                    this._repaintPending = true;
+                    GLib.timeout_add(GLib.PRIORITY_DEFAULT, 16, () => {
+                        if (this._spotlight) {
+                            this._spotlight.queue_repaint();
+                        }
+                        this._repaintPending = false;
+                        return GLib.SOURCE_REMOVE;
+                    });
+                }
             }
             this._resetIdleTimeout();
             return;
         }
 
+        // Si le spotlight n'est PAS visible, on vérifie si on doit détecter le shake
         if (this._cachedActivationMethod === 'shake') {
             this._detectShake(x, y);
         }
@@ -192,8 +232,7 @@ export default class FindMyMouseExtension extends Extension {
     }
 
     _setupClickActivation() {
-        const method = this._settings.get_string('activation-method');
-        if (method === 'click') {
+        if (this._cachedActivationMethod === 'click') {
             this._mousePressHandler = global.stage.connect('button-press-event', (_, event) => {
                 const button = event.get_button();
                 const expectedButton = this._settings.get_int('click-activation-button') || 1;
@@ -216,20 +255,18 @@ export default class FindMyMouseExtension extends Extension {
     }
 
     _setupAlwaysVisible() {
-        const method = this._settings.get_string('activation-method');
+        const method = this._cachedActivationMethod;
+        console.log(`Find My Mouse: Activation method is: ${method}`);
         if (method === 'always') {
+            console.log('Find My Mouse: Showing spotlight (always mode)');
             this._showSpotlight();
         }
-        // Listen for activation-method changes to rebuild handlers
         this._alwaysVisibleHandler = this._settings.connect('changed::activation-method', () => {
             const newMethod = this._settings.get_string('activation-method');
-            // Cache settings first so _setup* methods use updated values
             this._cacheSettings();
-            // Remove old handlers
             this._removeKeybindings();
             this._removeMouseTracking();
             this._removeClickActivation();
-            // Re-setup based on new method
             this._setupKeybindings();
             this._setupMouseTracking();
             this._setupClickActivation();
@@ -249,63 +286,67 @@ export default class FindMyMouseExtension extends Extension {
     }
 
     _detectShake(x, y) {
-        if (this._lastX >= 0) {
-            const dx = x - this._lastX;
-            const dy = y - this._lastY;
+        if (this._lastX < 0) {
+            this._lastX = x;
+            this._lastY = y;
+            return;
+        }
 
-            // Record this movement with timestamp
-            const now = GLib.get_monotonic_time() / 1000;
-            this._movementHistory = this._movementHistory || [];
+        const dx = x - this._lastX;
+        const dy = y - this._lastY;
+        const now = GLib.get_monotonic_time() / 1000;
 
-            // Prune old movements outside the shake interval
-            const shakeInterval = this._cachedShakeInterval;
-            const cutoffTime = now - shakeInterval;
-            this._movementHistory = this._movementHistory.filter(m => m.tick > cutoffTime);
+        this._movementHistory = this._movementHistory || [];
+        this._movementHistory.push({ dx, dy, tick: now });
+        
+        if (this._movementHistory.length > 100) {
+            this._movementHistory.shift();
+        }
 
-            // Add current movement
-            this._movementHistory.push({ dx: dx, dy: dy, tick: now });
+        const cutoffTime = now - this._cachedShakeInterval;
+        let oldestIndex = 0;
+        while (oldestIndex < this._movementHistory.length && this._movementHistory[oldestIndex].tick <= cutoffTime) {
+            oldestIndex++;
+        }
+        if (oldestIndex > 0) {
+            this._movementHistory = this._movementHistory.slice(oldestIndex);
+        }
 
-            // Calculate total distance and bounding rectangle
-            let totalDistance = 0;
-            let currentX = 0, currentY = 0;
-            let minX = 0, maxX = 0, minY = 0, maxY = 0;
+        let totalDistanceSquared = 0;
+        let currentX = 0, currentY = 0;
+        let minX = 0, maxX = 0, minY = 0, maxY = 0;
 
-            for (const mov of this._movementHistory) {
-                currentX += mov.dx;
-                currentY += mov.dy;
-                totalDistance += Math.sqrt(mov.dx * mov.dx + mov.dy * mov.dy);
-                minX = Math.min(currentX, minX);
-                maxX = Math.max(currentX, maxX);
-                minY = Math.min(currentY, minY);
-                maxY = Math.max(currentY, maxY);
-            }
+        for (const mov of this._movementHistory) {
+            currentX += mov.dx;
+            currentY += mov.dy;
+            totalDistanceSquared += mov.dx * mov.dx + mov.dy * mov.dy;
+            minX = Math.min(currentX, minX);
+            maxX = Math.max(currentX, maxX);
+            minY = Math.min(currentY, minY);
+            maxY = Math.max(currentY, maxY);
+        }
 
-            // Calculate diagonal of bounding rectangle
-            const rectWidth = maxX - minX;
-            const rectHeight = maxY - minY;
-            const diagonal = Math.sqrt(rectWidth * rectWidth + rectHeight * rectHeight);
+        const rectWidth = maxX - minX;
+        const rectHeight = maxY - minY;
+        const diagonalSquared = rectWidth * rectWidth + rectHeight * rectHeight;
 
-            // Check if distance/diagonal > shake factor (default 400% = 4.0)
-            const shakeFactor = this._cachedShakeSensitivity;
-            if (diagonal > 0 && totalDistance / diagonal > (shakeFactor / 100)) {
-                console.log('Find My Mouse: Shake detected!');
-                this._toggleSpotlight();
-                this._movementHistory = [];
-                this._lastX = -1;
-                this._lastY = -1;
-                return;
-            }
+        const shakeFactor = this._cachedShakeSensitivity / 100;
+        if (diagonalSquared > 0 && (totalDistanceSquared / diagonalSquared) > shakeFactor * shakeFactor) {
+            console.log('Find My Mouse: Shake detected!');
+            this._toggleSpotlight();
+            this._movementHistory = [];
+            this._lastX = -1;
+            this._lastY = -1;
+            return;
         }
 
         this._lastX = x;
         this._lastY = y;
-        return;
     }
 
     _toggleSpotlight() {
-        const method = this._settings.get_string('activation-method');
+        const method = this._cachedActivationMethod;
         
-        // In 'always' mode, don't toggle - just show if not visible
         if (method === 'always') {
             if (!this._spotlightVisible) {
                 this._showSpotlight();
@@ -321,28 +362,29 @@ export default class FindMyMouseExtension extends Extension {
     }
 
     _showSpotlight() {
-        const method = this._settings.get_string('activation-method');
+        const method = this._cachedActivationMethod;
+        console.log(`Find My Mouse: _showSpotlight called (method: ${method})`);
         
-        // If already visible and not in always mode, don't show again
         if (this._spotlightVisible && method !== 'always') {
+            console.log('Find My Mouse: Already visible, skipping');
             return;
         }
         
-        // Cancel any ongoing fade
         this._cancelFade();
         
-        // Destroy existing spotlights
         if (this._spotlight) {
             this._spotlight.destroy();
             this._spotlight = null;
         }
 
-        // Check if we should show on all monitors or just current
         const showOnAllMonitors = this._settings.get_boolean('show-on-all-monitors') || false;
+        console.log(`Find My Mouse: showOnAllMonitors = ${showOnAllMonitors}`);
         
         if (showOnAllMonitors) {
+            console.log('Find My Mouse: Calling _showOnAllMonitors');
             this._showOnAllMonitors();
         } else {
+            console.log('Find My Mouse: Calling _showOnCurrentMonitor');
             this._showOnCurrentMonitor();
         }
     }
@@ -350,25 +392,31 @@ export default class FindMyMouseExtension extends Extension {
     _showOnCurrentMonitor() {
         const monitor = global.display.get_current_monitor();
         const geometry = global.display.get_monitor_geometry(monitor);
+        console.log(`Find My Mouse: Current monitor geometry: ${JSON.stringify(geometry)}`);
         
+        const [mx, my] = global.get_pointer();
+        this._mouseX = mx;
+        this._mouseY = my;
+        
+        const opacity = this._cachedActivationMethod === 'always' ? 255 : 0;
         this._spotlight = new St.DrawingArea({
             x: geometry.x,
             y: geometry.y,
             width: geometry.width,
             height: geometry.height,
+            opacity: opacity,
         });
+        console.log(`Find My Mouse: St.DrawingArea created with size: ${geometry.width}x${geometry.height}`);
         this._setupSpotlightCommon(geometry);
     }
 
     _showOnAllMonitors() {
-        // Create a container for all monitors
         const nMonitors = global.display.get_n_monitors();
         const geometries = [];
         for (let i = 0; i < nMonitors; i++) {
             geometries.push(global.display.get_monitor_geometry(i));
         }
         
-        // Calculate bounding box for all monitors
         let minX = Infinity;
         let minY = Infinity;
         let maxX = -Infinity;
@@ -387,95 +435,94 @@ export default class FindMyMouseExtension extends Extension {
             width: maxX - minX,
             height: maxY - minY
         };
+        console.log(`Find My Mouse: All monitors geometry: ${JSON.stringify(geometry)}`);
         
+        const [mx, my] = global.get_pointer();
+        this._mouseX = mx;
+        this._mouseY = my;
+        
+        const opacity = this._cachedActivationMethod === 'always' ? 255 : 0;
         this._spotlight = new St.DrawingArea({
             x: geometry.x,
             y: geometry.y,
             width: geometry.width,
             height: geometry.height,
+            opacity: opacity,
         });
+        console.log(`Find My Mouse: St.DrawingArea created for all monitors with size: ${geometry.width}x${geometry.height}`);
         this._setupSpotlightCommon(geometry);
     }
 
     _setupSpotlightCommon(geometry) {
-        // Store geometry for repaint
         this._spotlightGeometry = geometry;
-
-        // Cache values at setup time
-        const zoom = this._cachedZoom;
         const animationDuration = this._cachedAnimationDuration;
-        const bgColor = this._cachedBgColor;
-        const spotlightColor = this._cachedSpotlightColor;
-        const radius = this._cachedRadius;
 
-        // Start with transparent
-        this._currentAlpha = 0;
+        // Force TOUJOURS this._currentAlpha à 255 (pour que le spotlight soit opaque)
+        this._currentAlpha = 255;
         this._targetAlpha = 255;
+        this._spotlight.opacity = 255;
 
+        console.log('Find My Mouse: Setting up repaint handler');
         this._spotlight.connect('repaint', (area) => {
+            console.log('Find My Mouse: Repaint handler called!');
             const cr = area.get_context();
             if (!cr) {
+                console.log('Find My Mouse: Repaint context is null!');
                 return;
             }
 
             const geom = this._spotlightGeometry;
-            const [mx, my] = global.get_pointer();
+            const mx = this._mouseX !== undefined ? this._mouseX : global.get_pointer()[0];
+            const my = this._mouseY !== undefined ? this._mouseY : global.get_pointer()[1];
+            console.log(`Find My Mouse: Repaint - mx=${mx}, my=${my}, geom.x=${geom.x}, geom.y=${geom.y}`);
+            const bgColor = this._cachedBgColorNormalized;
+            const spotlightColor = this._cachedSpotlightColorNormalized;
+            const radius = this._cachedRadius;
+            const zoom = this._cachedZoom;
 
-            // Apply current alpha to background
-            const currentBgAlpha = (bgColor[3] / 255) * (this._currentAlpha / 255);
-            const currentSpotAlpha = (spotlightColor[3] / 255) * (this._currentAlpha / 255);
+            // Utilise directement les alphas des couleurs (sans multiplication par currentAlpha)
+            const currentBgAlpha = bgColor[3];
+            const currentSpotAlpha = spotlightColor[3];
+            const currentSpotRadius = radius * zoom;
 
-            const startRadius = Math.max(10, this._cachedRadius / this._cachedZoom);
-            const endRadius = this._cachedRadius;
-            const radiusChange = (this._currentAlpha / 255) * (endRadius - startRadius);
-            // Calculate the current radius proportional to the current alpha (0 to 255)
-            // The radius should transition smoothly from min to max size as alpha goes from 0 to 255.
-            const currentRadius = startRadius + (this._currentAlpha / 255) * (endRadius - startRadius);
+            console.log(`Find My Mouse: Repaint - currentBgAlpha=${currentBgAlpha}, currentSpotAlpha=${currentSpotAlpha}, currentSpotRadius=${currentSpotRadius}`);
 
-            // Draw semi-transparent background
             cr.setOperator(Cairo.Operator.SOURCE);
-            cr.setSourceRGBA(bgColor[0]/255, bgColor[1]/255, bgColor[2]/255, currentBgAlpha);
+            cr.setSourceRGBA(bgColor[0], bgColor[1], bgColor[2], currentBgAlpha);
             cr.paint();
 
-            // Clear the spotlight circle area (make it transparent)
-            const currentSpotRadius = radius * zoom;
             cr.setOperator(Cairo.Operator.CLEAR);
             cr.arc(mx - geom.x, my - geom.y, currentSpotRadius, 0, 2 * Math.PI);
             cr.fill();
 
-            // Draw spotlight border
             cr.setOperator(Cairo.Operator.OVER);
-            cr.setSourceRGBA(spotlightColor[0]/255, spotlightColor[1]/255, spotlightColor[2]/255, currentSpotAlpha);
+            cr.setSourceRGBA(spotlightColor[0], spotlightColor[1], spotlightColor[2], currentSpotAlpha);
             cr.arc(mx - geom.x, my - geom.y, currentSpotRadius, 0, 2 * Math.PI);
             cr.setLineWidth(2);
             cr.stroke();
         });
 
-        // Start fade-in animation
-        this._startFadeIn(animationDuration);
-
-        // Don't connect button-press-event on spotlight - let clicks pass through
-
+        console.log('Find My Mouse: Adding to Main.uiGroup');
         Main.uiGroup.add_child(this._spotlight);
-
+        console.log('Find My Mouse: Showing spotlight');
         this._spotlight.show();
 
-        // Wait for the actor to be mapped before repainting
-        if (this._spotlight.mapped) {
+        this._mappedSignalId = this._spotlight.connect('notify::mapped', () => {
+            console.log('Find My Mouse: Spotlight mapped, queueing repaint');
             this._spotlight.queue_repaint();
-        } else {
-            this._mappedSignalId = this._spotlight.connect('notify::mapped', () => {
-                this._spotlight.queue_repaint();
-                if (this._mappedSignalId) {
-                    this._spotlight.disconnect(this._mappedSignalId);
-                    this._mappedSignalId = 0;
-                }
-            });
-        }
+            if (this._mappedSignalId) {
+                this._spotlight.disconnect(this._mappedSignalId);
+                this._mappedSignalId = 0;
+            }
+        });
 
-         // Don't grab focus - let events pass through
-         
-         this._spotlightVisible = true;
+        this._spotlightVisible = true;
+        console.log('Find My Mouse: Spotlight is now visible');
+
+        // Ne lance JAMAIS le fade-in (pour un affichage immédiat comme PowerToys)
+        // this._startFadeIn(animationDuration);
+
+        // Réactive le timeout d'inactivité immédiatement
         this._resetIdleTimeout();
     }
 
@@ -487,7 +534,6 @@ export default class FindMyMouseExtension extends Extension {
     }
 
     _resetIdleTimeout() {
-        // Don't set idle timeout in always mode
         if (this._cachedActivationMethod === 'always') {
             return;
         }
@@ -500,17 +546,17 @@ export default class FindMyMouseExtension extends Extension {
 
         this._idleTimeoutId = GLib.timeout_add(GLib.PRIORITY_DEFAULT,
             timeoutMs, () => {
-            this._startFadeOut();
-            this._idleTimeoutId = 0;
-            return GLib.SOURCE_REMOVE;
-        });
+                this._startFadeOut();
+                this._idleTimeoutId = 0;
+                return GLib.SOURCE_REMOVE;
+            });
     }
 
     _startFadeIn(duration) {
         this._cancelFade();
         
-        const stepDuration = duration / FADE_STEPS;
-        this._fadeStep = 255 / FADE_STEPS;
+        const stepDuration = duration / 15;
+        this._fadeStep = 255 / 15;
         this._currentAlpha = 0;
         
         this._fadeTimeoutId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, stepDuration, () => {
@@ -537,14 +583,13 @@ export default class FindMyMouseExtension extends Extension {
             this._idleTimeoutId = 0;
         }
 
-        // Don't fade out in always mode
         if (this._cachedActivationMethod === 'always') {
             return;
         }
 
         const duration = this._cachedAnimationDuration;
-        const stepDuration = duration / FADE_STEPS;
-        this._fadeStep = 255 / FADE_STEPS;
+        const stepDuration = duration / 15;
+        this._fadeStep = 255 / 15;
 
         this._fadeTimeoutId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, stepDuration, () => {
             this._currentAlpha = Math.max(0, this._currentAlpha - this._fadeStep);
@@ -562,14 +607,12 @@ export default class FindMyMouseExtension extends Extension {
     }
 
     _hideSpotlight() {
-        // Don't hide in always mode
         if (this._cachedActivationMethod === 'always') {
             return;
         }
 
         this._cancelFade();
 
-        // Cleanup mapped signal handler
         if (this._mappedSignalId) {
             if (this._spotlight) {
                 this._spotlight.disconnect(this._mappedSignalId);
@@ -595,5 +638,6 @@ export default class FindMyMouseExtension extends Extension {
         }
 
         this._currentAlpha = 0;
+        this._repaintPending = false;
     }
 }
