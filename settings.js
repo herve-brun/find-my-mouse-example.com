@@ -45,11 +45,13 @@ export class SettingsManager {
         this._cachedIdleTimeout = this._settings.get_int('idle-timeout') || 1000;
         this._cachedShakeInterval = this._settings.get_int('shake-interval') || 1000;
         this._cachedShakeSensitivity = this._settings.get_int('shake-sensitivity') || 400;
+        this._cachedLogLevel = this._settings.get_int('log-level') || 2;
         this._cachedActivationMethod = this._settings.get_string('activation-method') || 'shake';
     }
 
     get cachedActivationMethod() { return this._cachedActivationMethod; }
     get cachedBgColorNormalized() { return this._cachedBgColorNormalized; }
+    get cachedLogLevel() { return this._cachedLogLevel; }
     get cachedSpotlightColorNormalized() { return this._cachedSpotlightColorNormalized; }
     get cachedRadius() { return this._cachedRadius; }
     get cachedZoom() { return this._cachedZoom; }

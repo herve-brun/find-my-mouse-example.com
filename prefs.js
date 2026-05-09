@@ -5,6 +5,7 @@ import GObject from 'gi://GObject';
 import GLib from 'gi://GLib';
 
 import {ExtensionPreferences, gettext as _} from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
+import { setLogLevel, LogLevel } from './utils.js';
 
 export default class FindMyMousePreferences extends ExtensionPreferences {
     constructor(metadata) {
@@ -13,6 +14,55 @@ export default class FindMyMousePreferences extends ExtensionPreferences {
 
     fillPreferencesWindow(window) {
         const settings = this.getSettings();
+        
+        // Add log level preferences group
+        const logGroup = new Adw.PreferencesGroup({
+            title: _('Logging'),
+            description: _('Configure extension logging verbosity'),
+        });
+        
+        const logLevelRow = new Adw.ComboRow({
+            title: _('Log Level'),
+            subtitle: _('Set the maximum log level to display'),
+            model: Gtk.StringList.new([
+                _('Errors Only'),
+                _('Warnings and Errors'),
+                _('Info and Above'),
+                _('Debug (Verbose)')
+            ]),
+        });
+        
+        // Map log level to combo row index
+        const levelMap = {
+            [LogLevel.ERROR]: 0,
+            [LogLevel.WARN]: 1,
+            [LogLevel.INFO]: 2,
+            [LogLevel.DEBUG]: 3
+        };
+        
+        // Default to INFO level
+        let currentLevel = settings.get_int('log-level') || LogLevel.INFO;
+        logLevelRow.selected = levelMap[currentLevel] || 2;
+        
+        logLevelRow.connect('notify::selected', () => {
+            const levels = [LogLevel.ERROR, LogLevel.WARN, LogLevel.INFO, LogLevel.DEBUG];
+            const selectedLevel = levels[logLevelRow.selected];
+            settings.set_int('log-level', selectedLevel);
+            setLogLevel(selectedLevel);
+        });
+        
+        // Set initial log level
+        setLogLevel(currentLevel);
+        
+        logGroup.add(logLevelRow);
+        
+        // General page
+        const generalPage = new Adw.PreferencesPage({
+            title: _('General'),
+            icon_name: 'preferences-system-symbolic',
+        });
+        window.add(generalPage);
+        generalPage.add(logGroup);
         
         // General page
         const generalPage = new Adw.PreferencesPage({

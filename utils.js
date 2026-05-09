@@ -1,7 +1,26 @@
-export const DEBUG = false;
+export const LogLevel = {
+    ERROR: 0,
+    WARN: 1,
+    INFO: 2,
+    DEBUG: 3
+};
 
-export function debugLog(message) {
-    if (DEBUG) console.log(`Find My Mouse: ${message}`);
+export let currentLogLevel = LogLevel.INFO;
+
+export function setLogLevel(level) {
+    currentLogLevel = level;
+}
+
+export function debugLog(message, level = LogLevel.DEBUG) {
+    if (level <= currentLogLevel) {
+        const levelPrefix = {
+            [LogLevel.ERROR]: "ERROR",
+            [LogLevel.WARN]: "WARN",
+            [LogLevel.INFO]: "INFO",
+            [LogLevel.DEBUG]: "DEBUG"
+        }[level] || "LOG";
+        console.log(`Find My Mouse [${levelPrefix}]: ${message}`);
+    }
 }
 
 export function parseColor(colorStr, defaultAlpha = 255) {

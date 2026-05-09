@@ -1,5 +1,5 @@
 import GLib from 'gi://GLib';
-import { debugLog } from './utils.js';
+import { debugLog, LogLevel } from './utils.js';
 
 export class MouseTracker {
     constructor(settingsManager, handleMouseMovement) {
@@ -17,7 +17,7 @@ export class MouseTracker {
         this._pointerWatch = watcher.addWatch(50, (x, y) => {
             this._handleMouseMovement(x, y);
         });
-        debugLog('Using pointerWatcher for mouse tracking');
+        debugLog('Using pointerWatcher for mouse tracking', LogLevel.INFO);
     }
 
     remove() {
@@ -86,7 +86,7 @@ export class MouseTracker {
             diagonalSquared > 0 &&
             totalDistanceSquared / diagonalSquared > shakeFactor * shakeFactor
         ) {
-            debugLog('Shake detected!');
+            debugLog('Shake detected!', LogLevel.INFO);
             this._movementHistory = [];
             this._lastX = -1;
             this._lastY = -1;

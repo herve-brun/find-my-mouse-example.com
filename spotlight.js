@@ -3,7 +3,7 @@ import St from 'gi://St';
 import Cairo from 'gi://cairo';
 import GLib from 'gi://GLib';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
-import { debugLog } from './utils.js';
+import { debugLog, LogLevel } from './utils.js';
 
 export class SpotlightManager {
     constructor(settingsManager) {
@@ -22,9 +22,9 @@ export class SpotlightManager {
     }
 
     show(showOnAllMonitors) {
-        debugLog(`_showSpotlight called (method: ${this._settingsManager.cachedActivationMethod})`);
+        debugLog(`_showSpotlight called (method: ${this._settingsManager.cachedActivationMethod})`, LogLevel.DEBUG);
         if (this._spotlightVisible && this._settingsManager.cachedActivationMethod !== 'always') {
-            debugLog('Already visible, skipping');
+            debugLog('Already visible, skipping', LogLevel.DEBUG);
             return;
         }
 
@@ -36,10 +36,10 @@ export class SpotlightManager {
         }
 
         if (showOnAllMonitors) {
-            debugLog('Calling _showOnAllMonitors');
+            debugLog('Calling _showOnAllMonitors', LogLevel.DEBUG);
             this._showOnAllMonitors();
         } else {
-            debugLog('Calling _showOnCurrentMonitor');
+            debugLog('Calling _showOnCurrentMonitor', LogLevel.DEBUG);
             this._showOnCurrentMonitor();
         }
     }
@@ -47,7 +47,7 @@ export class SpotlightManager {
     _showOnCurrentMonitor() {
         const monitor = global.display.get_current_monitor();
         const geometry = global.display.get_monitor_geometry(monitor);
-        debugLog(`Current monitor geometry: ${JSON.stringify(geometry)}`);
+        debugLog(`Current monitor geometry: ${JSON.stringify(geometry)}`, LogLevel.DEBUG);
 
         const [mx, my] = global.get_pointer();
         this._mouseX = mx;
@@ -61,7 +61,7 @@ export class SpotlightManager {
             height: geometry.height,
             opacity: opacity,
         });
-        debugLog(`St.DrawingArea created with size: ${geometry.width}x${geometry.height}`);
+        debugLog(`St.DrawingArea created with size: ${geometry.width}x${geometry.height}`, LogLevel.DEBUG);
         this._setupSpotlightCommon(geometry);
     }
 
@@ -81,7 +81,7 @@ export class SpotlightManager {
         }
 
         const geometry = { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
-        debugLog(`All monitors geometry: ${JSON.stringify(geometry)}`);
+        debugLog(`All monitors geometry: ${JSON.stringify(geometry)}`, LogLevel.DEBUG);
 
         const [mx, my] = global.get_pointer();
         this._mouseX = mx;
@@ -95,7 +95,7 @@ export class SpotlightManager {
             height: geometry.height,
             opacity: opacity,
         });
-        debugLog(`St.DrawingArea created for all monitors with size: ${geometry.width}x${geometry.height}`);
+        debugLog(`St.DrawingArea created for all monitors with size: ${geometry.width}x${geometry.height}`, LogLevel.DEBUG);
         this._setupSpotlightCommon(geometry);
     }
 
@@ -105,19 +105,19 @@ export class SpotlightManager {
         this._targetAlpha = 255;
         this._spotlight.opacity = 255;
 
-        debugLog('Setting up repaint handler');
+        debugLog('Setting up repaint handler', LogLevel.DEBUG);
         this._spotlight.connect('repaint', (area) => {
-            debugLog('Repaint handler called!');
+            debugLog('Repaint handler called!', LogLevel.DEBUG);
             const cr = area.get_context();
             if (!cr) {
-                debugLog('Repaint context is null!');
+                debugLog('Repaint context is null!', LogLevel.ERROR);
                 return;
             }
 
             const geom = this._spotlightGeometry;
             const mx = this._mouseX !== undefined ? this._mouseX : global.get_pointer()[0];
             const my = this._mouseY !== undefined ? this._mouseY : global.get_pointer()[1];
-            debugLog(`Repaint - mx=${mx}, my=${my}, geom.x=${geom.x}, geom.y=${geom.y}`);
+            debugLog(`Repaint - mx=${mx}, my=${my}, geom.x=${geom.x}, geom.y=${geom.y}`, LogLevel.DEBUG);
 
             const bgColor = this._settingsManager.cachedBgColorNormalized;
             const spotlightColor = this._settingsManager.cachedSpotlightColorNormalized;
@@ -128,7 +128,7 @@ export class SpotlightManager {
             const currentSpotAlpha = spotlightColor[3];
             const currentSpotRadius = radius * zoom;
 
-            debugLog(`Repaint - currentBgAlpha=${currentBgAlpha}, currentSpotAlpha=${currentSpotAlpha}, currentSpotRadius=${currentSpotRadius}`);
+            debugLog(`Repaint - currentBgAlpha=${currentBgAlpha}, currentSpotAlpha=${currentSpotAlpha}, currentSpotRadius=${currentSpotRadius}`, LogLevel.DEBUG);
 
             cr.setOperator(Cairo.Operator.SOURCE);
             cr.setSourceRGBA(bgColor[0], bgColor[1], bgColor[2], currentBgAlpha);
@@ -145,13 +145,13 @@ export class SpotlightManager {
             cr.stroke();
         });
 
-        debugLog('Adding to Main.uiGroup');
+        debugLog('Adding to Main.uiGroup', LogLevel.DEBUG);
         Main.uiGroup.add_child(this._spotlight);
-        debugLog('Showing spotlight');
+        debugLog('Showing spotlight', LogLevel.INFO);
         this._spotlight.show();
 
         this._mappedSignalId = this._spotlight.connect('notify::mapped', () => {
-            debugLog('Spotlight mapped, queueing repaint');
+            debugLog('Spotlight mapped, queueing repaint', LogLevel.DEBUG);
             this._spotlight.queue_repaint();
             if (this._mappedSignalId) {
                 this._spotlight.disconnect(this._mappedSignalId);
@@ -160,7 +160,7 @@ export class SpotlightManager {
         });
 
         this._spotlightVisible = true;
-        debugLog('Spotlight is now visible');
+        debugLog('Spotlight is now visible', LogLevel.INFO);
         this._resetIdleTimeout();
     }
 

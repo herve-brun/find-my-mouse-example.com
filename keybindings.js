@@ -2,7 +2,7 @@ import Shell from 'gi://Shell';
 import Meta from 'gi://Meta';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import Clutter from 'gi://Clutter';
-import { debugLog } from './utils.js';
+import { debugLog, LogLevel } from './utils.js';
 
 export class KeybindingManager {
     constructor(settingsManager, toggleSpotlight) {
@@ -28,13 +28,13 @@ export class KeybindingManager {
                     Meta.KeyBindingFlags.NONE,
                     mode,
                     () => {
-                        debugLog('Shortcut activated!');
+                        debugLog('Shortcut activated!', LogLevel.INFO);
                         this._toggleSpotlight();
                     }
                 );
-                debugLog(`Added keybinding: ${shortcut}`);
+                debugLog(`Added keybinding: ${shortcut}`, LogLevel.INFO);
             } catch (e) {
-                debugLog(`Failed to add keybinding: ${e}`);
+                    debugLog(`Failed to add keybinding: ${e}`, LogLevel.ERROR);
             }
         }
     }

@@ -3,7 +3,7 @@ import { SettingsManager } from './settings.js';
 import { SpotlightManager } from './spotlight.js';
 import { MouseTracker } from './mouseTracking.js';
 import { KeybindingManager } from './keybindings.js';
-import { debugLog } from './utils.js';
+import { debugLog, LogLevel, setLogLevel } from './utils.js';
 
 export default class FindMyMouseExtension extends Extension {
     constructor(metadata) {
@@ -41,7 +41,7 @@ export default class FindMyMouseExtension extends Extension {
         await this._mouseTracker.setup();
         this._setupClickActivation();
         this._setupAlwaysVisible();
-        debugLog('Extension enabled');
+        debugLog('Extension enabled', LogLevel.INFO);
     }
 
     disable() {
@@ -64,7 +64,7 @@ export default class FindMyMouseExtension extends Extension {
         this._spotlightManager = null;
         this._mouseTracker = null;
         this._keybindingManager = null;
-        debugLog('Extension disabled');
+        debugLog('Extension disabled', LogLevel.INFO);
     }
 
     _setupClickActivation() {
@@ -76,7 +76,7 @@ export default class FindMyMouseExtension extends Extension {
                     const expectedButton = this._settingsManager.settings.get_int('click-activation-button') || 1;
 
                     if (button === expectedButton) {
-                        debugLog(`Click activation (button ${button})`);
+                        debugLog(`Click activation (button ${button})`, LogLevel.DEBUG);
                         this._toggleSpotlight();
                         return Clutter.EVENT_STOP;
                     }
@@ -95,7 +95,7 @@ export default class FindMyMouseExtension extends Extension {
 
     _setupAlwaysVisible() {
         const method = this._settingsManager.cachedActivationMethod;
-        debugLog(`Activation method is: ${method}`);
+        debugLog(`Activation method is: ${method}`, LogLevel.DEBUG);
         if (method === 'always') {
             debugLog('Showing spotlight (always mode)');
             this._showSpotlight();

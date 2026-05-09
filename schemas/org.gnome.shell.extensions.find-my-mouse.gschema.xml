@@ -66,6 +66,11 @@
       <summary>Excluded applications</summary>
       <description>List of application names to exclude from activation</description>
     </key>
+    <key name="log-level" type="i">
+      <default>2</default>
+      <summary>Log level</summary>
+      <description>Maximum log level to display (0=Error, 1=Warn, 2=Info, 3=Debug)</description>
+    </key>
     <key name="show-on-all-monitors" type="b">
       <default>false</default>
       <summary>Show on all monitors</summary>
