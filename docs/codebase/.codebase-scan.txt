@@ -1,0 +1,123 @@
+
+=== DIRECTORY TREE (max depth 3, source files only) ===
+.github
+.github/scripts
+.github/scripts/validate_metadata.py
+.github/workflows
+.github/workflows/test.yml
+.gitignore
+AGENTS.md
+LICENSE
+README.md
+docs
+docs/codebase
+docs/codebase/.codebase-scan.txt
+extension.js
+keybindings.js
+metadata.json
+mouseTracking.js
+prefs.js
+schemas
+schemas/gschemas.compiled
+schemas/org.gnome.shell.extensions.find-my-mouse.gschema.xml
+screenshots
+screenshots/.gitkeep
+settings.js
+spotlight.js
+stylesheet.css
+utils.js
+
+=== STACK DETECTION (manifest files) ===
+No recognized manifest files found in project root.
+
+=== ENTRY POINTS ===
+No common entry points found. Check 'main' or 'scripts.start' in manifest files above.
+
+=== LINTING AND FORMATTING CONFIG ===
+No linting or formatting config files found in project root.
+
+=== ENVIRONMENT VARIABLE TEMPLATES ===
+No .env.example or .env.template found. Identify required environment variables by searching the code and config for environment variable reads.
+
+=== TODO / FIXME / HACK (production code only, test dirs excluded) ===
+None found.
+
+=== GIT RECENT COMMITS (last 20) ===
+e7dd737 fix(mouseTracking): revert to async setup with dynamic import for compatibility
+e77103a refactor: split extension.js into modular components
+1f0d874 feat(spotlight): improve performance and fix rendering issues
+fe180ff docs(AGENTS): add Conventional Commits example
+4dae092 Update AGENTS.md to reflect preferences UI reorganization
+ee403ef Separate preferences into tabs for better organization
+9db8bf0 docs: Update testing instructions for GNOME Shell 49+ and add journalctl command
+9dd7c2e fix: Use this._currentAlpha for accurate spotlight radius calculation
+5302d97 Improves spotlight radius transition for smoother animation
+33ec568 chore: Ignore compiled schema file
+86ebdb9 refactor: Update activation handling and cleanup for Find My Mouse extension
+4ab0344 refactor: remove Meta.CursorTracker, use only GNOME pointerWatcher
+54130b3 fix: use Meta.CursorTracker instantiation on Wayland with pointerWatcher
+6a4d95b feat: use Mutter CursorTracker on Wayland, fallback to pointerWatcher on X11
+86a47f0 fix: use GNOME pointerWatcher for event-driven mouse tracking
+20245bc feat: initial Find My Mouse extension with multi-monitor and animation support
+4ac686d rebrand
+208ff4f chore(agents): add AGENTS.md
+74263eb Update defaults to match PowerToys and add configurable idle timeout
+2667d6e Initial implementation of Find My Mouse extension for GNOME 46+
+
+=== HIGH-CHURN FILES (last 90 days, top 20) ===
+  12 extension.js
+   5 AGENTS.md
+   5 prefs.js
+   5 schemas/org.gnome.shell.extensions.find-my-mouse.gschema.xml
+   4 schemas/gschemas.compiled
+   3 README.md
+   3 metadata.json
+   2 mouseTracking.js
+   1 keybindings.js
+   1 settings.js
+   1 spotlight.js
+   1 utils.js
+   1 .gitignore
+   1 .github/scripts/validate_metadata.py
+   1 .github/workflows/test.yml
+   1 LICENSE
+   1 screenshots/.gitkeep
+   1 stylesheet.css
+
+=== MONOREPO SIGNALS ===
+No monorepo signals detected.
+
+=== CODE METRICS ===
+Total files scanned: 16
+Total lines of code: 1237
+
+Files by language:
+  Other: 8
+  JavaScript: 7
+  Python: 1
+
+Top 10 largest files:
+prefs.js: 15.3KB
+spotlight.js: 8.8KB
+README.md: 6.8KB
+extension.js: 6.1KB
+schemas/org.gnome.shell.extensions.find-my-mouse.gschema.xml: 3.5KB
+AGENTS.md: 3.5KB
+mouseTracking.js: 3.2KB
+settings.js: 2.7KB
+.github/workflows/test.yml: 2.5KB
+.github/scripts/validate_metadata.py: 1.7KB
+
+=== CI/CD PIPELINES ===
+CI/CD: GitHub Actions
+
+=== CONTAINERS & ORCHESTRATION ===
+No containerization configs detected.
+
+=== SECURITY & COMPLIANCE ===
+No security configs detected.
+
+=== PERFORMANCE & TESTING ===
+No performance testing configs detected.
+
+=== SCAN COMPLETE ===
