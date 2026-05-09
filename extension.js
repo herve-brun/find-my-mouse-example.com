@@ -152,7 +152,7 @@ export default class FindMyMouseExtension extends Extension {
             const screen = global.display.get_monitor_geometry(global.display.get_primary_monitor());
             const diagonal = Math.sqrt(screen.width * screen.width + screen.height * screen.height);
             
-            if (distance > diagonal / (this._settings.get_int('shake-sensitivity') || SHAKE_SENSITIVITY)) {
+            if (distance > diagonal * ((this._settings.get_int('shake-sensitivity') || SHAKE_SENSITIVITY) / 100)) {
                 this._shakeCount++;
             }
         }
