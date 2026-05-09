@@ -1,53 +1,21 @@
 # Find My Mouse - GNOME Shell Extension
 
-[![GitHub Release](https://img.shields.io/github/v/release/herve-brun/find-my-mouse-example.com)](https://github.com/herve-brun/find-my-mouse-example.com/releases)
-[![License: GPL-3.0](https://img.shields.io/badge/license-GPL--3.0-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
-[![GNOME Shell](https://img.shields.io/badge/GNOME%20Shell-46%2B-orange)](https://gnome.org/gnome-shell/)
-
-A GNOME Shell extension that replicates the **Find My Mouse** feature from Microsoft PowerToys. When activated, it creates a spotlight effect that focuses on your cursor position, making it easy to locate your mouse pointer on the screen.
+Replicates Microsoft PowerToys "Find My Mouse" feature for GNOME Wayland/X11.
 
 ## Features
-
-- **Multiple Activation Methods**
-  - Keyboard shortcut (configurable)
-  - Mouse shake detection
-  - Mouse click (configurable button)
-  - Always visible mode (for presentations)
-
-- **Customizable Appearance**
-  - Background color and opacity
-  - Spotlight circle color and opacity
-  - Spotlight radius
-  - Initial zoom factor
-
-- **Smooth Animations**
-  - Fade-in when showing
-  - Fade-out when hiding (after idle timeout)
-  - Configurable animation duration
-
-- **Multi-Monitor Support**
-  - Show spotlight on current monitor only
-  - Show spotlight covering all monitors
-
-- **Timing Controls**
-  - Idle timeout (auto-hide after mouse stops)
-  - Shake detection sensitivity and interval
+- **Spotlight effect** around mouse cursor (configurable radius, colors, zoom)
+- **Shake-to-activate** gesture detection with sensitivity settings
+- **Dynamic logging system** with real-time level adjustments (ERROR, WARN, INFO, DEBUG)
+- Multi-monitor support with per-monitor DPI awareness
+- Customizable activation methods (keyboard shortcut, double-ctrl, shake)
 
 ## Installation
-
-### From GNOME Extensions Website (Recommended)
-
-1. Visit [extensions.gnome.org](https://extensions.gnome.org/)
-2. Search for "Find My Mouse"
-3. Install the extension
-
-### Manual Installation
-
-1. Clone this repository:
-   ```bash
-   git clone https://github.com/herve-brun/find-my-mouse-example.com.git
-   cd find-my-mouse-example.com
-   ```
+```bash
+# Clone and install
+git clone https://github.com/herve-brun/find-my-mouse-example.com.git
+cd find-my-mouse-example.com
+make install
+```
 
 2. Compile the GSettings schemas:
    ```bash
@@ -155,11 +123,38 @@ journalctl --user -f | grep "Find My Mouse"
 ```
 
 ### Debugging
+### Viewing Logs
+View extension logs in real-time:
+```bash
+journalctl --user -f | grep "Find My Mouse"
+```
 
+### Log Levels
+The extension supports **dynamic log levels** that can be changed without restarting:
+
+| Level | Value | Description                          |
+|-------|-------|--------------------------------------|
+| ERROR | 0     | Critical errors only                |
+| WARN  | 1     | Warnings and errors                 |
+| INFO  | 2     | General information (default)       |
+| DEBUG | 3     | Detailed debugging information       |
+
+**To change the log level**:
+1. Open extension preferences
+2. Navigate to **General > Logging > Log Level**
+3. Select desired level (changes apply immediately)
+
+### Testing Log Output
+After changing the log level, trigger the spotlight (shake mouse or use shortcut) and observe the logs:
+- **DEBUG** level shows detailed mouse coordinates and animation parameters
+- **INFO** level shows key events (activation, visibility changes)
+- **WARN/ERROR** levels show only issues
+
+### Development Debugging
 - Extension logs appear in `journalctl --user -f`
 - Look for messages prefixed with "Find My Mouse:"
 - Use `console.log()` in the code for debugging
-- View extension logs with: `journalctl --user --no-pager | grep "Find My Mouse"
+- View full extension logs with: `journalctl --user --no-pager | grep "Find My Mouse"`
 
 ## Troubleshooting
 
