@@ -21,8 +21,23 @@
 |-----------|---------------|-------|-----------------|---------------|
 | **Hardcoded defaults** | Magic numbers for animations/timings | `spotlight.js`, `settings.js` | Inconsistent behavior if defaults change | Centralize in constants file |
 | **Duplicate color parsing** | Both `utils.js` and `prefs.js` parse colors | `utils.js:7`, `prefs.js:398` | Divergent behavior, maintenance overhead | Consolidate in `utils.js` |
-| **Debug log pollution** | Excessive `debugLog` calls in hot paths | `spotlight.js` | Performance impact, noisy logs | **RESOLVED: Added log level filtering** |
 | **No TypeScript** | Plain JavaScript | All `.js` files | Type safety issues | Migrate to TypeScript (planned post-v1.0) |
+
+### 2.1) **RESOLVED: Debug Logging System**
+- **Problem**: Excessive `debugLog` calls in hot paths (`spotlight.js`) causing performance overhead and noisy logs.
+- **Solution Implemented**:
+  - **Dynamic log levels** (ERROR=0, WARN=1, INFO=2, DEBUG=3) configurable via GSettings.
+  - **Real-time updates**: Log level changes apply immediately without extension restart.
+  - **Centralized filtering**: All logs pass through `utils.js` with level-based filtering.
+  - **Default level**: INFO (2) for balanced verbosity.
+- **Files Modified**:
+  - `extension.js`: GSettings listener for dynamic updates.
+  - `utils.js`: Log level filtering and `debugLog()` function.
+  - `prefs.js`: UI for log level selection.
+  - `schemas/org.gnome.shell.extensions.find-my-mouse.gschema.xml`: GSettings schema for `log-level`.
+- **Evidence**:
+  - Logs now respect the selected level (e.g., `DEBUG` shows detailed mouse coordinates, `INFO` shows key events only).
+  - Changes apply immediately (tested via `journalctl --user -f | grep "Find My Mouse"`).
 
 ### 3) Security Concerns
 
@@ -54,7 +69,8 @@
 2. **[ASK USER]** Is TypeScript migration desirable for type safety?
 3. **[ASK USER]** Should the unused `stylesheet.css` be removed or implemented?
 4. **[ASK USER]** Are there specific multi-monitor configurations that need explicit support/testing?
-5. **[ASK USER]** Should debug logging be made configurable (e.g., log level setting)?
+5. **[ASK USER]** Should automated testing (e.g., Jest, GNOME Shell test harness) be implemented? If so, what's the priority?
+5. **[RESOLVED]** Debug logging is now configurable via GSettings (`log-level`) with dynamic updates.
 
 ### 7) Evidence
 
