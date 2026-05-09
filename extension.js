@@ -16,10 +16,23 @@ export default class FindMyMouseExtension extends Extension {
         this._shortcutChangedId = 0;
         this._mousePressHandler = 0;
         this._alwaysVisibleHandler = 0;
+        this._logLevelChangedId = 0; // ID pour l'écouteur de log-level
     }
 
     async enable() {
-        this._settingsManager = new SettingsManager(this.getSettings());
+        // Lire le niveau de log depuis GSettings et l'appliquer avant toute initialisation
+        const settings = this.getSettings();
+        const logLevel = settings.get_int('log-level') || 2; // 2 = INFO (valeur par défaut)
+        setLogLevel(logLevel);
+        
+        // Écouter les changements de log-level
+        this._logLevelChangedId = settings.connect('changed::log-level', () => {
+            const newLogLevel = settings.get_int('log-level');
+            setLogLevel(newLogLevel);
+            debugLog(`Log level changed to ${newLogLevel}`, LogLevel.INFO);
+        });
+        
+        this._settingsManager = new SettingsManager(settings);
         this._spotlightManager = new SpotlightManager(this._settingsManager);
         this._mouseTracker = new MouseTracker(this._settingsManager, (x, y) => this._handleMouseMovement(x, y));
         this._keybindingManager = new KeybindingManager(this._settingsManager, () => this._toggleSpotlight());
@@ -126,6 +139,12 @@ export default class FindMyMouseExtension extends Extension {
         if (this._alwaysVisibleHandler) {
             this._settingsManager.settings.disconnect(this._alwaysVisibleHandler);
             this._alwaysVisibleHandler = 0;
+        }
+
+        // Débrancher l'écouteur de log-level
+        if (this._logLevelChangedId) {
+            this._settingsManager.settings.disconnect(this._logLevelChangedId);
+            this._logLevelChangedId = 0;
         }
     }
 

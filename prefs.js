@@ -15,11 +15,19 @@ export default class FindMyMousePreferences extends ExtensionPreferences {
     fillPreferencesWindow(window) {
         const settings = this.getSettings();
         
-        // Add log level preferences group
+        // General page
+        const generalPage = new Adw.PreferencesPage({
+            title: _('General'),
+            icon_name: 'preferences-system-symbolic',
+        });
+        window.add(generalPage);
+        
+        // Add log level preferences group to generalPage
         const logGroup = new Adw.PreferencesGroup({
             title: _('Logging'),
             description: _('Configure extension logging verbosity'),
         });
+        generalPage.add(logGroup);
         
         const logLevelRow = new Adw.ComboRow({
             title: _('Log Level'),
@@ -56,21 +64,6 @@ export default class FindMyMousePreferences extends ExtensionPreferences {
         
         logGroup.add(logLevelRow);
         
-        // General page
-        const generalPage = new Adw.PreferencesPage({
-            title: _('General'),
-            icon_name: 'preferences-system-symbolic',
-        });
-        window.add(generalPage);
-        generalPage.add(logGroup);
-        
-        // General page
-        const generalPage = new Adw.PreferencesPage({
-            title: _('General'),
-            icon_name: 'preferences-system-symbolic',
-        });
-        window.add(generalPage);
-
         const activationGroup = new Adw.PreferencesGroup({
             title: _('Activation'),
             description: _('Configure how Find My Mouse is activated'),
