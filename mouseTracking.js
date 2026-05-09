@@ -11,8 +11,8 @@ export class MouseTracker {
         this._movementHistory = [];
     }
 
-    setup() {
-        const { getPointerWatcher } = import('resource:///org/gnome/shell/ui/pointerWatcher.js');
+    async setup() {
+        const { getPointerWatcher } = await import('resource:///org/gnome/shell/ui/pointerWatcher.js');
         const watcher = getPointerWatcher();
         this._pointerWatch = watcher.addWatch(50, (x, y) => {
             this._handleMouseMovement(x, y);
