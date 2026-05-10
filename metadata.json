@@ -7,5 +7,6 @@
     "url": "https://github.com/herve-brun/find-my-mouse-example.com",
     "gettext-domain": "find-my-mouse@herve-brun.github.io",
     "settings-schema": "org.gnome.shell.extensions.find-my-mouse",
-    "session-modes": ["user"]
+    "session-modes": ["user"],
+    "license": "MIT"
 }
