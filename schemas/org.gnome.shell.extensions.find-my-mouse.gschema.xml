@@ -2,24 +2,19 @@
 <schemalist>
   <schema id="org.gnome.shell.extensions.find-my-mouse" path="/org/gnome/shell/extensions/find-my-mouse/">
     <key name="activation-method" type="s">
-      <default>'ctrl-l'</default>
+      <default>'shake'</default>
       <summary>Activation method</summary>
-      <description>How to activate the spotlight: ctrl-l, ctrl-r, shake, custom</description>
+      <description>How to activate the spotlight: shortcut, shake, click, always</description>
     </key>
-    <key name="activation-shortcut" type="s">
-      <default>'&lt;Ctrl&gt;&lt;Alt&gt;f'</default>
-      <summary>Custom activation shortcut</summary>
-      <description>Custom keyboard shortcut to activate the spotlight</description>
+    <key name="find-my-mouse-activation" type="s">
+      <default>'&lt;Super&gt;f'</default>
+      <summary>Activation shortcut</summary>
+      <description>Keyboard shortcut to activate the spotlight (used when activation-method is 'shortcut')</description>
     </key>
-    <key name="only-with-windows-key" type="b">
-      <default>false</default>
-      <summary>Only activate with Windows key</summary>
-      <description>Require holding Windows key when using Ctrl activation method</description>
-    </key>
-    <key name="shake-distance" type="i">
-      <default>1000</default>
-      <summary>Minimum shake distance</summary>
-      <description>Minimum distance in pixels the pointer must travel to detect shake (PowerToys default: 1000)</description>
+    <key name="click-activation-button" type="i">
+      <default>1</default>
+      <summary>Mouse button for click activation</summary>
+      <description>Mouse button to activate spotlight when activation-method is 'click' (1=left, 2=middle, 3=right)</description>
     </key>
     <key name="shake-interval" type="i">
       <default>1000</default>
@@ -70,6 +65,16 @@
       <default>[]</default>
       <summary>Excluded applications</summary>
       <description>List of application names to exclude from activation</description>
+    </key>
+    <key name="log-level" type="i">
+      <default>2</default>
+      <summary>Log level</summary>
+      <description>Maximum log level to display (0=Error, 1=Warn, 2=Info, 3=Debug)</description>
+    </key>
+    <key name="show-on-all-monitors" type="b">
+      <default>false</default>
+      <summary>Show on all monitors</summary>
+      <description>When enabled, the spotlight will cover all monitors instead of just the current one</description>
     </key>
   </schema>
 </schemalist>

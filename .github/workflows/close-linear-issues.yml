@@ -1,0 +1,41 @@
+name: Close Linear Issues
+
+on:
+  push:
+    branches: [ main, master ]
+
+jobs:
+  close-issues:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v6
+        with:
+          script: |
+            const commits = await github.rest.repos.listCommits({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha: context.ref.replace('refs/heads/', ''),
+              per_page: 10
+            });
+            
+            const commitMessages = commits.data.map(c => c.commit.message);
+            const issueReferences = commitMessages.flatMap(msg => {
+              const matches = msg.match(/Fixes (FIN-\d+)/g);
+              return matches ? matches.map(m => m.replace('Fixes ', '')) : [];
+            });
+            
+            // Remove duplicates
+            const uniqueIssues = [...new Set(issueReferences)];
+            
+            if (uniqueIssues.length > 0) {
+              console.log(`Issues to close: ${uniqueIssues.join(', ')}`);
+              
+              // Note: This is a placeholder for Linear API integration.
+              // In a real implementation, you would use the Linear API to close issues.
+              // For now, we'll just log the issues that would be closed.
+              uniqueIssues.forEach(issueId => {
+                console.log(`Would close issue ${issueId} (Linear API integration needed)`);
+              });
+            } else {
+              console.log('No Linear issues to close in recent commits.');
+            }
