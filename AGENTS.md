@@ -35,6 +35,10 @@ journalctl --user -f | grep "Find My Mouse"
 ## Commit Message Convention
 Commits must adhere to [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) rules.
 
+## About Dialog Rules
+- **Release Notes**: Whenever a new version is created, the About dialog's release notes MUST be updated before release.
+- **Year**: If the current year does not match the year in the About dialog, update the latter.
+
 ## Architecture
 - `extension.js` - Core logic: spotlight rendering, mouse/keyboard tracking, Cairo painting
 - `prefs.js` - Adwaita/GTK4 preferences UI with separate pages for General, Appearance, Timing, and Shake Detection settings

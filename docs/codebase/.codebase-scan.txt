@@ -26,6 +26,7 @@ metadata.json
 mouseTracking.js
 prefs.js
 schemas
+schemas/gschemas.compiled
 schemas/org.gnome.shell.extensions.find-my-mouse.gschema.xml
 screenshots
 screenshots/.gitkeep
@@ -49,6 +50,7 @@ No .env.example or .env.template found. Identify required environment variables 
 None found.
 
 === GIT RECENT COMMITS (last 20) ===
+9defabf docs: add comprehensive codebase documentation
 a938f9b chore(ai): update AGENTS.md
 b0ada36 feat: complete workflow - activation refactor, animations, multi-monitor, CI/CD (#1)
 3413e73 Suppression de l'adresse e-mail du README.md (FIN-20)
@@ -67,29 +69,29 @@ cfb0e5e Correction du README.md : remplacement OpenGL par Cairo (FIN-20)
    3 prefs.js
    3 schemas/gschemas.compiled
    3 schemas/org.gnome.shell.extensions.find-my-mouse.gschema.xml
+   2 docs/codebase/.codebase-scan.txt
+   2 docs/codebase/ARCHITECTURE.md
+   2 docs/codebase/CONCERNS.md
+   2 docs/codebase/CONVENTIONS.md
+   2 docs/codebase/INTEGRATIONS.md
+   2 docs/codebase/STACK.md
+   2 docs/codebase/STRUCTURE.md
+   2 docs/codebase/TESTING.md
    2 stylesheet.css
    1 .github/scripts/validate_metadata.py
    1 .github/workflows/close-linear-issues.yml
    1 .github/workflows/test.yml
    1 .gitignore
-   1 LICENSE.md
-   1 docs/codebase/.codebase-scan.txt
-   1 docs/codebase/ARCHITECTURE.md
-   1 docs/codebase/CONCERNS.md
-   1 docs/codebase/CONVENTIONS.md
-   1 docs/codebase/INTEGRATIONS.md
-   1 docs/codebase/STACK.md
-   1 docs/codebase/STRUCTURE.md
 
 === MONOREPO SIGNALS ===
 No monorepo signals detected.
 
 === CODE METRICS ===
-Total files scanned: 23
-Total lines of code: 1326
+Total files scanned: 24
+Total lines of code: 1410
 
 Files by language:
-  Other: 15
+  Other: 16
   JavaScript: 7
   Python: 1
 
@@ -98,12 +100,12 @@ prefs.js: 16.8KB
 spotlight.js: 9.1KB
 README.md: 7.6KB
 extension.js: 7.0KB
-docs/codebase/CONCERNS.md: 5.9KB
+docs/codebase/STACK.md: 6.3KB
+docs/codebase/INTEGRATIONS.md: 4.6KB
 schemas/org.gnome.shell.extensions.find-my-mouse.gschema.xml: 3.7KB
-docs/codebase/ARCHITECTURE.md: 3.7KB
+docs/codebase/STRUCTURE.md: 3.6KB
 mouseTracking.js: 3.2KB
-settings.js: 2.9KB
-AGENTS.md: 2.6KB
+docs/codebase/ARCHITECTURE.md: 3.2KB
 
 === CI/CD PIPELINES ===
 CI/CD: GitHub Actions
