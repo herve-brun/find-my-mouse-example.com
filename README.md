@@ -189,9 +189,9 @@ We **❤️ contributions**! Follow these steps:
    git checkout -b feature/your-feature
    ```
 3. **Commit changes**:
-   ```bash
-   git commit -am 'Add amazing feature'
-   ```
+    ```bash
+    git commit -am 'feat: add amazing feature'
+    ```
 4. **Push to branch**:
    ```bash
    git push origin feature/your-feature
