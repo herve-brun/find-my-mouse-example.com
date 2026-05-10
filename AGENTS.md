@@ -33,21 +33,7 @@ journalctl --user -f | grep "Find My Mouse"
 ```
 
 ## Commit Message Convention
-
 Commits must adhere to [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) rules.
-
-### Example
-```
-feat(spotlight): add zoom effect to spotlight
-
-This adds a zoom effect to the spotlight feature, allowing users to
-magnify the area around the mouse cursor. The zoom level is configurable
-via the preferences UI and defaults to 9.0x.
-
-BREAKING CHANGE: The spotlight rendering logic has been completely
-rewritten to support the zoom effect. Extensions that depend on the
-internal spotlight API may need to be updated.
-```
 
 ## Architecture
 - `extension.js` - Core logic: spotlight rendering, mouse/keyboard tracking, Cairo painting
@@ -62,23 +48,12 @@ internal spotlight API may need to be updated.
 - **Extension runs in Wayland** - modifier key (Ctrl) double-press unreliable; custom keybinding preferred
 - **No shell restart** - user tests via nested session
 - **XML escaping** in schema defaults: use `&lt;` and `&gt;` for `<` and `>` in keybindings
+- **Debugging**: Use `journalctl --user --no-pager | grep "Find My Mouse"` for logs
+- **Spotlight visibility**: Tracked via `_spotlightVisible` boolean
 
 ## Default Values (PowerToys-matched)
 - Background: `#00000080` (black 50% opacity)
-- Spotlight: `#FFFFFF80` (white 50% opacity)  
+- Spotlight: `#FFFFFF80` (white 50% opacity)
 - Radius: 100px, Zoom: 9.0x, Animation: 500ms
 - Idle timeout: 1000ms (hide after mouse stops)
 - Shake: 1000px distance, 400% sensitivity, 1000ms interval
-
-## Debugging
-- Extension logs via `console.log()` appear in `journalctl --user -f`
-- Look for "Find My Mouse:" prefixed messages
-- Spotlight visibility tracked via `_spotlightVisible` boolean
-- View extension logs with: `journalctl --user --no-pager | grep "Find My Mouse"
-
-## Recent Changes
-- Preferences UI reorganized into separate pages for better usability:
-  - General: Activation methods, multi-monitor settings
-  - Appearance: Spotlight colors, radius, zoom, game mode toggle
-  - Timing: Idle timeout and animation duration
-  - Shake Detection: Shake interval and sensitivity settings
