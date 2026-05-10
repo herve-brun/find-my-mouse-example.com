@@ -54,7 +54,7 @@
    - Or log out and log back in
 
 6. **Enable the extension**:
-   - Open **GNOME Extensions** app (`gnome-extensions-app`)
+   - Open **GNOME Extensions** app (`extension-manager`)
    - Find **"Find My Mouse"** and enable it
 
 ## 🎮 Usage
