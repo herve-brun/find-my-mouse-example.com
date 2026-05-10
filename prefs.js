@@ -382,11 +382,58 @@ export default class FindMyMousePreferences extends ExtensionPreferences {
     });
     appearanceGroup.add(zoomRow);
 
-    const gamemodeRow = new Adw.SwitchRow({
-      title: _("Do not activate in Game Mode"),
-      subtitle: _("Prevents spotlight when Game Mode is on"),
-      active: settings.get_boolean("do-not-activate-gamemode"),
-    });
+     const gamemodeRow = new Adw.SwitchRow({
+       title: _("Do not activate in Game Mode"),
+       subtitle: _("Prevents spotlight when Game Mode is on"),
+       active: settings.get_boolean("do-not-activate-gamemode"),
+     });
+
+     // Blur Effect Group
+     const blurGroup = new Adw.PreferencesGroup({
+       title: _("Blur Effect"),
+       description: _("Configure the frosted glass blur effect"),
+     });
+     appearancePage.add(blurGroup);
+
+     const blurEnableRow = new Adw.SwitchRow({
+       title: _("Enable Blur Effect"),
+       subtitle: _("Apply a frosted glass effect to the background"),
+       active: settings.get_boolean("blur-enabled"),
+     });
+     blurEnableRow.connect("notify::active", () => {
+       settings.set_boolean("blur-enabled", blurEnableRow.active);
+     });
+     blurGroup.add(blurEnableRow);
+
+     const blurRadiusRow = new Adw.SpinRow({
+       title: _("Blur Radius"),
+       subtitle: _("Higher values create more blur (default: 10)"),
+       adjustment: new Gtk.Adjustment({
+         lower: 1,
+         upper: 50,
+         step_increment: 1,
+         value: settings.get_int("blur-radius") || 10,
+       }),
+     });
+     blurRadiusRow.connect("notify::value", () => {
+       settings.set_int("blur-radius", blurRadiusRow.value);
+     });
+     blurGroup.add(blurRadiusRow);
+
+     const blurBrightnessRow = new Adw.SpinRow({
+       title: _("Blur Brightness"),
+       subtitle: _("Adjust brightness of the blur effect (0.0 to 1.0)"),
+       adjustment: new Gtk.Adjustment({
+         lower: 0.0,
+         upper: 1.0,
+         step_increment: 0.05,
+         value: settings.get_double("blur-brightness") || 0.8,
+       }),
+     });
+     blurBrightnessRow.connect("notify::value", () => {
+       settings.set_double("blur-brightness", blurBrightnessRow.value);
+     });
+     blurGroup.add(blurBrightnessRow);
     gamemodeRow.connect("notify::active", () => {
       settings.set_boolean("do-not-activate-gamemode", gamemodeRow.active);
     });

@@ -45,8 +45,11 @@ export class SettingsManager {
         this._cachedIdleTimeout = this._settings.get_int('idle-timeout') || 1000;
         this._cachedShakeInterval = this._settings.get_int('shake-interval') || 1000;
         this._cachedShakeSensitivity = this._settings.get_int('shake-sensitivity') || 400;
-        this._cachedLogLevel = this._settings.get_int('log-level') || 2;
-        this._cachedActivationMethod = this._settings.get_string('activation-method') || 'shake';
+         this._cachedLogLevel = this._settings.get_int('log-level') || 2;
+         this._cachedActivationMethod = this._settings.get_string('activation-method') || 'shake';
+         this._cachedBlurEnabled = this._settings.get_boolean('blur-enabled') || true;
+         this._cachedBlurRadius = this._settings.get_int('blur-radius') || 10;
+         this._cachedBlurBrightness = this._settings.get_double('blur-brightness') || 0.8;
     }
 
     get cachedActivationMethod() { return this._cachedActivationMethod; }
@@ -58,6 +61,9 @@ export class SettingsManager {
     get cachedAnimationDuration() { return this._cachedAnimationDuration; }
     get cachedIdleTimeout() { return this._cachedIdleTimeout; }
     get cachedShakeInterval() { return this._cachedShakeInterval; }
-    get cachedShakeSensitivity() { return this._cachedShakeSensitivity; }
-    get settings() { return this._settings; }
+     get cachedShakeSensitivity() { return this._cachedShakeSensitivity; }
+     get cachedBlurEnabled() { return this._cachedBlurEnabled; }
+     get cachedBlurRadius() { return this._cachedBlurRadius; }
+     get cachedBlurBrightness() { return this._cachedBlurBrightness; }
+     get settings() { return this._settings; }
 }

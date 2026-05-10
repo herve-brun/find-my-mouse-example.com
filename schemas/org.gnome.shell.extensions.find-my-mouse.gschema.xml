@@ -71,10 +71,25 @@
       <summary>Log level</summary>
       <description>Maximum log level to display (0=Error, 1=Warn, 2=Info, 3=Debug)</description>
     </key>
-    <key name="show-on-all-monitors" type="b">
-      <default>false</default>
-      <summary>Show on all monitors</summary>
-      <description>When enabled, the spotlight will cover all monitors instead of just the current one</description>
-    </key>
-  </schema>
+     <key name="show-on-all-monitors" type="b">
+       <default>false</default>
+       <summary>Show on all monitors</summary>
+       <description>When enabled, the spotlight will cover all monitors instead of just the current one</description>
+     </key>
+     <key name="blur-enabled" type="b">
+       <default>true</default>
+       <summary>Enable blur effect</summary>
+       <description>Whether to apply a frosted glass blur effect to the background</description>
+     </key>
+     <key name="blur-radius" type="i">
+       <default>10</default>
+       <summary>Blur radius</summary>
+       <description>Radius of the blur effect (higher values = more blur)</description>
+     </key>
+     <key name="blur-brightness" type="d">
+       <default>0.8</default>
+       <summary>Blur brightness</summary>
+       <description>Brightness of the blur effect (0.0 to 1.0)</description>
+     </key>
+   </schema>
 </schemalist>
