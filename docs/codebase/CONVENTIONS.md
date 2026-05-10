@@ -1,57 +1,74 @@
-# Coding Conventions
+# Find My Mouse - Conventions
 
-## Core Sections (Required)
+## Naming Conventions
 
-### 1) Naming Rules
+| Type          | Convention          | Example                     |
+|---------------|---------------------|-----------------------------|
+| Classes       | PascalCase          | `SpotlightManager`          |
+| Methods       | camelCase           | `detectShake()`             |
+| Variables     | `_camelCase`        | `_spotlightVisible`         |
+| Constants     | UPPER_SNAKE_CASE    | `LogLevel.ERROR`            |
 
-| Item | Rule | Example | Evidence |
-|------|------|---------|----------|
-| Files | `kebab-case.js` | `mouse-tracking.js` | Directory listing |
-| Classes | `PascalCase` | `SpotlightManager` | `spotlight.js:8` |
-| Functions/methods | `camelCase` | `detectShake()` | `mouseTracking.js:36` |
-| Variables | `camelCase` | `mouseX`, `_fadeTimeoutId` | `spotlight.js:20` |
-| Constants | `UPPER_CASE` | `DEBUG` | `utils.js:1` |
-| Private members | `_camelCase` | `_spotlightVisible` | `spotlight.js:13` |
+## Formatting
 
-### 2) Formatting and Linting
+- **Indentation**: 4 spaces.
+- **Braces**: Opening brace on the same line.
+- **Semicolons**: Always present.
+- **Line Length**: No strict limit; logical wrapping.
 
-- Formatter: None (manual formatting)
-- Linter: None
-- Most relevant enforced rules:
-  - 4-space indentation
-  - Braces on same line for control structures
-  - Semicolons required
-- Run commands: N/A
+### Example
+```javascript
+if (this._spotlightVisible) {
+    this._spotlight.queue_repaint();
+}
+```
 
-### 3) Import and Module Conventions
+## Error Handling
 
-- Import grouping/order: 
-  - GNOME GI modules first (e.g., `import GLib from 'gi://GLib'`)
-  - Local modules second (e.g., `import { debugLog } from './utils.js'`)
-  - Alphabetical within groups
-- Alias vs relative import policy: Relative paths only (no aliases)
-- Public exports/barrel policy: Single named exports per file
+- **Logging**: Uses `debugLog()` with levels:
+  - `ERROR`: Critical errors.
+  - `WARN`: Warnings.
+  - `INFO`: General information.
+  - `DEBUG`: Detailed debugging.
+- **Graceful Degradation**: Checks for `null`/`undefined` before operations.
 
-### 4) Error and Logging Conventions
+### Example
+```javascript
+if (!this._settings) return;
+```
 
-- Error strategy by layer:
-  - **Extension layer**: Log errors but continue execution where possible
-  - **UI layer**: Silent failure for non-critical UI issues
-  - **Input layer**: Graceful degradation (e.g., fallback tracking methods)
-- Logging style and required context fields:
-  - Prefix: `Find My Mouse: `
-  - Context: Method/function name where applicable
-  - Example: `debugLog('Repaint handler called!')`
-- Sensitive-data redaction rules: None (no sensitive data handled)
+## Imports
 
-### 5) Testing Conventions
+- **GNOME Modules**: Imported via `gi://` or `resource://`.
+  ```javascript
+  import Clutter from 'gi://Clutter';
+  import * as Main from 'resource:///org/gnome/shell/ui/main.js';
+  ```
+- **Local Modules**: Relative paths.
+  ```javascript
+  import { debugLog } from './utils.js';
+  ```
 
-- Test file naming/location rule: N/A (no formal test suite)
-- Mocking strategy norm: N/A
-- Coverage expectation: N/A
+## Coding Practices
 
-### 6) Evidence
+- **Caching**: Settings are cached for performance.
+  ```javascript
+  this._cachedBgColorNormalized = [
+      this._cachedBgColor[0] / 255,
+      this._cachedBgColor[1] / 255,
+      this._cachedBgColor[2] / 255,
+      this._cachedBgColor[3] / 255
+  ];
+  ```
+- **Event Cleanup**: Always disconnect signals in `disable()`.
+  ```javascript
+  if (this._settingsChangedId) {
+      this._settingsManager.settings.disconnect(this._settingsChangedId);
+  }
+  ```
 
-- `/home/herve/Dev/Projets/find-my-mouse-example.com/spotlight.js` (naming, formatting)
-- `/home/herve/Dev/Projets/find-my-mouse-example.com/utils.js` (logging convention)
-- `/home/herve/Dev/Projets/find-my-mouse-example.com/extension.js` (import order)
+## Evidence
+- `utils.js:debugLog()` (logging convention)
+- `spotlight.js:constructor()` (private variable naming)
+- `extension.js:disable()` (event cleanup)
+- `settings.js:cacheSettings()` (caching logic)

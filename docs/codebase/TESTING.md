@@ -1,60 +1,46 @@
-# Testing Patterns
+# Find My Mouse - Testing
 
-## Core Sections (Required)
+## Testing Approach
 
-### 1) Test Stack and Commands
+### Manual Testing
 
-- Primary test framework: **Manual Testing** (no automated test framework)
-- Assertion/mocking tools: None
-- Commands:
+#### Wayland Session (Recommended)
+- **Command**:
+  ```bash
+  if [ "$(gnome-shell --version | awk '{print int($3)}')" -ge 49 ]; then
+      dbus-run-session gnome-shell --devkit --wayland  # Best for debugging
+  else
+      SHELL_DEBUG=backtrace-warnings dbus-run-session gnome-shell --nested --wayland
+  fi
+  ```
+- **Purpose**: Test extension in a nested Wayland session without restarting the main shell.
 
-```bash
-# Test in nested Wayland session (primary testing method)
-if [ "$(gnome-shell --version | awk '{print int($3)}')" -ge 49 ]; then
-    dbus-run-session gnome-shell --devkit --wayland
-else
-    SHELL_DEBUG=backtrace-warnings dbus-run-session gnome-shell --nested --wayland
-fi
+#### X11 Session
+- **Command**:
+  ```bash
+  Xephyr :1 -screen 1920x1080 &
+  DISPLAY=:1 dbus-run-session gnome-shell
+  ```
+- **Purpose**: Test X11 compatibility (requires `Xephyr`).
 
-# Test in nested X11 session (requires Xephyr)
-Xephyr :1 -screen 1920x1080 &
-DISPLAY=:1 dbus-run-session gnome-shell
+### Logging
+- **Dynamic Log Levels**: Adjustable via preferences UI (ERROR, WARN, INFO, DEBUG).
+- **View Logs**:
+  ```bash
+  journalctl --user -f | grep "Find My Mouse"
+  ```
 
-# View extension logs during testing
-journalctl --user -f | grep "Find My Mouse"
-```
+### Test Scenarios
 
-### 2) Test Layout
+| Scenario                     | Steps                                                                 |
+|------------------------------|-----------------------------------------------------------------------|
+| **Spotlight Activation**     | Trigger via shortcut/shake/click; verify spotlight appears.         |
+| **Multi-Monitor Support**    | Enable "Show on All Monitors"; verify spotlight covers all screens.|
+| **Shake Detection**          | Move mouse rapidly; verify spotlight activates.                      |
+| **Idle Timeout**             | Stop mouse movement; verify spotlight fades after timeout.         |
+| **Log Level Changes**        | Adjust log level; verify output in `journalctl`.                     |
 
-- Test file placement pattern: N/A (no test files)
-- Naming convention: N/A
-- Setup files and where they run: N/A
-
-### 3) Test Scope Matrix
-
-| Scope | Covered? | Typical target | Notes |
-|-------|----------|----------------|-------|
-| Unit | No | Individual functions | Manual verification only |
-| Integration | Partial | Component interactions | Tested via manual UI workflows |
-| E2E | Yes | Full extension behavior | Primary testing approach |
-
-### 4) Mocking and Isolation Strategy
-
-- Main mocking approach: None
-- Isolation guarantees: None
-- Common failure mode in tests: N/A
-
-### 5) Coverage and Quality Signals
-
-- Coverage tool + threshold: N/A
-- Current reported coverage: 0% (no automated tests)
-- Known gaps/flaky areas:
-  - Multi-monitor support edge cases
-  - Wayland vs X11 compatibility
-  - Animation performance under load
-  - Shake detection false positives/negatives
-
-### 6) Evidence
-
-- `/home/herve/Dev/Projets/find-my-mouse-example.com/AGENTS.md` (testing commands)
-- `/home/herve/Dev/Projets/find-my-mouse-example.com/README.md` (testing instructions)
+## Evidence
+- `AGENTS.md` (test commands)
+- `prefs.js` (log level UI)
+- `utils.js:debugLog()` (logging implementation)

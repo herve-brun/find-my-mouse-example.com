@@ -1,50 +1,92 @@
-# Codebase Structure
+# Find My Mouse - Codebase Structure
 
-## Core Sections (Required)
+## Directory Layout
 
-### 1) Top-Level Map
+```
+.
+├── extension.js          # Core extension logic and manager coordination
+├── prefs.js              # Preferences UI (Adwaita/GTK4)
+├── spotlight.js          # Spotlight rendering and animation
+├── mouseTracking.js      # Mouse movement and shake detection
+├── keybindings.js        # Keyboard shortcut handling
+├── settings.js           # GSettings management and caching
+├── utils.js              # Utilities (logging, color parsing)
+├── schemas/              # GSettings schema definition
+│   └── org.gnome.shell.extensions.find-my-mouse.gschema.xml
+├── metadata.json          # Extension metadata (UUID, version, compatibility)
+└── AGENTS.md             # Development and testing instructions
+```
 
-| Path | Purpose | Evidence |
-|------|---------|----------|
-| `extension.js` | Main extension entry point | `extension.js` |
-| `spotlight.js` | Spotlight rendering and animation logic | `spotlight.js` |
-| `mouseTracking.js` | Mouse movement tracking and shake detection | `mouseTracking.js` |
-| `keybindings.js` | Keyboard shortcut handling | `keybindings.js` |
-| `settings.js` | Settings management and caching | `settings.js` |
-| `prefs.js` | Preferences UI (GTK4/Adwaita) | `prefs.js` |
-| `utils.js` | Utility functions (logging, color parsing) | `utils.js` |
-| `schemas/` | GSettings schema definitions | `schemas/org.gnome.shell.extensions.find-my-mouse.gschema.xml` |
-| `metadata.json` | Extension metadata (UUID, name, version) | `metadata.json` |
-| `stylesheet.css` | CSS styles (unused in current implementation) | `stylesheet.css` |
+## Entry Points
 
-### 2) Entry Points
+| File               | Role                                                                 |
+|--------------------|----------------------------------------------------------------------|
+| `extension.js`     | Main extension class; initializes all managers and handles lifecycle. |
+| `prefs.js`         | Preferences dialog (Adwaita/GTK4) with multi-page settings.          |
+| `metadata.json`    | Extension metadata (UUID, name, version, GNOME Shell compatibility).|
 
-- Main runtime entry: `extension.js`
-- Secondary entry points: `prefs.js` (preferences UI)
-- How entry is selected: GNOME Shell loads `extension.js` as main entry, `prefs.js` for settings
+## Key Files
 
-### 3) Module Boundaries
+### `extension.js`
+- **Role**: Core extension logic.
+- **Key Components**:
+  - `FindMyMouseExtension` class (extends `Extension`).
+  - Managers: `SettingsManager`, `SpotlightManager`, `MouseTracker`, `KeybindingManager`.
+  - Lifecycle methods: `enable()`, `disable()`.
+  - Event handlers: `_handleMouseMovement()`, `_toggleSpotlight()`.
 
-| Boundary | What belongs here | What must not be here |
-|----------|-------------------|------------------------|
-| `extension.js` | Core extension lifecycle, component orchestration | Direct rendering logic, UI details |
-| `spotlight.js` | Spotlight rendering, animation, visibility control | Settings management, input handling |
-| `mouseTracking.js` | Mouse movement tracking, shake detection | Spotlight rendering, settings management |
-| `keybindings.js` | Keyboard shortcut registration and handling | Mouse tracking, spotlight logic |
-| `settings.js` | Settings caching and access | Direct UI rendering, input handling |
-| `prefs.js` | Preferences UI implementation | Core extension logic, business logic |
+### `prefs.js`
+- **Role**: Preferences UI.
+- **Key Components**:
+  - `FindMyMousePreferences` class (extends `ExtensionPreferences`).
+  - Pages: General, Appearance, Timing, Shake Detection.
+  - UI Elements: `Adw.PreferencesPage`, `Adw.ComboRow`, `Gtk.ColorButton`.
 
-### 4) Naming and Organization Rules
+### `spotlight.js`
+- **Role**: Spotlight rendering and animation.
+- **Key Components**:
+  - `SpotlightManager` class.
+  - Methods: `show()`, `hide()`, `_setupSpotlightCommon()`.
+  - Rendering: Uses `St.DrawingArea` and Cairo for spotlight effect.
 
-- File naming pattern: `kebab-case.js` (e.g., `mouse-tracking.js`)
-- Directory organization pattern: Flat structure with functional grouping
-- Import aliasing or path conventions: Relative paths (e.g., `./utils.js`)
+### `mouseTracking.js`
+- **Role**: Mouse movement and shake detection.
+- **Key Components**:
+  - `MouseTracker` class.
+  - Methods: `setup()`, `detectShake()`.
+  - Uses `pointerWatcher.js` for mouse tracking.
 
-### 5) Evidence
+### `keybindings.js`
+- **Role**: Keyboard shortcut handling.
+- **Key Components**:
+  - `KeybindingManager` class.
+  - Methods: `setup()`, `updateKeybinding()`.
+  - Uses `Main.wm.addKeybinding()` for global shortcuts.
 
-- `/home/herve/Dev/Projets/find-my-mouse-example.com/extension.js`
-- `/home/herve/Dev/Projets/find-my-mouse-example.com/spotlight.js`
-- `/home/herve/Dev/Projets/find-my-mouse-example.com/mouseTracking.js`
-- `/home/herve/Dev/Projets/find-my-mouse-example.com/keybindings.js`
-- `/home/herve/Dev/Projets/find-my-mouse-example.com/settings.js`
-- `/home/herve/Dev/Projets/find-my-mouse-example.com/prefs.js`
+### `settings.js`
+- **Role**: GSettings management and caching.
+- **Key Components**:
+  - `SettingsManager` class.
+  - Methods: `cacheSettings()`.
+  - Caches settings for performance (e.g., colors, radii).
+
+### `utils.js`
+- **Role**: Utilities.
+- **Key Components**:
+  - `debugLog()`: Logging with levels (ERROR, WARN, INFO, DEBUG).
+  - `parseColor()`: Converts hex color strings to RGBA arrays.
+
+### `schemas/org.gnome.shell.extensions.find-my-mouse.gschema.xml`
+- **Role**: GSettings schema definition.
+- **Key Components**:
+  - Keys: `activation-method`, `background-color`, `spotlight-radius`, etc.
+  - Defaults match Microsoft PowerToys.
+
+## Evidence
+- `extension.js:enable()` (manager initialization)
+- `prefs.js:fillPreferencesWindow()` (UI structure)
+- `spotlight.js:_setupSpotlightCommon()` (rendering logic)
+- `mouseTracking.js:detectShake()` (shake detection algorithm)
+- `keybindings.js:_addKeybinding()` (shortcut handling)
+- `settings.js:cacheSettings()` (settings caching)
+- `utils.js:debugLog()` (logging utility)

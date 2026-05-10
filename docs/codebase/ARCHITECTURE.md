@@ -1,66 +1,69 @@
-# Architecture
+# Find My Mouse - Architecture
 
-## Core Sections (Required)
+## Layers
 
-### 1) Architectural Style
+### 1. Extension Core (`extension.js`)
+- **Responsibility**: Lifecycle management and coordination.
+- **Key Functions**:
+  - `enable()`: Initializes all managers and sets up event listeners.
+  - `disable()`: Cleans up managers and event listeners.
+  - `_handleMouseMovement()`: Delegates mouse movement to `MouseTracker` and `SpotlightManager`.
+  - `_toggleSpotlight()`: Toggles spotlight visibility.
 
-- Primary style: **Modular Component-Based Architecture**
-- Why this classification: The extension is organized into discrete components (`SpotlightManager`, `MouseTracker`, `KeybindingManager`, `SettingsManager`) that encapsulate specific responsibilities and interact through well-defined interfaces.
-- Primary constraints:
-  - GNOME Shell extension API limitations
-  - Wayland/X11 compatibility requirements
-  - Real-time performance needs for mouse tracking and rendering
+### 2. Managers
 
-### 2) System Flow
+| Manager               | File               | Responsibility                                                                 |
+|-----------------------|---------------------|-------------------------------------------------------------------------------|
+| `SettingsManager`     | `settings.js`       | Caches and provides access to GSettings.                                      |
+| `SpotlightManager`    | `spotlight.js`      | Handles rendering, animations, and visibility of the spotlight.              |
+| `MouseTracker`        | `mouseTracking.js`  | Tracks mouse movement and detects shake gestures.                             |
+| `KeybindingManager`   | `keybindings.js`    | Manages keyboard shortcuts for activation.                                    |
 
-```text
-[GNOME Shell] -> [extension.js:enable()] -> 
-  [SettingsManager] + [SpotlightManager] + [MouseTracker] + [KeybindingManager] ->
-  [User Interaction (mouse/keyboard)] -> [Event Handling] -> [Spotlight Rendering/Animation] ->
-  [Idle Timeout] -> [Fade Animation] -> [Hide Spotlight]
-```
+### 3. Preferences UI (`prefs.js`)
+- **Responsibility**: Provides a GTK4/Adwaita-based settings dialog.
+- **Key Components**:
+  - Multi-page layout (General, Appearance, Timing, Shake Detection).
+  - Dynamic UI elements (e.g., `Gtk.ColorButton` for color selection).
+  - Real-time log level adjustments.
 
-1. **Initialization**: `extension.js` creates and connects all managers during `enable()`
-2. **Event Handling**: 
-   - Mouse movement → `MouseTracker` → `SpotlightManager.updateMousePosition()`
-   - Keyboard shortcut → `KeybindingManager` → `SpotlightManager.toggle()`
-   - Mouse click → Direct event handler → `SpotlightManager.toggle()`
-3. **Rendering**: `SpotlightManager` handles Cairo-based rendering on `St.DrawingArea`
-4. **Animation**: Fade-in/fade-out managed via GLib timeouts in `SpotlightManager`
-5. **Settings**: All components read from cached `SettingsManager` for performance
+## Patterns
 
-### 3) Layer/Module Responsibilities
+### Singleton Managers
+- Each manager is instantiated once in `extension.js` and reused.
+- Example: `this._settingsManager = new SettingsManager(settings);`
 
-| Layer or module | Owns | Must not own | Evidence |
-|-----------------|------|--------------|----------|
-| `extension.js` | Extension lifecycle, component orchestration | Direct rendering, input handling | `extension.js` |
-| `SpotlightManager` | Spotlight rendering, visibility, animation | Settings management, input tracking | `spotlight.js` |
-| `MouseTracker` | Mouse movement tracking, shake detection | Spotlight logic, settings | `mouseTracking.js` |
-| `KeybindingManager` | Keyboard shortcut registration/handling | Mouse tracking, rendering | `keybindings.js` |
-| `SettingsManager` | Settings caching and access | UI rendering, business logic | `settings.js` |
-| `prefs.js` | Preferences UI implementation | Core extension logic | `prefs.js` |
+### Event-Driven Architecture
+- Uses GNOME Shell signals for:
+  - Mouse movement (`pointerWatcher.js`).
+  - Keyboard shortcuts (`Main.wm.addKeybinding()`).
+  - Settings changes (`settings.connect('changed::...')`).
 
-### 4) Reused Patterns
+### Caching
+- Settings are cached in `SettingsManager` for performance.
+- Example: `this._cachedBgColorNormalized` stores the normalized background color.
 
-| Pattern | Where found | Why it exists |
-|---------|-------------|---------------|
-| **Observer Pattern** | Settings change handlers in `extension.js` | Decouple settings changes from component logic |
-| **Singleton-like** | Manager classes (`SpotlightManager`, etc.) | Single instance per extension lifecycle |
-| **Event Delegation** | Mouse/keyboard event handling | Centralized input handling with component-specific actions |
-| **Caching** | `SettingsManager.cached*` properties | Avoid repeated GSettings lookups for performance |
-| **Animation Loop** | GLib timeouts in `SpotlightManager` | Frame-by-frame fade animations |
+## Data Flow
 
-### 5) Known Architectural Risks
+### Activation Flow
+1. **User Action**: Shortcut/shake/click/always.
+2. **Event Handling**:
+   - Shortcut: `KeybindingManager` → `_toggleSpotlight()`.
+   - Shake: `MouseTracker.detectShake()` → `_toggleSpotlight()`.
+   - Click: `global.stage.connect('button-press-event')` → `_toggleSpotlight()`.
+3. **Spotlight Management**:
+   - `_toggleSpotlight()` calls `SpotlightManager.show()` or `hide()`.
+4. **Rendering**:
+   - `SpotlightManager` uses `St.DrawingArea` and Cairo to render the spotlight.
+   - Mouse movement updates the spotlight position via `queueRepaint()`.
 
-- **Wayland/X11 Compatibility**: Mouse tracking implementation differs between display servers (`pointerWatcher` vs `CursorTracker`)
-- **Performance**: Real-time mouse tracking and rendering must stay responsive under system load
-- **GNOME Version Dependencies**: Uses APIs specific to GNOME Shell 46-50
-- **State Management**: Spotlight visibility state distributed across components
+### Settings Flow
+1. **User Changes Setting**: UI in `prefs.js` updates GSettings.
+2. **GSettings Signal**: Triggers `SettingsManager.cacheSettings()`.
+3. **Cached Values**: Managers use cached values (e.g., `cachedBgColorNormalized`).
 
-### 6) Evidence
-
-- `/home/herve/Dev/Projets/find-my-mouse-example.com/extension.js` (component orchestration)
-- `/home/herve/Dev/Projets/find-my-mouse-example.com/spotlight.js` (rendering/animation)
-- `/home/herve/Dev/Projets/find-my-mouse-example.com/mouseTracking.js` (input handling)
-- `/home/herve/Dev/Projets/find-my-mouse-example.com/keybindings.js` (shortcut handling)
-- `/home/herve/Dev/Projets/find-my-mouse-example.com/settings.js` (settings cache)
+## Evidence
+- `extension.js:enable()` (manager initialization and event setup)
+- `spotlight.js:_setupSpotlightCommon()` (rendering and Cairo usage)
+- `mouseTracking.js:detectShake()` (shake detection algorithm)
+- `prefs.js:fillPreferencesWindow()` (UI structure and dynamic elements)
+- `settings.js:cacheSettings()` (settings caching logic)
