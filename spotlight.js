@@ -3,6 +3,7 @@ import St from 'gi://St';
 import Cairo from 'gi://cairo';
 import GLib from 'gi://GLib';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
+import Shell from 'gi://Shell';
 import { debugLog, LogLevel } from './utils.js';
 
 export class SpotlightManager {
@@ -145,6 +146,32 @@ export class SpotlightManager {
             cr.stroke();
         });
 
+        // Add blur effect if enabled
+        if (this._settingsManager.cachedBlurEnabled) {
+            // Create a container for the blur effect
+            this._blurContainer = new St.Widget({
+                x: geometry.x,
+                y: geometry.y,
+                width: geometry.width,
+                height: geometry.height,
+                clip_to_allocation: true
+            });
+
+            // Create blur effect for frosted glass
+            this._blurEffect = new Shell.BlurEffect({
+            brightness: this._settingsManager.cachedBlurBrightness,
+            radius: this._settingsManager.cachedBlurRadius,
+                mode: Shell.BlurMode.ACTOR
+            });
+            this._blurContainer.add_effect(this._blurEffect);
+
+            // Add blur container to UI group
+            Main.uiGroup.add_child(this._blurContainer);
+        }
+
+        // Position spotlight above blur container
+        Main.uiGroup.add_child(this._spotlight);
+
         debugLog('Adding to Main.uiGroup', LogLevel.DEBUG);
         Main.uiGroup.add_child(this._spotlight);
         debugLog('Showing spotlight', LogLevel.INFO);
@@ -178,8 +205,16 @@ export class SpotlightManager {
             Main.uiGroup.remove_child(this._spotlight);
             this._spotlight.destroy();
             this._spotlight = null;
-            this._spotlightVisible = false;
         }
+
+        if (this._blurContainer) {
+            Main.uiGroup.remove_child(this._blurContainer);
+            this._blurContainer.destroy();
+            this._blurContainer = null;
+        }
+
+        this._blurEffect = null;
+        this._spotlightVisible = false;
 
         if (this._idleTimeoutId) {
             GLib.source_remove(this._idleTimeoutId);
