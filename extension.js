@@ -1,5 +1,6 @@
 import { Extension } from 'resource:///org/gnome/shell/extensions/extension.js';
-import { SettingsManager } from './settings.js';
+import * as Main from "resource:///org/gnome/shell/ui/main.js";
+import * as MessageTray from "resource:///org/gnome/shell/ui/messageTray.js";import { SettingsManager } from './settings.js';
 import { SpotlightManager } from './spotlight.js';
 import { MouseTracker } from './mouseTracking.js';
 import { KeybindingManager } from './keybindings.js';
@@ -186,9 +187,24 @@ export default class FindMyMouseExtension extends Extension {
         }
     }
 
-    _showSpotlight() {
-        const showOnAllMonitors = this._settingsManager.settings.get_boolean('show-on-all-monitors') || false;
-        debugLog(`showOnAllMonitors = ${showOnAllMonitors}`);
-        this._spotlightManager.show(showOnAllMonitors);
-    }
+     _showSpotlight() {
+         const showOnAllMonitors = this._settingsManager.settings.get_boolean('show-on-all-monitors') || false;
+         debugLog(`showOnAllMonitors = ${showOnAllMonitors}`);
+         
+         // Play sound if enabled (using GNOME's notification system)
+         if (this._settingsManager.settings.get_boolean('play-sound')) {
+             try {
+                 const notification = new MessageTray.Notification(
+                     this.metadata.name,
+                     " ", // Empty text (sound only)
+                     'dialog-information'
+                 );
+                 Main.messageTray.add(notification);
+             } catch (e) {
+                 debugLog(`Failed to play sound: ${e.message}`, LogLevel.ERROR);
+             }
+         }
+         
+         this._spotlightManager.show(showOnAllMonitors);
+     }
 }

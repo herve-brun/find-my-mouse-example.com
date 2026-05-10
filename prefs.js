@@ -399,13 +399,23 @@ export default class FindMyMousePreferences extends ExtensionPreferences {
     });
     window.add(timingPage);
 
-    const timingGroup = new Adw.PreferencesGroup({
-      title: _("Timing"),
-      description: _("Configure timeouts and delays"),
-    });
-    timingPage.add(timingGroup);
+     const timingGroup = new Adw.PreferencesGroup({
+       title: _("Timing"),
+       description: _("Configure timeouts and delays"),
+     });
+     timingPage.add(timingGroup);
 
-    const idleRow = new Adw.SpinRow({
+     const soundRow = new Adw.SwitchRow({
+       title: _("Play Sound on Activation"),
+       subtitle: _("Play a sound when the spotlight appears (like PowerToys Find My Mouse)"),
+       active: settings.get_boolean("play-sound"),
+     });
+     soundRow.connect("notify::active", () => {
+       settings.set_boolean("play-sound", soundRow.active);
+     });
+     timingGroup.add(soundRow);
+
+     const idleRow = new Adw.SpinRow({
       title: _("Idle Timeout (ms)"),
       subtitle: _(
         "Wait time after mouse stops before hiding (PowerToys default: 1000)",

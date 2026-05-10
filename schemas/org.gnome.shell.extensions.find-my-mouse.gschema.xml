@@ -71,10 +71,15 @@
       <summary>Log level</summary>
       <description>Maximum log level to display (0=Error, 1=Warn, 2=Info, 3=Debug)</description>
     </key>
-    <key name="show-on-all-monitors" type="b">
-      <default>false</default>
-      <summary>Show on all monitors</summary>
-      <description>When enabled, the spotlight will cover all monitors instead of just the current one</description>
-    </key>
-  </schema>
+     <key name="show-on-all-monitors" type="b">
+       <default>false</default>
+       <summary>Show on all monitors</summary>
+       <description>When enabled, the spotlight will cover all monitors instead of just the current one</description>
+     </key>
+     <key name="play-sound" type="b">
+       <default>true</default>
+       <summary>Play sound on activation</summary>
+       <description>Play a sound when the spotlight appears (like PowerToys Find My Mouse)</description>
+     </key>
+   </schema>
 </schemalist>
