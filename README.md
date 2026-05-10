@@ -199,10 +199,12 @@ We **❤️ contributions**! Follow these steps:
 5. **Open a Pull Request**
 
 ### 📜 Code Style Guidelines
+
 - Follow existing patterns
 - Use **descriptive names** for variables/functions
 - **Comment complex logic**
 - Keep commits **atomic & focused**
+- **Conventional Commits**: All commits must follow the [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) specification
 
 ## 📄 License
 
