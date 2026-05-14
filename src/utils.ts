@@ -3,17 +3,17 @@ export const LogLevel = {
     WARN: 1,
     INFO: 2,
     DEBUG: 3
-};
+} as const;
 
-export let currentLogLevel = LogLevel.INFO;
+export let currentLogLevel: number = LogLevel.INFO;
 
-export function setLogLevel(level) {
+export function setLogLevel(level: number): void {
     currentLogLevel = level;
 }
 
-export function debugLog(message, level = LogLevel.DEBUG) {
+export function debugLog(message: string, level: number = LogLevel.DEBUG): void {
     if (level <= currentLogLevel) {
-        const levelPrefix = {
+        const levelPrefix: string = {
             [LogLevel.ERROR]: "ERROR",
             [LogLevel.WARN]: "WARN",
             [LogLevel.INFO]: "INFO",
@@ -23,7 +23,7 @@ export function debugLog(message, level = LogLevel.DEBUG) {
     }
 }
 
-export function parseColor(colorStr, defaultAlpha = 255) {
+export function parseColor(colorStr: string, defaultAlpha: number = 255): [number, number, number, number] {
     if (!colorStr || colorStr === "") return [0, 0, 0, defaultAlpha];
     const hex = colorStr.replace("#", "");
     if (hex.length >= 6) {

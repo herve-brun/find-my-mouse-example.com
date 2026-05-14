@@ -8,24 +8,32 @@
 
 import Shell from "gi://Shell";
 import Meta from "gi://Meta";
+import Clutter from "gi://Clutter";
 import GObject from "gi://GObject";
+import type { SettingsManager } from "./settings.js";
 import { debugLog, LogLevel } from "./utils.js";
 import * as Main from "resource:///org/gnome/shell/ui/main.js";
 
+interface MonitorGeometry {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
 
 export const SpotlightGLSLEffect = GObject.registerClass(
   { GTypeName: "RWCSpotlightGLSLEffect" },
   class SpotlightGLSLEffect extends Shell.GLSLEffect {
-    private _settings: any;
-    private _mouseX: any;
-    private _mouseY: any;
-    private _visible: any;
-    private _monitorGeometry: any;
-    private _refreshRate: any;
-    private _frameInterval: any;
-    private _refreshRateMonitorIndex: any;
+    private _settings: SettingsManager;
+    private _mouseX: number;
+    private _mouseY: number;
+    private _visible: boolean;
+    private _monitorGeometry: MonitorGeometry | null;
+    private _refreshRate: number;
+    private _frameInterval: number;
+    private _refreshRateMonitorIndex: number;
 
-    constructor(actor, settings) {
+    constructor(actor: Clutter.Actor, settings: SettingsManager) {
       super(actor);
       this._settings = settings;
       this._mouseX = 0;
@@ -224,7 +232,7 @@ export const SpotlightGLSLEffect = GObject.registerClass(
       }
     }
 
-    setMousePosition(x, y) {
+    setMousePosition(x: number, y: number): void {
       this._mouseX = x;
       this._mouseY = y;
       // Detect refresh rate on mouse move (cached per monitor)
@@ -232,7 +240,7 @@ export const SpotlightGLSLEffect = GObject.registerClass(
       this.queue_repaint();
     }
 
-    setMonitorGeometry(geometry) {
+    setMonitorGeometry(geometry: MonitorGeometry): void {
       this._monitorGeometry = geometry;
       this._updateRefreshRate();
     }

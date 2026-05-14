@@ -8,31 +8,31 @@ import { GameModeClient } from './gamemodeClient.js';
 import { debugLog, LogLevel, setLogLevel } from './utils.js';
 
 export default class FindMyMouseExtension extends Extension {
-    private _settingsManager: any;
-    private _spotlightManager: any;
-    private _mouseTracker: any;
-    private _keybindingManager: any;
-    private _gameModeClient: any;
-    private _gameModeChangedId: any;
-    private _settingsChangedId: any;
-    private _shortcutChangedId: any;
-    private _mousePressHandler: any;
-    private _alwaysVisibleHandler: any;
-    private _logLevelChangedId: any;
-    private _glassMorphismChangedId: any;
-    private _blurRadiusChangedId: any;
-    private _glassOpacityChangedId: any;
-    private _glowColorChangedId: any;
-    private _glassTintChangedId: any;
-    private _ringWidthChangedId: any;
-    private _lastMoveX: any;
-    private _lastMoveY: any;
-    private _gameModeAvailable: any;
-    private _glassMorphismEnabled: any;
-    private _blurRadius: any;
-    private _glassOpacity: any;
-    private _glowColor: any;
-    constructor(metadata) {
+    private _settingsManager: SettingsManager | null;
+    private _spotlightManager: SpotlightManager | null;
+    private _mouseTracker: MouseTracker | null;
+    private _keybindingManager: KeybindingManager | null;
+    private _gameModeClient: GameModeClient | null;
+    private _gameModeChangedId: number;
+    private _settingsChangedId: number;
+    private _shortcutChangedId: number;
+    private _mousePressHandler: number;
+    private _alwaysVisibleHandler: number;
+    private _logLevelChangedId: number;
+    private _glassMorphismChangedId: number;
+    private _blurRadiusChangedId: number;
+    private _glassOpacityChangedId: number;
+    private _glowColorChangedId: number;
+    private _glassTintChangedId: number;
+    private _ringWidthChangedId: number;
+    private _lastMoveX: number;
+    private _lastMoveY: number;
+    private _gameModeAvailable: boolean;
+    private _glassMorphismEnabled: boolean;
+    private _blurRadius: number;
+    private _glassOpacity: number;
+    private _glowColor: string;
+    constructor(metadata: any) {
         super(metadata);
         this._settingsManager = null;
         this._spotlightManager = null;
@@ -294,7 +294,7 @@ export default class FindMyMouseExtension extends Extension {
         }
     }
 
-    _handleMouseMovement(x, y) {
+    _handleMouseMovement(x: number, y: number): void {
         this._spotlightManager.updateMousePosition(x, y);
 
         if (this._spotlightManager.isVisible) {

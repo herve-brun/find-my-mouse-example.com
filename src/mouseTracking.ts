@@ -1,15 +1,26 @@
 import GLib from 'gi://GLib';
+import type { SettingsManager } from './settings.js';
 import { debugLog, LogLevel } from './utils.js';
 
-export class MouseTracker {
-    private _settingsManager: any;
-    private _handleMouseMovement: any;
-    private _pointerWatch: any;
-    private _lastX: any;
-    private _lastY: any;
-    private _movementHistory: any;
+interface PointerWatch {
+    remove(): void;
+}
 
-    constructor(settingsManager, handleMouseMovement) {
+interface MovementRecord {
+    dx: number;
+    dy: number;
+    tick: number;
+}
+
+export class MouseTracker {
+    private _settingsManager: SettingsManager;
+    private _handleMouseMovement: (x: number, y: number) => void;
+    private _pointerWatch: PointerWatch | null;
+    private _lastX: number;
+    private _lastY: number;
+    private _movementHistory: MovementRecord[];
+
+    constructor(settingsManager: SettingsManager, handleMouseMovement: (x: number, y: number) => void) {
         this._settingsManager = settingsManager;
         this._handleMouseMovement = handleMouseMovement;
         this._pointerWatch = null;

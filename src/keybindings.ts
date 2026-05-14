@@ -2,14 +2,15 @@ import Shell from 'gi://Shell';
 import Meta from 'gi://Meta';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import Clutter from 'gi://Clutter';
+import type { SettingsManager } from './settings.js';
 import { debugLog, LogLevel } from './utils.js';
 
 export class KeybindingManager {
-    private _settingsManager: any;
-    private _toggleSpotlight: any;
-    private _keybindingHandler: any;
+    private _settingsManager: SettingsManager;
+    private _toggleSpotlight: () => void;
+    private _keybindingHandler: number;
 
-    constructor(settingsManager, toggleSpotlight) {
+    constructor(settingsManager: SettingsManager, toggleSpotlight: () => void) {
         this._settingsManager = settingsManager;
         this._toggleSpotlight = toggleSpotlight;
         this._keybindingHandler = 0;
