@@ -28,10 +28,10 @@ export default class FindMyMouseExtension extends Extension {
     private _lastMoveX: number;
     private _lastMoveY: number;
     private _gameModeAvailable: boolean;
-    private _glassMorphismEnabled: boolean;
-    private _blurRadius: number;
-    private _glassOpacity: number;
-    private _glowColor: string;
+    private _glassMorphismEnabled!: boolean;
+    private _blurRadius!: number;
+    private _glassOpacity!: number;
+    private _glowColor!: string;
     constructor(metadata: any) {
         super(metadata);
         this._settingsManager = null;
@@ -58,7 +58,7 @@ export default class FindMyMouseExtension extends Extension {
         this._gameModeAvailable = false;
     }
 
-    async enable() {
+    enable() {
         const settings = this.getSettings();
         const logLevel = settings.get_int('log-level') || 2;
         setLogLevel(logLevel);
