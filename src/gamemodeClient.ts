@@ -1,11 +1,13 @@
 import Gio from 'gi://Gio';
 import { debugLog, LogLevel } from './utils.js';
 
+type StateChangeHandler = (active: boolean) => void;
+
 export class GameModeClient {
-    private _proxy: any;
-    private _clientCount: any;
-    private _stateChangedHandlers: any;
-    private _retryCount: any;
+    _proxy: Gio.DBusProxy | null;
+    private _clientCount: number;
+    private _stateChangedHandlers: StateChangeHandler[];
+    private _retryCount: number;
 
     constructor() {
         this._proxy = null;
@@ -65,7 +67,7 @@ export class GameModeClient {
         );
     }
 
-    _onPropertiesChanged(proxy, changedProperties, invalidatedProperties) {
+    _onPropertiesChanged(proxy: Gio.DBusProxy, changedProperties: any, invalidatedProperties: string[]) {
         const clientCountVariant = changedProperties.lookup_value('ClientCount', null);
         if (clientCountVariant) {
             this._clientCount = clientCountVariant.unpack();
@@ -75,15 +77,15 @@ export class GameModeClient {
         }
     }
 
-    _emitStateChanged(active) {
+    _emitStateChanged(active: boolean): void {
         this._stateChangedHandlers.forEach(handler => handler(active));
     }
 
-    onStateChanged(handler) {
+    onStateChanged(handler: StateChangeHandler): void {
         this._stateChangedHandlers.push(handler);
     }
     
-    offStateChanged(handler) {
+    offStateChanged(handler: StateChangeHandler): void {
         this._stateChangedHandlers = this._stateChangedHandlers.filter(h => h !== handler);
     }
     

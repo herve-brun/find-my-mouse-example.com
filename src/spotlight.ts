@@ -2,18 +2,26 @@ import St from 'gi://St';
 import Cairo from 'gi://cairo';
 import GLib from 'gi://GLib';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
+import type { SettingsManager } from './settings.js';
 import { debugLog, LogLevel } from './utils.js';
 import { SpotlightGLSLEffect } from "./spotlightEffect.js"
 
-export class SpotlightManager {
-    private _settingsManager: any;
-    private _spotlight: any;
-    private _glslEffect: any;
-    private _useGLSL: any;
-    private _spotlightVisible: any;
-    private _idleTimeoutId: any;
+interface MonitorGeometry {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+}
 
-    constructor(settingsManager: any, options?: any) {
+export class SpotlightManager {
+    private _settingsManager: SettingsManager;
+    private _spotlight: St.DrawingArea | null;
+    private _glslEffect: InstanceType<typeof SpotlightGLSLEffect> | null;
+    private _useGLSL: boolean;
+    private _spotlightVisible: boolean;
+    private _idleTimeoutId: number;
+
+    constructor(settingsManager: SettingsManager, options?: any) {
         this._settingsManager = settingsManager;
         this._spotlight = null;
         this._glslEffect = null;
@@ -26,7 +34,7 @@ export class SpotlightManager {
         return this._spotlightVisible;
     }
 
-    _getMonitorGeometry(showOnAllMonitors) {
+    _getMonitorGeometry(showOnAllMonitors: boolean): MonitorGeometry {
         if (showOnAllMonitors) {
             // Calculate combined geometry for all monitors
             let x = 0, y = 0, width = 0, height = 0;
@@ -46,7 +54,7 @@ export class SpotlightManager {
         }
     }
 
-    show(showOnAllMonitors) {
+    show(showOnAllMonitors: boolean): void {
         const geometry = this._getMonitorGeometry(showOnAllMonitors);
 
         this._spotlight = new St.DrawingArea({
@@ -77,7 +85,7 @@ export class SpotlightManager {
         this._resetIdleTimeout();
     }
 
-    updateMousePosition(x, y) {
+    updateMousePosition(x: number, y: number): void {
         if (this._useGLSL && this._glslEffect) {
             this._glslEffect.setMousePosition(x, y);
         }
@@ -133,7 +141,7 @@ export class SpotlightManager {
         }
     }
 
-    _onRepaint(area) {
+    _onRepaint(area: St.DrawingArea): void {
         // Cairo fallback: dimmed background + spotlight hole + circle
         const cr = area.get_context();
         if (!cr) return;

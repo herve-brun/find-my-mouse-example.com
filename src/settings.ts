@@ -1,28 +1,29 @@
+import Gio from 'gi://Gio';
 import { parseColor, debugLog, LogLevel } from './utils.js';
 
 export class SettingsManager {
-    private _settings: any;
-    private _cachedBgColor: any;
-    private _cachedSpotlightColor: any;
-    private _cachedBgColorNormalized: any;
-    private _cachedSpotlightColorNormalized: any;
-    private _cachedRadius: any;
-    private _cachedZoom: any;
-    private _cachedAnimationDuration: any;
-    private _cachedIdleTimeout: any;
-    private _cachedShakeInterval: any;
-    private _cachedShakeSensitivity: any;
-    private _cachedActivationMethod: any;
-    private _cachedBlurRadius: any;
-    private _cachedGlassOpacity: any;
-    private _cachedGlowColorNormalized: any;
-    private _cachedGlassTintNormalized: any;
-    private _cachedGlassMorphismEnabled: any;
-    private _cachedRingWidth: any;
-    private _cachedDoNotActivateInGameMode: any;
-    private _cachedLogLevel: any;
+    private _settings: Gio.Settings;
+    private _cachedBgColor: [number, number, number, number] | null;
+    private _cachedSpotlightColor: [number, number, number, number] | null;
+    private _cachedBgColorNormalized: [number, number, number, number];
+    private _cachedSpotlightColorNormalized: [number, number, number, number];
+    private _cachedRadius: number;
+    private _cachedZoom: number;
+    private _cachedAnimationDuration: number;
+    private _cachedIdleTimeout: number;
+    private _cachedShakeInterval: number;
+    private _cachedShakeSensitivity: number;
+    private _cachedActivationMethod: string;
+    private _cachedBlurRadius: number;
+    private _cachedGlassOpacity: number;
+    private _cachedGlowColorNormalized: [number, number, number, number];
+    private _cachedGlassTintNormalized: [number, number, number, number];
+    private _cachedGlassMorphismEnabled: boolean;
+    private _cachedRingWidth: number;
+    private _cachedDoNotActivateInGameMode: boolean;
+    private _cachedLogLevel: number;
 
-    constructor(settings) {
+    constructor(settings: Gio.Settings) {
         this._settings = settings;
         this._cachedBgColor = null;
         this._cachedSpotlightColor = null;
@@ -117,7 +118,7 @@ export class SettingsManager {
     get cachedRingWidth() { return this._cachedRingWidth; }
     get settings() { return this._settings; }
 
-    _parseRgbaString(str) {
+    _parseRgbaString(str: string): [number, number, number, number] {
         if (!str) return [1, 1, 1, 0.1];
         const m = str.match(/rgba\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*([\d.]+)\s*\)/);
         if (m) {

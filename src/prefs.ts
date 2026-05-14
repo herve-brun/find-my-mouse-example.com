@@ -12,11 +12,11 @@ import {
 import { setLogLevel, LogLevel, debugLog } from "./utils.js";
 
 export default class FindMyMousePreferences extends ExtensionPreferences {
-  constructor(metadata) {
+  constructor(metadata: any) {
     super(metadata);
   }
 
-  fillPreferencesWindow(window) {
+  fillPreferencesWindow(window: Adw.PreferencesWindow): void {
     const settings = this.getSettings();
 
     // General page
@@ -723,7 +723,7 @@ export default class FindMyMousePreferences extends ExtensionPreferences {
     glassMorphismGroup.add(resetRow);
   }
 
-  _showAboutDialog(parent) {
+  _showAboutDialog(parent: Gtk.Window): void {
     const dialog = new Adw.AboutWindow({
       transient_for: parent,
       modal: true,
@@ -751,7 +751,7 @@ export default class FindMyMousePreferences extends ExtensionPreferences {
     dialog.present();
   }
 
-  _parseColor(colorStr) {
+  _parseColor(colorStr: string): Gdk.RGBA {
     const rgba = new Gdk.RGBA({ red: 0, green: 0, blue: 0, alpha: 1.0 });
     if (colorStr && colorStr !== "") {
       const hex = colorStr.replace("#", "");
@@ -766,7 +766,7 @@ export default class FindMyMousePreferences extends ExtensionPreferences {
     return rgba;
   }
 
-  _rgbaToHex(rgba) {
+  _rgbaToHex(rgba: Gdk.RGBA): string {
     const r = Math.round(rgba.red * 255)
       .toString(16)
       .padStart(2, "0");
