@@ -1,1 +1,5 @@
 schemas/gschemas.compiled
+dist/
+node_modules/
+*.zip
+*.tgz

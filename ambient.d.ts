@@ -1,0 +1,16 @@
+import "@girs/gjs";
+import "@girs/gjs/dom";
+import "@girs/gnome-shell/ambient";
+import "@girs/gnome-shell/extensions/global";
+import "@girs/st-14/ambient";
+import "@girs/cairo-1.0/ambient";
+import "@girs/glib-2.0/ambient";
+import "@girs/shell-14/ambient";
+import "@girs/meta-14/ambient";
+import "@girs/gio-2.0/ambient";
+import "@girs/gobject-2.0/ambient";
+import "@girs/gtk-4.0/ambient";
+import "@girs/adw-1/ambient";
+import "@girs/gdk-4.0/ambient";
+import "@girs/clutter-14/ambient";
+import "@girs/cogl-14/ambient";

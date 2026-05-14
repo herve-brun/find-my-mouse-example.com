@@ -1,0 +1,9 @@
+{
+  "extends": "./tsconfig",
+  "include": ["ambient.d.ts", "gnome-shell-extensions.d.ts", "src"],
+  "compilerOptions": {
+    "sourceMap": false,
+    "rootDir": "./src",
+    "outDir": "./dist"
+  }
+}

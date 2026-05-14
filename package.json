@@ -1,0 +1,20 @@
+{
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "clean": "rm -rf dist",
+    "build": "npm run clean && tsc -p tsconfig.prod.json",
+    "build:schemas": "glib-compile-schemas schemas/",
+    "postbuild": "npm run build:schemas && cp metadata.json dist/ && cp -r schemas dist/",
+    "build:dist": "npm run build && cd dist && zip -qr ../find-my-mouse@herve-brun.github.io.zip .",
+    "check": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.7"
+  },
+  "dependencies": {
+    "@girs/gjs": "^4.0.0-rc.15",
+    "@girs/gnome-shell": "^46.0",
+    "@girs/cairo-1.0": "^1.0.0-4.0.0-rc.15"
+  }
+}
