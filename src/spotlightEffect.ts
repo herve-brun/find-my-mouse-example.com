@@ -58,7 +58,6 @@ export const SpotlightGLSLEffect = GObject.registerClass(
         let monitorIndex = -1;
         try {
           // GNOME 46+ API
-          // @ts-expect-error - Missing type definitions for GNOME 46+
           monitorIndex = global.display.get_monitor_index_for_rect({
             x: mx,
             y: my,
@@ -128,7 +127,6 @@ export const SpotlightGLSLEffect = GObject.registerClass(
               typeof global.display.get_n_monitors === "function"
             ) {
               // Some globals provide get_monitor or get_monitor_info variants
-              // @ts-expect-error - Missing type definitions for GNOME 46+
               let info = global.display.get_monitor(i);
               if (info && info.refresh_rate) {
                 log(
@@ -171,7 +169,6 @@ export const SpotlightGLSLEffect = GObject.registerClass(
             LogLevel.DEBUG,
           );
           debugLog(`global.display==${global.display}`);
-          // @ts-expect-error - Missing type definitions for GNOME 46+
           const mon = global.display.get_monitor(monitorIndex);
           if (mon) {
             const mode = mon.get_current_mode();
@@ -189,7 +186,6 @@ export const SpotlightGLSLEffect = GObject.registerClass(
               LogLevel.DEBUG,
             );
             const mgr = global.backend.get_monitor_manager();
-            // @ts-expect-error - Not in type definitions but exists at runtime
             const mode = mgr.get_monitors()[monitorIndex]?.get_current_mode();
             if (mode) refreshRate = mode.refresh_rate;
           } catch (e) {

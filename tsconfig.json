@@ -8,6 +8,5 @@
     "sourceMap": true,
     "forceConsistentCasingInFileNames": true
   },
-  "include": ["ambient.d.ts", "gnome-shell-extensions.d.ts"],
-  "files": ["src/extension.ts", "src/prefs.ts"]
+  "include": ["ambient.d.ts", "gnome-shell-extensions.d.ts", "src"]
 }
