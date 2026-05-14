@@ -21,7 +21,7 @@ export class SpotlightManager {
     private _spotlightVisible: boolean;
     private _idleTimeoutId: number;
 
-    constructor(settingsManager: SettingsManager, options?: any) {
+    constructor(settingsManager: SettingsManager, _options?: any) {
         this._settingsManager = settingsManager;
         this._spotlight = null;
         this._glslEffect = null;

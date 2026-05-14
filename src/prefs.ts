@@ -1,8 +1,6 @@
 import Gtk from "gi://Gtk?version=4.0";
 import Adw from "gi://Adw";
 import Gdk from "gi://Gdk?version=4.0";
-import GObject from "gi://GObject";
-import GLib from "gi://GLib";
 import Gio from "gi://Gio";
 
 import {
@@ -297,7 +295,7 @@ export default class FindMyMousePreferences extends ExtensionPreferences {
     };
 
     // Default to INFO level
-    let currentLevel = settings.get_int("log-level") || LogLevel.INFO;
+    const currentLevel = settings.get_int("log-level") || LogLevel.INFO;
     logLevelRow.selected = levelMap[currentLevel] || 2;
 
     logLevelRow.connect("notify::selected", () => {

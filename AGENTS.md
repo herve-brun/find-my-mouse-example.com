@@ -12,6 +12,9 @@
 # TypeScript type check (no emit)
 npm run check
 
+# Lint TypeScript source files
+npm run lint
+
 # Build extension (clean + compile TypeScript to dist/)
 npm run build
 

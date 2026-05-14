@@ -67,7 +67,7 @@ export class GameModeClient {
         );
     }
 
-    _onPropertiesChanged(proxy: Gio.DBusProxy, changedProperties: any, invalidatedProperties: string[]) {
+    _onPropertiesChanged(proxy: Gio.DBusProxy, changedProperties: any, _invalidatedProperties: string[]) {
         const clientCountVariant = changedProperties.lookup_value('ClientCount', null);
         if (clientCountVariant) {
             this._clientCount = clientCountVariant.unpack();
