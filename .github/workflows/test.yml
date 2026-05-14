@@ -2,9 +2,7 @@ name: Test Extension
 
 on:
   push:
-    branches: [ main, master, vibe/** ]
   pull_request:
-    branches: [ main, master ]
 
 jobs:
   validate:
@@ -28,7 +26,7 @@ jobs:
         run: python3 .github/scripts/validate_metadata.py
 
   lint:
-    name: Lint JavaScript files
+    name: TypeScript Type Check
     runs-on: ubuntu-latest
     
     steps:
@@ -38,18 +36,13 @@ jobs:
       - name: Install Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
 
-      - name: Check JavaScript syntax
-        run: |
-          for file in extension.js prefs.js; do
-            if [ -f "$file" ]; then
-              node --check "$file" || { echo "::error file=$file::Syntax error in $file"; exit 1; }
-            fi
-          done
-          grep -q "Clutter.EVENT_STOP" extension.js || echo "::warning::Missing EVENT_STOP pattern"
-          grep -q "queue_repaint" extension.js || echo "::warning::Missing queue_repaint pattern"
-          grep -q "getSettings" extension.js || echo "::warning::Missing getSettings pattern"
+      - name: Install dependencies
+        run: npm ci
+
+      - name: TypeScript type check
+        run: npx tsc --noEmit
 
   test-schema:
     name: Validate GSettings Schema

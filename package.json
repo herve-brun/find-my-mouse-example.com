@@ -10,11 +10,13 @@
     "check": "tsc --noEmit"
   },
   "devDependencies": {
+    "@commitlint/cli": "^21.0.1",
+    "@commitlint/config-conventional": "^21.0.1",
     "typescript": "^5.7"
   },
   "dependencies": {
+    "@girs/cairo-1.0": "^1.0.0-4.0.0-rc.15",
     "@girs/gjs": "^4.0.0-rc.15",
-    "@girs/gnome-shell": "^46.0",
-    "@girs/cairo-1.0": "^1.0.0-4.0.0-rc.15"
+    "@girs/gnome-shell": "^46.0"
   }
 }

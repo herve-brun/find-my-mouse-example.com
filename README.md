@@ -2,9 +2,10 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![GNOME Shell](https://img.shields.io/badge/GNOME-Shell-46+-blueviolet)](https://www.gnome.org/)
+[![CI](https://img.shields.io/github/actions/workflow/status/herve-brun/find-my-mouse-example.com/test.yml?branch=main&label=CI)](https://github.com/herve-brun/find-my-mouse-example.com/actions/workflows/test.yml)
+[![Release](https://img.shields.io/github/actions/workflow/status/herve-brun/find-my-mouse-example.com/release.yml?branch=main&label=Release)](https://github.com/herve-brun/find-my-mouse-example.com/actions/workflows/release.yml)
 [![GitHub Issues](https://img.shields.io/github/issues/herve-brun/find-my-mouse-example.com)](https://github.com/herve-brun/find-my-mouse-example.com/issues)
 [![GitHub Stars](https://img.shields.io/github/stars/herve-brun/find-my-mouse-example.com?style=social)](https://github.com/herve-brun/find-my-mouse-example.com/stargazers)
-[![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/herve-brun/find-my-mouse-example.com/close-linear-issues.yml?branch=main&label=CI)](https://github.com/herve-brun/find-my-mouse-example.com/actions)
 [![Maintenance](https://img.shields.io/badge/Maintained%3F-Yes-green.svg)](https://github.com/herve-brun/find-my-mouse-example.com/commits/main)
 [![Open Source](https://img.shields.io/badge/Open%20Source-%E2%9D%A4-red)](https://opensource.org/)
 
@@ -24,7 +25,8 @@
 
 - GNOME Shell 46 or later
 - Git
-- Meson, SassC, and gettext (for development)
+- Node.js 22+ (for TypeScript compilation)
+- npm
 
 ### 🚀 Steps
 
@@ -34,26 +36,36 @@
    cd find-my-mouse-example.com
    ```
 
-2. **Compile schemas**:
+2. **Install dependencies**:
+   ```bash
+   npm install
+   ```
+
+3. **Build the extension** (compiles TypeScript from `src/` to `dist/`):
+   ```bash
+   npm run build
+   ```
+
+4. **Compile schemas**:
    ```bash
    glib-compile-schemas schemas/
    ```
 
-3. **Create extension directory**:
+5. **Create extension directory**:
    ```bash
    mkdir -p ~/.local/share/gnome-shell/extensions/find-my-mouse@herve-brun.github.io
    ```
 
-4. **Copy files**:
+6. **Copy built files**:
    ```bash
-   cp -r * ~/.local/share/gnome-shell/extensions/find-my-mouse@herve-brun.github.io/
+   cp -r dist/* schemas/ metadata.json ~/.local/share/gnome-shell/extensions/find-my-mouse@herve-brun.github.io/
    ```
 
-5. **Restart GNOME Shell**:
+7. **Restart GNOME Shell**:
    - Press `Alt+F2`, type `r`, then press `Enter`
    - Or log out and log back in
 
-6. **Enable the extension**:
+8. **Enable the extension**:
    - Open **GNOME Extensions** app (`gnome-extensions-app`)
    - Find **"Find My Mouse"** and enable it
 
@@ -92,6 +104,7 @@
 
 - GNOME Shell 46+
 - GNOME Builder or VS Code with GJS support
+- Node.js 22+ and npm
 - Tools: `git`, `meson`, `sassc`, `gettext`
 
 ### 🚀 Setting Up
@@ -99,17 +112,57 @@
 1. **Clone the repository**:
    ```bash
    git clone https://github.com/herve-brun/find-my-mouse-example.com.git
+   cd find-my-mouse-example.com
    ```
 
-2. **Create symlink**:
+2. **Install dependencies**:
+   ```bash
+   npm install
+   ```
+
+3. **Create symlink**:
    ```bash
    ln -s $(pwd) ~/.local/share/gnome-shell/extensions/find-my-mouse@herve-brun.github.io
    ```
 
-3. **Compile schemas**:
+4. **Compile schemas**:
    ```bash
    glib-compile-schemas schemas/
    ```
+
+5. **Build TypeScript sources** (compiles `src/*.ts` to `dist/*.js`):
+   ```bash
+   npm run build
+   ```
+
+### 📦 Available npm Scripts
+
+| Script             | Description                                                     |
+|--------------------|-----------------------------------------------------------------|
+| `npm run check`    | Type-check all TypeScript sources without emitting output       |
+| `npm run build`    | Clean the `dist/` directory and compile TypeScript to `dist/`  |
+| `npm run build:dist` | Full build + create a distributable ZIP for EGO upload        |
+| `npm run build:schemas` | Compile the GSettings XML schema to binary form            |
+
+### TypeScript Architecture
+
+Source files are written in TypeScript under `src/` and compiled to JavaScript in `dist/`:
+
+```
+src/
+  extension.ts        →  dist/extension.js        (Core logic)
+  prefs.ts            →  dist/prefs.js            (Preferences UI)
+  settings.ts         →  dist/settings.js         (GSettings wrapper)
+  spotlight.ts        →  dist/spotlight.js        (Spotlight rendering)
+  spotlightEffect.ts  →  dist/spotlightEffect.js  (Glass morphism effects)
+  mouseTracking.ts    →  dist/mouseTracking.js    (Mouse tracking)
+  keybindings.ts      →  dist/keybindings.js      (Keyboard shortcuts)
+  gamemodeClient.ts   →  dist/gamemodeClient.js   (Game mode integration)
+  utils.ts            →  dist/utils.js            (Shared utilities)
+```
+
+- Edit **only** the `.ts` files in `src/` — the `dist/` directory is auto-generated and gitignored.
+- Root `.js` files are legacy and will be removed in a future phase.
 
 ### 🧪 Testing
 
@@ -188,15 +241,21 @@ We **❤️ contributions**! Follow these steps:
    ```bash
    git checkout -b feature/your-feature
    ```
-3. **Commit changes**:
-    ```bash
-    git commit -am 'feat: add amazing feature'
-    ```
-4. **Push to branch**:
+3. **Make your changes** — edit TypeScript files in `src/`, then build:
+   ```bash
+   npm run build
+   ```
+4. **Commit changes** using [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/):
+   ```bash
+   git commit -am 'feat: add amazing feature'
+   ```
+   > A local **commitlint** hook is configured via `commitlint.config.cjs` and enforces allowed types: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`, `revert`.
+
+5. **Push to branch**:
    ```bash
    git push origin feature/your-feature
    ```
-5. **Open a Pull Request**
+6. **Open a Pull Request** — PR titles are validated by CI (`lint-pr.yml`) to follow Conventional Commits.
 
 ### 📜 Code Style Guidelines
 

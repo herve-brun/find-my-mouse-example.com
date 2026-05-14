@@ -1,0 +1,51 @@
+name: Release Extension
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    name: Build and Release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: TypeScript type check
+        run: npx tsc --noEmit
+
+      - name: Build extension ZIP
+        run: npm run build:dist
+
+      - name: Validate ZIP contents
+        run: |
+          zip_file="find-my-mouse@herve-brun.github.io.zip"
+          expected_files=("metadata.json" "schemas/gschemas.compiled" "extension.js" "prefs.js")
+          echo "--- ZIP contents ---"
+          unzip -l "$zip_file"
+          echo "---"
+          for file in "${expected_files[@]}"; do
+            if unzip -l "$zip_file" | grep -q "$file"; then
+              echo "✓ $file found"
+            else
+              echo "::error::Missing $file in ZIP"
+              exit 1
+            fi
+          done
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: find-my-mouse@herve-brun.github.io.zip
+          generate_release_notes: true
