@@ -8,13 +8,15 @@
     "postbuild": "npm run build:schemas && cp metadata.json dist/ && cp -r schemas dist/",
     "build:dist": "npm run build && cd dist && zip -qr ../find-my-mouse@herve-brun.github.io.zip .",
     "lint": "eslint src/",
-    "check": "tsc --noEmit"
+    "check": "tsc --noEmit",
+    "prepare": "husky install"
   },
   "devDependencies": {
     "@commitlint/cli": "^21.0.1",
     "@commitlint/config-conventional": "^21.0.1",
     "@eslint/js": "^10.0.1",
     "eslint": "^10.3.0",
+    "husky": "^9.1.7",
     "typescript": "^5.7",
     "typescript-eslint": "^8.59.3"
   },
