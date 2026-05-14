@@ -87,7 +87,7 @@ export const SpotlightGLSLEffect = GObject.registerClass(
         let refreshRate = 0;
 
         // Try Main.layoutManager.monitors first (GNOME 3.32+)
-        let monitors =
+        const monitors =
           (Main.layoutManager && Main.layoutManager.monitors) ||
           (global.display &&
             typeof (global.display as any).get_monitors === "function" &&
@@ -103,7 +103,7 @@ export const SpotlightGLSLEffect = GObject.registerClass(
         }
 
         for (let i = 0; i < monitors.length; i++) {
-          let m = monitors[i];
+          const m = monitors[i];
 
           // Different runtimes expose refresh information differently.
           // Try common locations in order of likelihood:
@@ -127,7 +127,7 @@ export const SpotlightGLSLEffect = GObject.registerClass(
               typeof global.display.get_n_monitors === "function"
             ) {
               // Some globals provide get_monitor or get_monitor_info variants
-              let info = global.display.get_monitor(i);
+              const info = global.display.get_monitor(i);
               if (info && info.refresh_rate) {
                 log(
                   `Monitor ${i}: ${info.width}x${info.height} @ ${info.refresh_rate} Hz`,
@@ -135,7 +135,7 @@ export const SpotlightGLSLEffect = GObject.registerClass(
                 continue;
               }
             }
-          } catch (e) {
+          } catch (_e) {
             /* ignore */
           }
 
@@ -152,7 +152,7 @@ export const SpotlightGLSLEffect = GObject.registerClass(
                 continue;
               }
             }
-          } catch (e) {
+          } catch (_e) {
             /* ignore */
           }
 

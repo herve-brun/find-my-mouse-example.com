@@ -1,7 +1,6 @@
 import Shell from 'gi://Shell';
 import Meta from 'gi://Meta';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
-import Clutter from 'gi://Clutter';
 import type { SettingsManager } from './settings.js';
 import { debugLog, LogLevel } from './utils.js';
 
@@ -38,8 +37,8 @@ export class KeybindingManager {
                     }
                 );
                 debugLog(`Added keybinding: ${shortcut}`, LogLevel.INFO);
-            } catch (e) {
-                    debugLog(`Failed to add keybinding: ${e}`, LogLevel.ERROR);
+            } catch (err) {
+                    debugLog(`Failed to add keybinding: ${err}`, LogLevel.ERROR);
             }
         }
     }
@@ -47,7 +46,7 @@ export class KeybindingManager {
     remove() {
         try {
             Main.wm.removeKeybinding('find-my-mouse-activation');
-        } catch (e) {
+        } catch (_e) {
             // Ignore errors if keybinding wasn't set
         }
     }
