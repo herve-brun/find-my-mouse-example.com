@@ -4,11 +4,24 @@
 - GNOME Shell extension for GNOME 46-50 (Wayland)
 - Replicates Microsoft PowerToys Find My Mouse spotlight feature
 - Uses St.DrawingArea with Cairo for spotlight rendering
+- TypeScript source in `src/*.ts`, compiled to `dist/*.js`
 - GSettings schema at `schemas/org.gnome.shell.extensions.find-my-mouse.gschema.xml`
 
 ## Developer Commands
 ```bash
+# TypeScript type check (no emit)
+npm run check
+
+# Build extension (clean + compile TypeScript to dist/)
+npm run build
+
+# Build full distribution ZIP for EGO upload
+npm run build:dist
+
 # Compile GSettings schema (required after schema changes)
+npm run build:schemas
+
+# Or manually:
 glib-compile-schemas schemas/
 
 # Test in nested Wayland session (no shell restart needed)
@@ -35,18 +48,60 @@ journalctl --user -f | grep "Find My Mouse"
 ## Commit Message Convention
 Commits must adhere to [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) rules.
 
+### commitlint (Local Validation)
+A local commit message hook is configured via `commitlint.config.cjs`:
+- Uses `@commitlint/cli` and `@commitlint/config-conventional` (devDependencies)
+- Enforces allowed types: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`, `revert`
+
 ## About Dialog Rules
 - **Release Notes**: Whenever a new version is created, the About dialog's release notes MUST be updated before release.
 - **Year**: If the current year does not match the year in the About dialog, update the latter.
 
 ## Architecture
-- `extension.js` - Core logic: spotlight rendering, mouse/keyboard tracking, Cairo painting
-- `prefs.js` - Adwaita/GTK4 preferences UI with separate pages for General, Appearance, Timing, and Shake Detection settings
+```
+src/*.ts               →  dist/*.js        (TypeScript → compiled output)
+  extension.ts         →  extension.js      (Core logic: spotlight rendering, mouse/keyboard tracking, Cairo painting)
+  prefs.ts             →  prefs.js          (Adwaita/GTK4 preferences UI)
+  settings.ts          →  settings.js       (GSettings wrapper and schema access)
+  spotlight.ts         →  spotlight.js      (Spotlight rendering logic)
+  spotlightEffect.ts   →  spotlightEffect.js (Glass morphism effects)
+  mouseTracking.ts     →  mouseTracking.js  (Mouse movement and shake detection)
+  keybindings.ts       →  keybindings.js    (Keyboard shortcut handling)
+  gamemodeClient.ts    →  gamemodeClient.js (Game mode integration)
+  utils.ts             →  utils.js          (Shared utilities)
+```
 - `metadata.json` - Extension metadata (uuid, supported GNOME versions)
 - `schemas/` - GSettings schema (XML + compiled)
+- `tsconfig.json` - TypeScript config (development)
+- `tsconfig.prod.json` - TypeScript config (production build to `dist/`)
+- `ambient.d.ts` - TypeScript ambient type declarations
+- `gnome-shell-extensions.d.ts` - GNOME Shell extension type declarations
+- `dist/` - Compiled output (gitignored)
+
+## CI/CD Pipelines
+
+### `test.yml` — Test Extension
+Runs on every push and pull request:
+- **Validate Metadata and Schema**: Compiles GSettings schema, validates `metadata.json`
+- **TypeScript Type Check**: Runs `tsc --noEmit` to check for type errors
+- **Validate GSettings Schema**: XML validation via `xmllint`
+- **Check Commit Messages**: Validates recent commits follow Conventional Commits
+
+### `release.yml` — Release Extension
+Triggers on tag `v*`:
+- Runs `tsc --noEmit` type check
+- Builds extension ZIP via `npm run build:dist`
+- Validates ZIP contents (`metadata.json`, `schemas/gschemas.compiled`, `extension.js`, `prefs.js`)
+- Creates GitHub Release with generated release notes
+
+### `lint-pr.yml` — Lint PR
+Runs on PR events (opened, edited, synchronize, reopened):
+- Validates PR title follows Conventional Commits
+- Uses `amannn/action-semantic-pull-request` action
+- Supports bypass via `ignore-semantic-pull-request` label
 
 ## Critical Gotchas
-- **Always compile schema** after modifying `schemas/*.xml`: `glib-compile-schemas schemas/`
+- **Always compile schema** after modifying `schemas/*.xml`: `glib-compile-schemas schemas/` or `npm run build:schemas`
 - **Cairo context** obtained via `area.get_context()` in `repaint` signal handler
 - **Use `queue_repaint()`** not `queue_redraw()` for St.DrawingArea
 - **Extension runs in Wayland** - modifier key (Ctrl) double-press unreliable; custom keybinding preferred
@@ -55,6 +110,7 @@ Commits must adhere to [Conventional Commits](https://www.conventionalcommits.or
 - **Debugging**: Use `journalctl --user --no-pager | grep "Find My Mouse"` for logs
 - **Spotlight visibility**: Tracked via `_spotlightVisible` boolean
 - **Glass morphism effects**: Requires GNOME Shell ≥ 46 and OpenGL ES 3.0 support. Fallback to solid colors if unavailable.
+- **TypeScript source**: Edit `src/*.ts`, compiled output goes to `dist/`. Root `.js` files are legacy (will be removed in Phase 4).
 
 ## Default Values (PowerToys-matched)
 - Background: `#00000080` (black 50% opacity)
