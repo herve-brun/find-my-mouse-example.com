@@ -54,6 +54,7 @@ Commits must adhere to [Conventional Commits](https://www.conventionalcommits.or
 - **XML escaping** in schema defaults: use `&lt;` and `&gt;` for `<` and `>` in keybindings
 - **Debugging**: Use `journalctl --user --no-pager | grep "Find My Mouse"` for logs
 - **Spotlight visibility**: Tracked via `_spotlightVisible` boolean
+- **Glass morphism effects**: Requires GNOME Shell ≥ 46 and OpenGL ES 3.0 support. Fallback to solid colors if unavailable.
 
 ## Default Values (PowerToys-matched)
 - Background: `#00000080` (black 50% opacity)
