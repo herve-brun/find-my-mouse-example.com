@@ -162,7 +162,7 @@ src/
 ```
 
 - Edit **only** the `.ts` files in `src/` — the `dist/` directory is auto-generated and gitignored.
-- Root `.js` files are legacy and will be removed in a future phase.
+- Root `.js` files have been removed — all development is in TypeScript.
 
 ### 🧪 Testing
 
