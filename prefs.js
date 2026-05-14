@@ -3,6 +3,7 @@ import Adw from "gi://Adw";
 import Gdk from "gi://Gdk?version=4.0";
 import GObject from "gi://GObject";
 import GLib from "gi://GLib";
+import Gio from "gi://Gio";
 
 import {
   ExtensionPreferences,
@@ -223,6 +224,19 @@ export default class FindMyMousePreferences extends ExtensionPreferences {
     });
     activationGroup.add(clickButtonRow);
 
+    // Game Mode — prevent spotlight activation during Game Mode
+    const gamemodeRow = new Adw.SwitchRow({
+      title: _("Disable During Game Mode"),
+      subtitle: _("Keep spotlight off while Game Mode is active"),
+      active: settings.get_boolean("do-not-activate-gamemode"),
+    });
+
+    gamemodeRow.connect("notify::active", () => {
+      settings.set_boolean("do-not-activate-gamemode", gamemodeRow.active);
+      debugLog(`Updated do-not-activate-gamemode setting: ${gamemodeRow.active}`, LogLevel.INFO);
+    });
+    activationGroup.add(gamemodeRow);
+
     const multiMonitorGroup = new Adw.PreferencesGroup({
       title: _("Multi-Monitor"),
       description: _("Settings for multi-monitor setups"),
@@ -303,6 +317,35 @@ export default class FindMyMousePreferences extends ExtensionPreferences {
 
     logGroup.add(logLevelRow);
 
+    // Reset to PowerToys defaults
+    const generalResetGroup = new Adw.PreferencesGroup();
+    generalPage.add(generalResetGroup);
+    const generalResetRow = new Adw.ActionRow({
+      title: _("Reset General Settings to Defaults"),
+      subtitle: _("Restore PowerToys-matched values"),
+    });
+    const generalResetButton = new Gtk.Button({
+      label: _("Reset"),
+      valign: Gtk.Align.CENTER,
+    });
+    generalResetButton.add_css_class("destructive-action");
+    generalResetButton.connect("clicked", () => {
+      settings.set_string("activation-method", "shake");
+      settings.set_string("find-my-mouse-activation", "<Super>f");
+      settings.set_int("click-activation-button", 1);
+      settings.set_boolean("show-on-all-monitors", false);
+      settings.set_boolean("do-not-activate-gamemode", true);
+      gamemodeRow.active = true;
+      settings.set_int("log-level", 2);
+      activationRow.selected = 1;
+      shortcutLabel.set_accelerator("<Super>f");
+      clickButtonRow.selected = 0;
+      allMonitorsRow.active = false;
+      logLevelRow.selected = 2;
+    });
+    generalResetRow.add_suffix(generalResetButton);
+    generalResetGroup.add(generalResetRow);
+
     // Appearance page
     const appearancePage = new Adw.PreferencesPage({
       title: _("Appearance"),
@@ -334,24 +377,6 @@ export default class FindMyMousePreferences extends ExtensionPreferences {
     bgColorRow.add_suffix(bgColorButton);
     appearanceGroup.add(bgColorRow);
 
-    const spotColorRow = new Adw.ActionRow({
-      title: _("Spotlight Color"),
-      subtitle: _("Color of the circle that centers on the cursor"),
-    });
-    const spotColorButton = new Gtk.ColorButton({
-      rgba: this._parseColor(
-        settings.get_string("spotlight-color") || "#FFFFFF80",
-      ),
-      use_alpha: true,
-    });
-    spotColorButton.connect("color-set", () => {
-      const rgba = spotColorButton.get_rgba();
-      const color = this._rgbaToHex(rgba);
-      settings.set_string("spotlight-color", color);
-    });
-    spotColorRow.add_suffix(spotColorButton);
-    appearanceGroup.add(spotColorRow);
-
     const radiusRow = new Adw.SpinRow({
       title: _("Spotlight Radius (px)"),
       subtitle: _("Radius of the circle (PowerToys default: 100)"),
@@ -382,15 +407,74 @@ export default class FindMyMousePreferences extends ExtensionPreferences {
     });
     appearanceGroup.add(zoomRow);
 
-    const gamemodeRow = new Adw.SwitchRow({
-      title: _("Do not activate in Game Mode"),
-      subtitle: _("Prevents spotlight when Game Mode is on"),
-      active: settings.get_boolean("do-not-activate-gamemode"),
+
+
+    // Ring group
+    const ringGroup = new Adw.PreferencesGroup({
+      title: _("Ring"),
+      description: _("Configure the spotlight ring border"),
     });
-    gamemodeRow.connect("notify::active", () => {
-      settings.set_boolean("do-not-activate-gamemode", gamemodeRow.active);
+    appearancePage.add(ringGroup);
+
+    const spotColorRow = new Adw.ActionRow({
+      title: _("Ring Color"),
+      subtitle: _("Color of the ring that outlines the spotlight circle"),
     });
-    appearanceGroup.add(gamemodeRow);
+    const spotColorButton = new Gtk.ColorButton({
+      rgba: this._parseColor(
+        settings.get_string("spotlight-color") || "#FFFFFF80",
+      ),
+      use_alpha: true,
+    });
+    spotColorButton.connect("color-set", () => {
+      const rgba = spotColorButton.get_rgba();
+      const color = this._rgbaToHex(rgba);
+      settings.set_string("spotlight-color", color);
+    });
+    spotColorRow.add_suffix(spotColorButton);
+    ringGroup.add(spotColorRow);
+
+    const ringWidthRow = new Adw.SpinRow({
+      title: _("Ring Width (px)"),
+      subtitle: _("Thickness of the spotlight border circle"),
+      adjustment: new Gtk.Adjustment({
+        lower: 0,
+        upper: 20,
+        step_increment: 1,
+        value: settings.get_int("spotlight-ring-width") || 2,
+      }),
+    });
+    ringWidthRow.connect("notify::value", () => {
+      settings.set_int("spotlight-ring-width", ringWidthRow.value);
+    });
+    ringGroup.add(ringWidthRow);
+
+    // Reset to PowerToys defaults
+    const appearanceResetGroup = new Adw.PreferencesGroup();
+    appearancePage.add(appearanceResetGroup);
+    const appearanceResetRow = new Adw.ActionRow({
+      title: _("Reset Appearance Settings to Defaults"),
+      subtitle: _("Restore PowerToys-matched values"),
+    });
+    const appearanceResetButton = new Gtk.Button({
+      label: _("Reset"),
+      valign: Gtk.Align.CENTER,
+    });
+    appearanceResetButton.add_css_class("destructive-action");
+    appearanceResetButton.connect("clicked", () => {
+      settings.set_string("background-color", "#00000080");
+      settings.set_string("spotlight-color", "#FFFFFF80");
+      settings.set_int("spotlight-radius", 100);
+      settings.set_double("spotlight-zoom", 9.0);
+      settings.set_int("spotlight-ring-width", 2);
+      bgColorButton.set_rgba(this._parseColor("#00000080"));
+      spotColorButton.set_rgba(this._parseColor("#FFFFFF80"));
+      radiusRow.value = 100;
+      zoomRow.value = 9.0;
+      ringWidthRow.value = 2;
+    });
+    appearanceResetRow.add_suffix(appearanceResetButton);
+    appearanceResetGroup.add(appearanceResetRow);
 
     // Timing page
     const timingPage = new Adw.PreferencesPage({
@@ -436,6 +520,27 @@ export default class FindMyMousePreferences extends ExtensionPreferences {
       settings.set_int("animation-duration", durationRow.value);
     });
     timingGroup.add(durationRow);
+
+    // Reset to PowerToys defaults
+    const timingResetGroup = new Adw.PreferencesGroup();
+    timingPage.add(timingResetGroup);
+    const timingResetRow = new Adw.ActionRow({
+      title: _("Reset Timing Settings to Defaults"),
+      subtitle: _("Restore PowerToys-matched values"),
+    });
+    const timingResetButton = new Gtk.Button({
+      label: _("Reset"),
+      valign: Gtk.Align.CENTER,
+    });
+    timingResetButton.add_css_class("destructive-action");
+    timingResetButton.connect("clicked", () => {
+      settings.set_int("idle-timeout", 1000);
+      settings.set_int("animation-duration", 500);
+      idleRow.value = 1000;
+      durationRow.value = 500;
+    });
+    timingResetRow.add_suffix(timingResetButton);
+    timingResetGroup.add(timingResetRow);
 
     // Shake Detection page
     const shakePage = new Adw.PreferencesPage({
@@ -483,6 +588,139 @@ export default class FindMyMousePreferences extends ExtensionPreferences {
       settings.set_int("shake-sensitivity", sensitivityRow.value);
     });
     shakeGroup.add(sensitivityRow);
+
+    // Reset to PowerToys defaults
+    const shakeResetGroup = new Adw.PreferencesGroup();
+    shakePage.add(shakeResetGroup);
+    const shakeResetRow = new Adw.ActionRow({
+      title: _("Reset Shake Detection Settings to Defaults"),
+      subtitle: _("Restore PowerToys-matched values"),
+    });
+    const shakeResetButton = new Gtk.Button({
+      label: _("Reset"),
+      valign: Gtk.Align.CENTER,
+    });
+    shakeResetButton.add_css_class("destructive-action");
+    shakeResetButton.connect("clicked", () => {
+      settings.set_int("shake-interval", 1000);
+      settings.set_int("shake-sensitivity", 400);
+      intervalRow.value = 1000;
+      sensitivityRow.value = 400;
+    });
+    shakeResetRow.add_suffix(shakeResetButton);
+    shakeResetGroup.add(shakeResetRow);
+
+    // Glass Morphism Effects page
+    const glassMorphismPage = new Adw.PreferencesPage({
+      title: _("Glass Morphism Effects"),
+      icon_name: "preferences-desktop-display-symbolic",
+    });
+    window.add(glassMorphismPage);
+
+    const glassMorphismGroup = new Adw.PreferencesGroup({
+      title: _("Glass Morphism Effects"),
+      description: _("Configure glass morphism visual effects"),
+    });
+    glassMorphismPage.add(glassMorphismGroup);
+
+    // Enable Glass Morphism Toggle
+    const glassMorphismRow = new Adw.SwitchRow({
+      title: _("Enable Glass Morphism"),
+    });
+    settings.bind('enable-glass-morphism',
+                 glassMorphismRow, 'active',
+                 Gio.SettingsBindFlags.DEFAULT);
+    glassMorphismGroup.add(glassMorphismRow);
+
+    // Blur Radius Slider
+    const blurRow = new Adw.SpinRow({
+      title: _("Blur Radius"),
+      adjustment: new Gtk.Adjustment({
+        lower: 0,
+        upper: 50,
+        step_increment: 1,
+        value: settings.get_int("blur-radius") || 10,
+      }),
+    });
+    settings.bind('blur-radius',
+                 blurRow, 'value',
+                 Gio.SettingsBindFlags.DEFAULT);
+    glassMorphismGroup.add(blurRow);
+
+    // Glass Opacity Slider
+    const opacityRow = new Adw.SpinRow({
+      title: _("Glass Opacity"),
+      adjustment: new Gtk.Adjustment({
+        lower: 0.1,
+        upper: 1.0,
+        step_increment: 0.05,
+        value: settings.get_double("glass-opacity") || 0.5,
+      }),
+    });
+    settings.bind('glass-opacity',
+                 opacityRow, 'value',
+                 Gio.SettingsBindFlags.DEFAULT);
+    glassMorphismGroup.add(opacityRow);
+
+    // Glow Color Picker
+    const glowColorRow = new Adw.ActionRow({
+      title: _("Glow Color"),
+      subtitle: _("Color of the glow effect around the spotlight"),
+    });
+    const glowColorButton = new Gtk.ColorButton({
+      rgba: this._parseColor(
+        settings.get_string("glow-color") || "#FFFFFF1A", // rgba(255, 255, 255, 0.1)
+      ),
+      use_alpha: true,
+    });
+    glowColorButton.connect("color-set", () => {
+      const rgba = glowColorButton.get_rgba();
+      const color = this._rgbaToHex(rgba);
+      settings.set_string("glow-color", color);
+    });
+    glowColorRow.add_suffix(glowColorButton);
+    glassMorphismGroup.add(glowColorRow);
+
+    // Glass Tint Color Picker
+    const glassTintRow = new Adw.ActionRow({
+      title: _("Glass Tint"),
+      subtitle: _("Tint color for the frosted glass effect"),
+    });
+    const glassTintButton = new Gtk.ColorButton({
+      rgba: this._parseColor(
+        settings.get_string("glass-tint") || "#FFFFFF1A",
+      ),
+      use_alpha: true,
+    });
+    glassTintButton.connect("color-set", () => {
+      const rgba = glassTintButton.get_rgba();
+      const color = this._rgbaToHex(rgba);
+      settings.set_string("glass-tint", color);
+    });
+    glassTintRow.add_suffix(glassTintButton);
+    glassMorphismGroup.add(glassTintRow);
+
+    // Reset to PowerToys-matched defaults
+    const resetRow = new Adw.ActionRow({
+      title: _("Reset to Defaults"),
+      subtitle: _("Restore PowerToys-matched default values"),
+    });
+    const resetButton = new Gtk.Button({
+      label: _("Reset"),
+      valign: Gtk.Align.CENTER,
+    });
+    resetButton.add_css_class("destructive-action");
+    resetButton.connect("clicked", () => {
+      settings.set_boolean("enable-glass-morphism", false);
+      settings.set_double("blur-radius", 5.0);
+      settings.set_double("glass-opacity", 0.3);
+      settings.set_string("glow-color", "#FFFFFF1A");
+      settings.set_string("glass-tint", "#FFFFFF1A");
+      glowColorButton.set_rgba(this._parseColor("#FFFFFF1A"));
+      glassTintButton.set_rgba(this._parseColor("#FFFFFF1A"));
+    });
+    resetRow.add_suffix(resetButton);
+    glassMorphismGroup.add(resetRow);
   }
 
   _showAboutDialog(parent) {

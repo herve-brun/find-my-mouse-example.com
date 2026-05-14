@@ -26,11 +26,11 @@
       <summary>Shake sensitivity factor</summary>
       <description>How much farther the pointer must travel than the diagonal of movement rectangle (PowerToys default: 400% = 4x)</description>
     </key>
-    <key name="do-not-activate-gamemode" type="b">
-      <default>true</default>
-      <summary>Do not activate in Game Mode</summary>
-      <description>Prevents spotlight when Game Mode is on</description>
-    </key>
+     <key name="do-not-activate-gamemode" type="b">
+       <default>true</default>
+       <summary>Do not activate in Game Mode</summary>
+       <description>Prevents spotlight when Game Mode is on</description>
+     </key>
     <key name="background-color" type="s">
       <default>'#00000080'</default>
       <summary>Background color</summary>
@@ -38,8 +38,10 @@
     </key>
     <key name="spotlight-color" type="s">
       <default>'#FFFFFF80'</default>
-      <summary>Spotlight color</summary>
-      <description>Color of the circle that centers on the cursor (PowerToys default: #FFFFFF80 = white 50%)</description>
+      <summary>Ring Color</summary>
+      <description>
+        Color of the ring at the edge of the spotlight area.
+      </description>
     </key>
     <key name="spotlight-radius" type="i">
       <default>100</default>
@@ -71,10 +73,43 @@
       <summary>Log level</summary>
       <description>Maximum log level to display (0=Error, 1=Warn, 2=Info, 3=Debug)</description>
     </key>
-    <key name="show-on-all-monitors" type="b">
-      <default>false</default>
-      <summary>Show on all monitors</summary>
-      <description>When enabled, the spotlight will cover all monitors instead of just the current one</description>
-    </key>
-  </schema>
+     <key name="show-on-all-monitors" type="b">
+       <default>false</default>
+       <summary>Show on all monitors</summary>
+       <description>When enabled, the spotlight will cover all monitors instead of just the current one</description>
+     </key>
+      <key name="enable-glass-morphism" type="b">
+        <default>false</default>
+       <summary>Enable Glass Morphism Effects</summary>
+       <description>Use glass morphism styling for the spotlight</description>
+     </key>
+      <key name="blur-radius" type="d">
+        <default>5.0</default>
+       <range min="0" max="50"/>
+       <summary>Blur Radius</summary>
+       <description>Amount of blur applied to the glass effect</description>
+     </key>
+      <key name="glass-opacity" type="d">
+        <default>0.3</default>
+       <range min="0.1" max="1.0"/>
+       <summary>Glass Opacity</summary>
+       <description>Opacity level of the glass effect</description>
+     </key>
+      <key name="glow-color" type="s">
+         <default>'rgba(255,255,255,0.1)'</default>
+         <summary>Glow Color</summary>
+        <description>Color of the glow effect around the spotlight</description>
+      </key>
+      <key name="glass-tint" type="s">
+         <default>'#FFFFFF1A'</default>
+         <summary>Glass Tint</summary>
+        <description>Tint color blended into the dimmed overlay outside the spotlight</description>
+      </key>
+      <key name="spotlight-ring-width" type="i">
+        <default>2</default>
+        <range min="0" max="20"/>
+        <summary>Spotlight Ring Width</summary>
+        <description>Width of the spotlight ring border in pixels</description>
+      </key>
+    </schema>
 </schemalist>

@@ -1,4 +1,4 @@
-import { parseColor } from './utils.js';
+import { parseColor, debugLog, LogLevel } from './utils.js';
 
 export class SettingsManager {
     constructor(settings) {
@@ -14,7 +14,20 @@ export class SettingsManager {
         this._cachedShakeInterval = 1000;
         this._cachedShakeSensitivity = 400;
         this._cachedActivationMethod = 'shake';
+        this._cachedBlurRadius = 5.0;
+        this._cachedGlassOpacity = 0.3;
+        this._cachedGlowColorNormalized = [1, 1, 1, 0.1];
+        this._cachedGlassTintNormalized = [1, 1, 1, 0.1];
+        this._cachedGlassMorphismEnabled = false;
+        this._cachedRingWidth = 2;
+        this._cachedDoNotActivateInGameMode = true;
         this.cacheSettings();
+        
+        // Update cache when GSettings key changes
+        this._settings.connect('changed::do-not-activate-gamemode', () => {
+            this._cachedDoNotActivateInGameMode = this._settings.get_boolean('do-not-activate-gamemode');
+            debugLog(`Updated cachedDoNotActivateInGameMode: ${this._cachedDoNotActivateInGameMode}`, LogLevel.INFO);
+        });
     }
 
     cacheSettings() {
@@ -47,6 +60,21 @@ export class SettingsManager {
         this._cachedShakeSensitivity = this._settings.get_int('shake-sensitivity') || 400;
         this._cachedLogLevel = this._settings.get_int('log-level') || 2;
         this._cachedActivationMethod = this._settings.get_string('activation-method') || 'shake';
+        this._cachedBlurRadius = this._settings.get_double('blur-radius') || 5.0;
+        this._cachedGlassOpacity = this._settings.get_double('glass-opacity') || 0.3;
+        const glowStr = this._settings.get_string('glow-color') || 'rgba(255,255,255,0.1)';
+        this._cachedGlowColorNormalized = this._parseRgbaString(glowStr);
+        const tintStr = this._settings.get_string('glass-tint') || '#FFFFFF1A';
+        const tintColor = parseColor(tintStr);
+        this._cachedGlassTintNormalized = [
+            tintColor[0] / 255,
+            tintColor[1] / 255,
+            tintColor[2] / 255,
+            tintColor[3] / 255
+        ];
+        this._cachedGlassMorphismEnabled = this._settings.get_boolean('enable-glass-morphism');
+        this._cachedDoNotActivateInGameMode = this._settings.get_boolean('do-not-activate-gamemode');
+        this._cachedRingWidth = this._settings.get_int('spotlight-ring-width') || 2;
     }
 
     get cachedActivationMethod() { return this._cachedActivationMethod; }
@@ -59,5 +87,27 @@ export class SettingsManager {
     get cachedIdleTimeout() { return this._cachedIdleTimeout; }
     get cachedShakeInterval() { return this._cachedShakeInterval; }
     get cachedShakeSensitivity() { return this._cachedShakeSensitivity; }
+    get cachedBlurRadius() { return this._cachedBlurRadius; }
+    get cachedGlassOpacity() { return this._cachedGlassOpacity; }
+    get cachedGlowColorNormalized() { return this._cachedGlowColorNormalized; }
+    get cachedGlassTintNormalized() { return this._cachedGlassTintNormalized; }
+    get cachedGlassMorphismEnabled() { return this._cachedGlassMorphismEnabled; }
+    get cachedDoNotActivateInGameMode() { return this._cachedDoNotActivateInGameMode; }
+    get cachedRingWidth() { return this._cachedRingWidth; }
     get settings() { return this._settings; }
+
+    _parseRgbaString(str) {
+        if (!str) return [1, 1, 1, 0.1];
+        const m = str.match(/rgba\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*([\d.]+)\s*\)/);
+        if (m) {
+            return [
+                parseInt(m[1]) / 255,
+                parseInt(m[2]) / 255,
+                parseInt(m[3]) / 255,
+                parseFloat(m[4])
+            ];
+        }
+        const c = parseColor(str);
+        return [c[0] / 255, c[1] / 255, c[2] / 255, c[3] / 255];
+    }
 }

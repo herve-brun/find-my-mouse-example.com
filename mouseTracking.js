@@ -14,7 +14,7 @@ export class MouseTracker {
     async setup() {
         const { getPointerWatcher } = await import('resource:///org/gnome/shell/ui/pointerWatcher.js');
         const watcher = getPointerWatcher();
-        this._pointerWatch = watcher.addWatch(50, (x, y) => {
+        this._pointerWatch = watcher.addWatch(16, (x, y) => {
             this._handleMouseMovement(x, y);
         });
         debugLog('Using pointerWatcher for mouse tracking', LogLevel.INFO);
@@ -28,8 +28,8 @@ export class MouseTracker {
     }
 
     handleMouseMovement(x, y) {
-        this._lastX = x;
-        this._lastY = y;
+        // Don't overwrite _lastX/_lastY here — detectShake() sets them when called,
+        // and the extension's callback uses its own tracking for movement detection.
         this._handleMouseMovement(x, y);
     }
 
