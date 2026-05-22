@@ -121,3 +121,14 @@ Runs on PR events (opened, edited, synchronize, reopened):
 - Radius: 100px, Zoom: 9.0x, Animation: 500ms
 - Idle timeout: 1000ms (hide after mouse stops)
 - Shake: 1000px distance, 400% sensitivity, 1000ms interval
+
+## Repository Map
+
+A full codemap is available at `codemap.md` in the project root.
+
+Before working on any task, read `codemap.md` to understand:
+- Project architecture and entry points
+- Directory responsibilities and design patterns
+- Data flow and integration points between modules
+
+For deep work on a specific folder, also read that folder's `codemap.md`.
