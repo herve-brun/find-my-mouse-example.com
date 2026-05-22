@@ -66,8 +66,7 @@ src/*.ts               →  dist/*.js        (TypeScript → compiled output)
   extension.ts         →  extension.js      (Core logic: spotlight rendering, mouse tracking, Cairo painting)
   prefs.ts             →  prefs.js          (Adwaita/GTK4 preferences UI)
   settings.ts          →  settings.js       (GSettings wrapper and schema access)
-  spotlight.ts         →  spotlight.js      (Spotlight rendering logic)
-  spotlightEffect.ts   →  spotlightEffect.js (Glass morphism effects)
+  spotlight.ts         →  spotlight.js      (Spotlight rendering with Cairo + zoom animation)
   mouseTracking.ts     →  mouseTracking.js  (Mouse movement and shake detection)
   gamemodeClient.ts    →  gamemodeClient.js (Game mode integration)
   utils.ts             →  utils.js          (Shared utilities)
@@ -110,7 +109,7 @@ Runs on PR events (opened, edited, synchronize, reopened):
 - **No shell restart** - user tests via nested session
 - **Debugging**: Use `journalctl --user --no-pager | grep "Find My Mouse"` for logs
 - **Spotlight visibility**: Tracked via `_spotlightVisible` boolean
-- **Glass morphism effects**: Requires GNOME Shell ≥ 46 and OpenGL ES 3.0 support. Fallback to solid colors if unavailable.
+- **Zoom animation**: Uses `Clutter.Timeline` with `easeOutQuad` easing. Start zoom and animation duration are configurable in preferences.
 - **TypeScript source**: Edit `src/*.ts`, compiled output goes to `dist/`. Root `.js` files have been removed — all development is in TypeScript.
 
 ## Default Values (PowerToys-matched)

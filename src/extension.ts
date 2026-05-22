@@ -14,19 +14,10 @@ export default class FindMyMouseExtension extends Extension {
     private _settingsChangedId: number;
     private _alwaysVisibleHandler: number;
     private _logLevelChangedId: number;
-    private _glassMorphismChangedId: number;
-    private _blurRadiusChangedId: number;
-    private _glassOpacityChangedId: number;
-    private _glowColorChangedId: number;
-    private _glassTintChangedId: number;
     private _ringWidthChangedId: number;
     private _lastMoveX: number;
     private _lastMoveY: number;
     private _gameModeAvailable: boolean;
-    private _glassMorphismEnabled!: boolean;
-    private _blurRadius!: number;
-    private _glassOpacity!: number;
-    private _glowColor!: string;
     constructor(metadata: any) {
         super(metadata);
         this._settingsManager = null;
@@ -37,11 +28,6 @@ export default class FindMyMouseExtension extends Extension {
         this._settingsChangedId = 0;
         this._alwaysVisibleHandler = 0;
         this._logLevelChangedId = 0;
-        this._glassMorphismChangedId = 0;
-        this._blurRadiusChangedId = 0;
-        this._glassOpacityChangedId = 0;
-        this._glowColorChangedId = 0;
-        this._glassTintChangedId = 0;
         this._ringWidthChangedId = 0;
         this._lastMoveX = -1;
         this._lastMoveY = -1;
@@ -82,53 +68,14 @@ export default class FindMyMouseExtension extends Extension {
             }
         });
         
-        this._glassMorphismEnabled = settings.get_boolean('enable-glass-morphism');
-        this._blurRadius = settings.get_double('blur-radius');
-        this._glassOpacity = settings.get_int('glass-opacity') / 100;
-        this._glowColor = settings.get_string('glow-color');
-        
-
-
-        
-        // Connect to glass morphism settings changes
-        this._glassMorphismChangedId = settings.connect('changed::enable-glass-morphism', () => {
-            this._glassMorphismEnabled = settings.get_boolean('enable-glass-morphism');
-            this._settingsManager.cacheSettings();
-            this._spotlightManager.queueRepaint();
-        });
-        this._blurRadiusChangedId = settings.connect('changed::blur-radius', () => {
-            this._blurRadius = settings.get_double('blur-radius');
-            this._settingsManager.cacheSettings();
-            this._spotlightManager.queueRepaint();
-        });
-        this._glassOpacityChangedId = settings.connect('changed::glass-opacity', () => {
-            this._glassOpacity = settings.get_int('glass-opacity') / 100;
-            this._settingsManager.cacheSettings();
-            this._spotlightManager.queueRepaint();
-        });
-        this._glowColorChangedId = settings.connect('changed::glow-color', () => {
-            this._glowColor = settings.get_string('glow-color');
-            this._settingsManager.cacheSettings();
-            this._spotlightManager.queueRepaint();
-        });
-        this._glassTintChangedId = settings.connect('changed::glass-tint', () => {
-            this._settingsManager.cacheSettings();
-            this._spotlightManager.queueRepaint();
-        });
         this._ringWidthChangedId = settings.connect('changed::spotlight-ring-width', () => {
             this._settingsManager.cacheSettings();
             this._spotlightManager.queueRepaint();
         });
         
-         this._settingsManager = new SettingsManager(settings);
+        this._settingsManager = new SettingsManager(settings);
 
-
-        this._spotlightManager = new SpotlightManager(this._settingsManager, {
-            glassMorphismEnabled: this._glassMorphismEnabled,
-            blurRadius: this._blurRadius,
-            glassOpacity: this._glassOpacity,
-            glowColor: this._glowColor,
-        });
+        this._spotlightManager = new SpotlightManager(this._settingsManager);
         
         // Re-check GameMode state now that managers are initialized
         // (the state change handler may have fired before they were ready)
@@ -140,6 +87,7 @@ export default class FindMyMouseExtension extends Extension {
 
         this._settingsChangedId = this._settingsManager.settings.connect('changed', () => {
             this._settingsManager.cacheSettings();
+            this._spotlightManager?.queueRepaint();
         });
 
         await this._mouseTracker.setup();
@@ -155,26 +103,6 @@ export default class FindMyMouseExtension extends Extension {
             this._settingsManager.settings.disconnect(this._settingsChangedId);
             this._settingsChangedId = 0;
         }
-        if (this._glassMorphismChangedId) {
-            this._settingsManager.settings.disconnect(this._glassMorphismChangedId);
-            this._glassMorphismChangedId = 0;
-        }
-        if (this._blurRadiusChangedId) {
-            this._settingsManager.settings.disconnect(this._blurRadiusChangedId);
-            this._blurRadiusChangedId = 0;
-        }
-        if (this._glassOpacityChangedId) {
-            this._settingsManager.settings.disconnect(this._glassOpacityChangedId);
-            this._glassOpacityChangedId = 0;
-        }
-        if (this._glowColorChangedId) {
-            this._settingsManager.settings.disconnect(this._glowColorChangedId);
-            this._glowColorChangedId = 0;
-        }
-        if (this._glassTintChangedId) {
-            this._settingsManager.settings.disconnect(this._glassTintChangedId);
-            this._glassTintChangedId = 0;
-        }
         if (this._ringWidthChangedId) {
             this._settingsManager.settings.disconnect(this._ringWidthChangedId);
             this._ringWidthChangedId = 0;
@@ -184,7 +112,7 @@ export default class FindMyMouseExtension extends Extension {
             this._logLevelChangedId = 0;
         }
 
-        this._spotlightManager.hide();
+        this._spotlightManager.destroyImmediately();
         this._settingsManager = null;
         this._spotlightManager = null;
         this._mouseTracker = null;

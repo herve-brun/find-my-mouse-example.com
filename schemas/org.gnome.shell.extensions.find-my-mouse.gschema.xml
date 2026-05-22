@@ -68,34 +68,7 @@
        <summary>Show on all monitors</summary>
        <description>When enabled, the spotlight will cover all monitors instead of just the current one</description>
      </key>
-      <key name="enable-glass-morphism" type="b">
-        <default>false</default>
-       <summary>Enable Glass Morphism Effects</summary>
-       <description>Use glass morphism styling for the spotlight</description>
-     </key>
-      <key name="blur-radius" type="d">
-        <default>5.0</default>
-       <range min="0" max="50"/>
-       <summary>Blur Radius</summary>
-       <description>Amount of blur applied to the glass effect</description>
-     </key>
-      <key name="glass-opacity" type="i">
-        <default>30</default>
-       <range min="0" max="100"/>
-       <summary>Glass Opacity</summary>
-       <description>Opacity level of the glass effect (0-100%)</description>
-     </key>
-      <key name="glow-color" type="s">
-         <default>'rgba(255,255,255,0.1)'</default>
-         <summary>Glow Color</summary>
-        <description>Color of the glow effect around the spotlight</description>
-      </key>
-      <key name="glass-tint" type="s">
-         <default>'#FFFFFF1A'</default>
-         <summary>Glass Tint</summary>
-        <description>Tint color blended into the dimmed overlay outside the spotlight</description>
-      </key>
-      <key name="spotlight-ring-width" type="i">
+       <key name="spotlight-ring-width" type="i">
         <default>2</default>
         <range min="0" max="20"/>
         <summary>Spotlight Ring Width</summary>

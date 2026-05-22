@@ -1,9 +1,9 @@
 # Repository Atlas — find-my-mouse-example.com
 
-> **Revision**: 1.0
+> **Revision**: 1.1
 > **Maintainer**: Hervé Brun
 > **License**: MIT (with non-endorsement clause)
-> **Generated**: 2026-05-22
+> **Generated**: 2026-05-23
 
 ---
 
@@ -13,10 +13,10 @@
 **Find My Mouse** is a GNOME Shell extension (GNOME 46–50, Wayland) that replicates the Microsoft PowerToys "Find My Mouse" spotlight feature. Its purpose is to help users who frequently lose their cursor on screen — especially on high-resolution, multi-monitor, or presentation setups — by rendering a highly customizable circular spotlight that highlights the mouse cursor position.
 
 ### 1.2 What This Repository Owns
-- **Spotlight Rendering** — Cairo-based (fallback) and GLSL shader-based (primary) rendering of the spotlight overlay on top of the GNOME Shell desktop via `St.DrawingArea` and `Shell.GLSLEffect`.
+- **Spotlight Rendering** — Cairo-based rendering of the spotlight overlay on top of the GNOME Shell desktop via `St.DrawingArea` with zoom animation via `Clutter.Timeline`.
 - **Mouse Tracking** — Real-time cursor position monitoring via GNOME Shell's `PointerWatcher` API, with shake-gesture detection for activation.
 - **Multi-modal Activation** — Two activation methods: mouse shake and always-visible mode.
-- **Preferences UI** — Full Adwaita/GTK4 settings dialog with per-page sections (General, Appearance, Glass, Timing, Shake Detection, About).
+- **Preferences UI** — Full Adwaita/GTK4 settings dialog with per-page sections (General, Appearance, Timing, Shake Detection, About).
 - **Game Mode Integration** — D-Bus integration with `com.feralinteractive.GameMode` to suppress spotlight during gaming sessions.
 - **GSettings Persistence** — All user preferences are persisted through a GSettings schema (`org.gnome.shell.extensions.find-my-mouse`).
 
@@ -37,7 +37,7 @@ The class `FindMyMouseExtension` extends `Extension` from `resource:///org/gnome
 
 | Method       | Called When             | Key Actions                                                                |
 |-------------|-------------------------|---------------------------------------------------------------------------|
-| `enable()`  | Extension is activated  | Creates `SettingsManager`, `SpotlightManager`, `MouseTracker`, `KeybindingManager`, `GameModeClient`. Sets up signal handlers for settings changes, mouse events, and keyboard shortcuts. Initializes Game Mode D-Bus connection. |
+| `enable()`  | Extension is activated  | Creates `SettingsManager`, `SpotlightManager`, `MouseTracker`, `GameModeClient`. Sets up signal handlers for settings changes and mouse events. Initializes Game Mode D-Bus connection. |
 | `disable()` | Extension is deactivated| Disconnects all signal handlers, destroys managers, removes keybinding, removes pointer watch, hides spotlight, disposes GameMode proxy. |
 
 ### 2.2 Preferences UI Entry
@@ -48,11 +48,11 @@ The class `FindMyMousePreferences` extends `ExtensionPreferences`. The method `f
 
 ### 2.3 Spotlight Rendering Entry
 ```
-src/spotlight.ts  →  dist/spotlight.js   (Cairo fallback)
-src/spotlightEffect.ts  →  dist/spotlightEffect.js  (GLSL primary)
+src/spotlight.ts  →  dist/spotlight.js   (Cairo rendering)
 ```
-- `SpotlightManager.show()` creates the `St.DrawingArea`, attempts to attach a `SpotlightGLSLEffect` (GLSL shader), and falls back to Cairo `repaint` signal if GLSL fails.
-- `SpotlightGLSLEffect` (`vfunc_build_pipeline`, `vfunc_paint_target`) generates a full-screen GLSL fragment shader that renders the spotlight circle with glass-morphism effects (blur, tint, glow, ring).
+- `SpotlightManager.show()` creates the `St.DrawingArea` and connects the `repaint` signal for Cairo rendering.
+- Rendering uses `Cairo.Operator.CLEAR` to punch a transparent hole and `Cairo.Operator.OVER` to draw the ring border.
+- A `Clutter.Timeline`-based zoom animation starts the spotlight large (`spotlight-zoom`) and shrinks it to the configured radius using `easeOutQuad` easing.
 
 ---
 
@@ -67,10 +67,9 @@ src/spotlightEffect.ts  →  dist/spotlightEffect.js  (GLSL primary)
 │  │              Main.uiGroup (overlay)                  │ │
 │  │  ┌─────────────────────────────────────────────────┐│ │
 │  │  │  St.DrawingArea (full-screen transparent)        ││ │
-│  │  │  ┌────────────────────────────────────────────┐ ││ │
-│  │  │  │  Shell.GLSLEffect (GLSL fragment shader)    ││ │ │
-│  │  │  │  - Cairo fallback (repaint signal)           ││ │ │
-│  │  │  └────────────────────────────────────────────┘ ││ │
+│  │  │  - Cairo repaint signal (Cairo.Operator.CLEAR    ││ │
+│  │  │    for hole, Cairo.Operator.OVER for ring)       ││ │
+│  │  │  - Clutter.Timeline (zoom animation)             ││ │
 │  │  └─────────────────────────────────────────────────┘│ │
 │  └─────────────────────────────────────────────────────┘ │
 └─────────────────────────────────────────────────────────┘
@@ -90,7 +89,7 @@ src/spotlightEffect.ts  →  dist/spotlightEffect.js  (GLSL primary)
 ┌─────────────────────────────────────────────────────────┐
 │              GSettings Schema Layer                      │
 │  schemas/org.gnome.shell.extensions.find-my-mouse.xml   │
-│  19 keys: activation, colors, timing, glass morphism    │
+│  14 keys: activation, colors, timing                   │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -99,8 +98,7 @@ src/spotlightEffect.ts  →  dist/spotlightEffect.js  (GLSL primary)
 ```
 extension.ts
   ├── settings.ts         (SettingsManager — GSettings cache)
-  ├── spotlight.ts        (SpotlightManager — renders spotlight)
-  │   └── spotlightEffect.ts  (SpotlightGLSLEffect — GLSL shader)
+  ├── spotlight.ts        (SpotlightManager — Cairo spotlight + zoom animation)
   ├── mouseTracking.ts    (MouseTracker — pointer watch + shake)
   ├── gamemodeClient.ts   (GameModeClient — D-Bus GameMode)
   └── utils.ts            (debugLog, parseColor, LogLevel)
@@ -111,9 +109,8 @@ extension.ts
 | Pattern              | Implementation                                                      |
 |----------------------|----------------------------------------------------------------------|
 | **Singleton Manager** | Each manager is instantiated once in `extension.ts`'s `enable()`.  |
-| **Event-Driven**     | GSettings `changed::` signals, `pointerWatcher` callbacks, stage `button-press-event`. |
+| **Event-Driven**     | GSettings `changed::` signals, `pointerWatcher` callbacks. |
 | **Strategy**         | Activation methods (shake/always) act as strategies dispatching to `_toggleSpotlight()`. |
-| **Fallback**         | GLSL effect is primary; Cairo repaint is fallback if GLSL init fails. |
 | **Observer**         | `GameModeClient` emits state change to multiple handlers; `_onPropertiesChanged` dispatches. |
 | **Caching**          | `SettingsManager.cacheSettings()` normalizes and caches all GSettings values to avoid repeated GI calls. |
 | **Command**          | `_showSpotlight()` / `hide()` commands encapsulate visibility state. |
@@ -135,12 +132,11 @@ extension.ts:_showSpotlight()
        │       │
        │       ├── Creates St.DrawingArea (geometry = monitor|all)
        │       │
-       │       ├── Attemps SpotlightGLSLEffect (Shell.GLSLEffect)
-       │       │   └── vfunc_build_pipeline() → GLSL shader source
-       │       │   └── vfunc_paint_target() → set uniforms
+       │       ├── Connect 'repaint' signal → _onRepaint()
+       │       │   └── Cairo: draw bg overlay + clear spotlight hole + ring
        │       │
-       │       └── If GLSL fails: connect('repaint', _onRepaint)
-       │           └── Cairo: draw bg overlay + clear spotlight hole + ring
+       │       └── _startZoomAnimation()
+       │           └── Clutter.Timeline: easeOutQuad(initialZoom → 1)
        │
        ├── global.get_pointer() → updateMousePosition(x, y)
        │
@@ -217,10 +213,9 @@ find-my-mouse-example.com/
 │
 ├── src/                              # TypeScript source (edit here!)
 │   ├── extension.ts                  # EXTENSION ENTRY: lifecycle, managers, activation logic
-│   ├── prefs.ts                      # PREFERENCES ENTRY: Adwaita/GTK4 settings UI (≈610 lines)
+│   ├── prefs.ts                      # PREFERENCES ENTRY: Adwaita/GTK4 settings UI (≈499 lines)
 │   ├── settings.ts                   # GSettings wrapper + cached values
-│   ├── spotlight.ts                  # SpotlightManager: St.DrawingArea + Cairo repaint
-│   ├── spotlightEffect.ts            # SpotlightGLSLEffect: GLSL fragment shader + uniforms
+│   ├── spotlight.ts                  # SpotlightManager: St.DrawingArea + Cairo repaint + zoom animation
 │   ├── mouseTracking.ts              # MouseTracker: pointerWatcher + shake detection
 │   ├── gamemodeClient.ts             # GameModeClient: D-Bus GameMode integration
 │   ├── utils.ts                      # Shared: debugLog, parseColor, LogLevel enum
@@ -236,7 +231,6 @@ find-my-mouse-example.com/
 │   ├── prefs.js
 │   ├── settings.js
 │   ├── spotlight.js
-│   ├── spotlightEffect.js
 │   ├── mouseTracking.js
 │   ├── gamemodeClient.js
 │   └── utils.js
@@ -299,14 +293,12 @@ find-my-mouse-example.com/
 | `*Main`                    | `resource:///org/gnome/shell/ui/main.js`       | spotlight.ts, keybindings.ts | `Main.uiGroup`, `Main.wm`        |
 | `getPointerWatcher`        | `resource:///org/gnome/shell/ui/pointerWatcher.js` | mouseTracking.ts | Cursor position tracking                |
 | `St.DrawingArea`           | `gi://St`                                     | spotlight.ts          | Clutter actor for Cairo rendering       |
-| `Shell.GLSLEffect`         | `gi://Shell`                                  | spotlightEffect.ts   | GLSL shader effect pipeline             |
-| `Shell.ActionMode` / `Shell.SnippetHook` | `gi://Shell` | keybindings.ts, spotlightEffect.ts | Keybinding modes, shader hooks |
-| `Meta.KeyBindingFlags` / `Meta.MonitorManager` | `gi://Meta` | keybindings.ts, spotlightEffect.ts | Keybinding flags, monitor API |
-| `Clutter.Actor` / `Clutter.Event` / `Clutter` | `gi://Clutter` | extension.ts, spotlightEffect.ts | Stage events, actors        |
-| `Cairo`                    | `gi://cairo`                                  | spotlight.ts          | `Cairo.Operator.CLEAR`, `setSourceRGBA`, etc. |
+| `Shell.ActionMode` | `gi://Shell` | extension.ts | Keybinding modes |
+| `Meta.KeyBindingFlags` | `gi://Meta` | extension.ts | Keybinding flags |
+| `Clutter` / `Clutter.Timeline` / `Clutter.AnimationMode` | `gi://Clutter` | spotlight.ts, extension.ts | Zoom animation timeline, animation easing modes |
+| `Cairo`                    | `gi://cairo`                                  | spotlight.ts          | `Cairo.Operator.CLEAR`, `setSourceRGBA`, `arc`, etc. |
 | `Gio.Settings`             | `gi://Gio`                                    | settings.ts, gamemodeClient.ts, prefs.ts | GSettings + D-Bus proxy      |
 | `GLib`                     | `gi://GLib`                                   | spotlight.ts, mouseTracking.ts | `timeout_add`, `get_monotonic_time` |
-| `GObject`                  | `gi://GObject`                                | spotlightEffect.ts   | `GObject.registerClass`                 |
 | `Gtk` / `Adw` / `Gdk`      | `gi://Gtk?version=4.0`, `gi://Adw`, `gi://Gdk?version=4.0` | prefs.ts | Preferences UI widgets |
 
 ### 6.2 NPM Dependencies
@@ -431,7 +423,7 @@ feat, fix, docs, style, refactor, perf, test, build, ci, chore, revert
 ```
 feat: add custom ring width option
 fix: correct idle timeout reset on multi-monitor
-refactor: extract GLSL uniform setting into helper
+refactor: simplify rendering pipeline to Cairo-only
 ci: add schema validation to test workflow
 ```
 
@@ -474,21 +466,12 @@ The extension defaults are carefully chosen to match Microsoft PowerToys "Find M
 | Shake Interval             | `shake-interval`             | int            | `1000` ms        | ✅ 1000ms       |
 | Shake Sensitivity          | `shake-sensitivity`          | int            | `400` %          | ✅ 400%         |
 
-### 10.5 Glass Morphism Effects
-
-| Setting                    | Key                          | GSettings Type | Default          | Notes                    |
-|----------------------------|------------------------------|----------------|------------------|--------------------------|
-| Enable Glass Morphism      | `enable-glass-morphism`      | boolean        | `false`          | Requires OpenGL ES 3.0  |
-| Blur Radius                | `blur-radius`                | double         | `5.0`            | Range 0–50              |
-| Glass Opacity              | `glass-opacity`              | int            | `30`              | Range 0–100%            |
-| Glow Color                 | `glow-color`                 | string         | `rgba(255,255,255,0.1)` | White at 10% opacity |
-| Glass Tint                 | `glass-tint`                 | string (hex)   | `#FFFFFF1A`      | White at 10% opacity    |
-
-### 10.6 Additional Schema Keys
+### 10.5 Additional Schema Keys
 
 | Key                          | Type      | Default | Description                                     |
 |------------------------------|-----------|---------|-------------------------------------------------|
 | `excluded-apps`              | string[]  | `[]`    | Placeholder — not fully implemented in logic     |
+| `spotlight-ring-width`       | int       | `2`     | Thickness of the spotlight border ring (0–20 px) |
 
 ---
 
@@ -502,9 +485,9 @@ The extension defaults are carefully chosen to match Microsoft PowerToys "Find M
 ### 11.2 Rendering
 - **Cairo context** must be obtained via `area.get_context()` inside the `repaint` signal handler. The context must be manually disposed with `cr.$dispose()`.
 - **Use `queue_repaint()`** (not `queue_redraw()`) for `St.DrawingArea` — `queue_redraw()` may not trigger repaint on all GNOME Shell versions.
-- **GLSL fallback mechanism**: If `SpotlightGLSLEffect` constructor throws, `SpotlightManager` falls back to Cairo rendering. Always check logs for "Failed to initialize GLSL effect" warnings.
-- **Aspect ratio correction** is critical in the GLSL shader: the spotlight must appear circular, not elliptical. The shader scales `coord.y` by `aspectRatio = h / w` and applies the inverse to center.
 - **Monitor geometry** must be recalculated when `showOnAllMonitors` changes. The SpotlightManager calculates combined geometry across all monitors.
+- **Zoom animation**: Uses `Clutter.Timeline` with manual `easeOutQuad` easing. The zoom starts large (`spotlight-zoom`) and shrinks to 1× over `animation-duration` ms. Cancel in-progress zooms before showing again to avoid stale callbacks.
+- **Immediate teardown**: Use `destroyImmediately()` (not `hide()`) during extension `disable()` to avoid async animation races during shutdown.
 
 ### 11.3 Wayland & Input
 - **Extension runs in Wayland** — modifier key (Ctrl) double-press is unreliable in Wayland. The custom keybinding (`<Super>f` default) is the recommended activation method.
@@ -527,7 +510,7 @@ The extension defaults are carefully chosen to match Microsoft PowerToys "Find M
 - **Gtk.ShortcutLabel** is used for the keyboard shortcut display, but the actual capture is implemented via a custom `Gtk.Dialog` with `Gtk.EventControllerKey` because GNOME Shell's built-in shortcut capture widget has limitations.
 - **Modifier-only shortcuts** are prevented: the key controller filters out `MODIFIER_KEYS` (Shift, Ctrl, Alt, Super, Meta, Caps, NumLock) to avoid setting invalid shortcuts.
 - **Color format conversion**: `_rgbaToHex()` converts `Gdk.RGBA` to `#AARRGGBB` hex format. `_parseColor()` converts hex back. The alpha channel is critical for the spotlight rendering.
-- **Settings binding**: GSettings `bind()` is used for glass morphism settings (`enable-glass-morphism`, `blur-radius`, `glass-opacity`) and most other settings. Glass-opacity stores int percentage (0–100), divided by 100 at runtime for GLSL uniform consumption.
+- **Settings binding**: GSettings `bind()` is used for `spotlight-radius`, `spotlight-zoom`, `idle-timeout`, `animation-duration`, `shake-interval`, `show-on-all-monitors`, `do-not-activate-gamemode`, `spotlight-ring-width`, and `log-level`. Manual read/write is used for color pickers and activation method.
 
 ### 11.7 Shake Detection
 - **Shake algorithm**: The `detectShake()` method computes `totalDistanceSquared / diagonalSquared > (sensitivity/100)²`. This detects rapid back-and-forth movement rather than straight-line movement.
@@ -535,13 +518,9 @@ The extension defaults are carefully chosen to match Microsoft PowerToys "Find M
 - **First movement**: `_lastX < 0` initial state means the first movement is always consumed without detection.
 
 ### 11.8 Multi-Monitor
-- **Monitor index** for refresh-rate detection uses `global.display.get_monitor_index_for_rect()` (GNOME 46+) with a manual geometry-search fallback for older versions.
-- **Refresh rate detection** tries three methods: `global.display.get_monitor(index).get_current_mode().refresh_rate`, `global.backend.get_monitor_manager().get_monitors()[i].get_current_mode()`, and `Meta.MonitorManager.get()`. If none succeed, defaults to 60 Hz.
+- **Monitor geometry** for multi-monitor mode calculates the bounding box of all monitors via `global.display.get_n_monitors()` / `get_monitor_geometry()`. The current monitor is used when `show-on-all-monitors` is off.
 
-### 11.9 Zoom Animation
-- The zoom animation (`spotlight-zoom`) starts large (9× radius) and shrinks to the configured radius. This creates a "spotlight sweeping in" effect. The current implementation does NOT animate smoothly — the zoom only applies on the initial show. The `animation-duration` setting controls fade-out timing, not zoom animation timing. (Noted as a gap vs. PowerToys.)
-
-### 11.10 Debugging
+### 11.9 Debugging
 - **Log filtering**: Use `journalctl --user --no-pager | grep "Find My Mouse"` for full log history, or `journalctl --user -f | grep "Find My Mouse"` for live tail.
 - **Log level** can be changed at runtime via Preferences → About → Logging → Log Level. Changes take effect immediately without restart.
 - **`globalThis.FindMyMouseGameModeAvailable`**: This global flag is set on the `globalThis` object to communicate GameMode availability from the extension process to the preferences UI process.
@@ -564,11 +543,6 @@ org.gnome.shell.extensions.find-my-mouse
 ├── idle-timeout               (i)  → 100–10000 ms
 ├── animation-duration         (i)  → 100–5000 ms
 ├── show-on-all-monitors       (b)  → true | false
-├── enable-glass-morphism      (b)  → true | false
-├── blur-radius                (d)  → 0.0–50.0
-├── glass-opacity              (i)  → 0–100%
-├── glow-color                 (s)  → "rgba(r,g,b,a)" or "#AARRGGBB"
-├── glass-tint                 (s)  → "#AARRGGBB" hex
 ├── excluded-apps              (as) → string list (placeholder)
 └── log-level                  (i)  → 0 (ERROR) | 1 (WARN) | 2 (INFO) | 3 (DEBUG)
 ```
@@ -588,14 +562,10 @@ GObject.Object
   └── ExtensionPreferences  (GNOME Shell base)
        └── FindMyMousePreferences  (prefs.ts)
 
-Shell.GLSLEffect
-  └── SpotlightGLSLEffect          (spotlightEffect.ts, registered via GObject.registerClass)
-
 Plain classes (no GObject inheritance):
   ├── SettingsManager       (settings.ts)
   ├── SpotlightManager      (spotlight.ts)
   ├── MouseTracker          (mouseTracking.ts)
-  ├── KeybindingManager     (keybindings.ts)
   └── GameModeClient        (gamemodeClient.ts)
 ```
 
@@ -605,16 +575,16 @@ Plain classes (no GObject inheritance):
 
 | File              | Lines | Purpose                                    |
 |-------------------|-------|--------------------------------------------|
-| `src/prefs.ts`    | 612   | Largest file — the entire preferences UI   |
-| `src/extension.ts`| 379   | Core extension lifecycle + coordination    |
-| `src/spotlightEffect.ts` | 387 | GLSL shader implementation                |
-| `src/spotlight.ts` | 172  | Spotlight rendering manager                |
-| `src/settings.ts` | 135   | GSettings wrapper                          |
+| `src/prefs.ts`    | 499   | Largest file — the entire preferences UI   |
+| `src/extension.ts`| 246   | Core extension lifecycle + coordination    |
+| `src/spotlight.ts` | 260  | Spotlight rendering manager + zoom animation |
+| `src/mouseTracking.ts` | 127 | Pointer tracking + shake detection        |
+| `src/settings.ts` | 93    | GSettings wrapper                          |
 | `src/gamemodeClient.ts` | 99 | GameMode D-Bus client                     |
 | `src/utils.ts`    | 37    | Shared utilities                           |
-| `schema XML`      | 115   | GSettings schema definitions               |
+| `schema XML`      | 78    | GSettings schema definitions (14 keys)     |
 | `README.md`       | 288   | User-facing documentation                  |
-| **Total**         | **~2460** | Source + config (excluding node_modules/dist) |
+| **Total**         | **~1,727** | Source + config (excluding node_modules/dist) |
 
 ---
 

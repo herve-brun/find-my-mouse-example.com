@@ -17,7 +17,7 @@
 - **🤲 Shake Activation**: Activate the spotlight by quickly shaking the mouse (sensitivity configurable).
 - **📝 Dynamic Logging**: Real-time log level adjustments (ERROR, WARN, INFO, DEBUG) without restarting.
 - **🖥️ Multi-Monitor Support**: Works across multiple monitors with DPI awareness.
-- **⚙️ Customizable Activation**: Keyboard shortcut, mouse click, or shake gesture.
+- **⚙️ Shake Activation**: Configurable sensitivity and distance threshold.
 
 ## 🛠️ Installation
 
@@ -73,20 +73,16 @@
 
 ### 🔑 Activation Methods
 
-| Method               | Description                                  |
-|----------------------|----------------------------------------------|
-| **Keyboard Shortcut** | Default: `<Ctrl><Alt>f` (configurable)        |
-| **Mouse Shake**      | Quickly move mouse back and forth             |
-| **Mouse Click**      | Click configured button (left/middle/right)  |
+| Method          | Description                       |
+|-----------------|-----------------------------------|
+| **Mouse Shake** | Quickly move mouse back and forth |
 
 ### ⚙️ Configuration
 
 1. Open **GNOME Extensions** app
 2. Click the **⚙️ gear icon** for "Find My Mouse" settings
 3. Customize:
-   - **Activation method** (shortcut, shake, or click)
-   - **Keyboard shortcut**
-   - **Mouse button** for click activation
+   - **Shake sensitivity and distance threshold**
    - **Spotlight colors**, size, and zoom
    - **Animation timing** and idle timeout
    - **Multi-monitor behavior**
@@ -154,9 +150,7 @@ src/
   prefs.ts            →  dist/prefs.js            (Preferences UI)
   settings.ts         →  dist/settings.js         (GSettings wrapper)
   spotlight.ts        →  dist/spotlight.js        (Spotlight rendering)
-  spotlightEffect.ts  →  dist/spotlightEffect.js  (Glass morphism effects)
   mouseTracking.ts    →  dist/mouseTracking.js    (Mouse tracking)
-  keybindings.ts      →  dist/keybindings.js      (Keyboard shortcuts)
   gamemodeClient.ts   →  dist/gamemodeClient.js   (Game mode integration)
   utils.ts            →  dist/utils.js            (Shared utilities)
 ```
@@ -223,8 +217,8 @@ journalctl --user -f | grep "Find My Mouse"
    ```
 
 ### 🖱️ Spotlight Not Showing
-1. Check activation method in settings
-2. Ensure no shortcut conflicts
+1. Check shake sensitivity in settings
+2. Ensure sufficient mouse movement for shake detection
 3. Test with **"Always Visible"** mode
 
 ### 🖥️ Multi-Monitor Issues
