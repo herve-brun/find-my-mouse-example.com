@@ -63,13 +63,12 @@ A local commit message hook is configured via `commitlint.config.cjs`:
 ## Architecture
 ```
 src/*.ts               →  dist/*.js        (TypeScript → compiled output)
-  extension.ts         →  extension.js      (Core logic: spotlight rendering, mouse/keyboard tracking, Cairo painting)
+  extension.ts         →  extension.js      (Core logic: spotlight rendering, mouse tracking, Cairo painting)
   prefs.ts             →  prefs.js          (Adwaita/GTK4 preferences UI)
   settings.ts          →  settings.js       (GSettings wrapper and schema access)
   spotlight.ts         →  spotlight.js      (Spotlight rendering logic)
   spotlightEffect.ts   →  spotlightEffect.js (Glass morphism effects)
   mouseTracking.ts     →  mouseTracking.js  (Mouse movement and shake detection)
-  keybindings.ts       →  keybindings.js    (Keyboard shortcut handling)
   gamemodeClient.ts    →  gamemodeClient.js (Game mode integration)
   utils.ts             →  utils.js          (Shared utilities)
 ```
@@ -107,9 +106,8 @@ Runs on PR events (opened, edited, synchronize, reopened):
 - **Always compile schema** after modifying `schemas/*.xml`: `glib-compile-schemas schemas/` or `npm run build:schemas`
 - **Cairo context** obtained via `area.get_context()` in `repaint` signal handler
 - **Use `queue_repaint()`** not `queue_redraw()` for St.DrawingArea
-- **Extension runs in Wayland** - modifier key (Ctrl) double-press unreliable; custom keybinding preferred
+- **Extension runs in Wayland** - modifier key (Ctrl) double-press unreliable; use shake or always-visible activation
 - **No shell restart** - user tests via nested session
-- **XML escaping** in schema defaults: use `&lt;` and `&gt;` for `<` and `>` in keybindings
 - **Debugging**: Use `journalctl --user --no-pager | grep "Find My Mouse"` for logs
 - **Spotlight visibility**: Tracked via `_spotlightVisible` boolean
 - **Glass morphism effects**: Requires GNOME Shell ≥ 46 and OpenGL ES 3.0 support. Fallback to solid colors if unavailable.

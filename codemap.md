@@ -15,8 +15,8 @@
 ### 1.2 What This Repository Owns
 - **Spotlight Rendering** — Cairo-based (fallback) and GLSL shader-based (primary) rendering of the spotlight overlay on top of the GNOME Shell desktop via `St.DrawingArea` and `Shell.GLSLEffect`.
 - **Mouse Tracking** — Real-time cursor position monitoring via GNOME Shell's `PointerWatcher` API, with shake-gesture detection for activation.
-- **Multi-modal Activation** — Four activation methods: keyboard shortcut, mouse shake, mouse click, and always-visible mode.
-- **Preferences UI** — Full Adwaita/GTK4 settings dialog with per-page sections (General, Appearance, Timing, Shake Detection, Glass Morphism Effects).
+- **Multi-modal Activation** — Two activation methods: mouse shake and always-visible mode.
+- **Preferences UI** — Full Adwaita/GTK4 settings dialog with per-page sections (General, Appearance, Glass, Timing, Shake Detection, About).
 - **Game Mode Integration** — D-Bus integration with `com.feralinteractive.GameMode` to suppress spotlight during gaming sessions.
 - **GSettings Persistence** — All user preferences are persisted through a GSettings schema (`org.gnome.shell.extensions.find-my-mouse`).
 
@@ -90,7 +90,7 @@ src/spotlightEffect.ts  →  dist/spotlightEffect.js  (GLSL primary)
 ┌─────────────────────────────────────────────────────────┐
 │              GSettings Schema Layer                      │
 │  schemas/org.gnome.shell.extensions.find-my-mouse.xml   │
-│  30+ keys: activation, colors, timing, glass morphism   │
+│  19 keys: activation, colors, timing, glass morphism    │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -102,7 +102,6 @@ extension.ts
   ├── spotlight.ts        (SpotlightManager — renders spotlight)
   │   └── spotlightEffect.ts  (SpotlightGLSLEffect — GLSL shader)
   ├── mouseTracking.ts    (MouseTracker — pointer watch + shake)
-  ├── keybindings.ts      (KeybindingManager — Shell keybinding)
   ├── gamemodeClient.ts   (GameModeClient — D-Bus GameMode)
   └── utils.ts            (debugLog, parseColor, LogLevel)
 ```
@@ -113,7 +112,7 @@ extension.ts
 |----------------------|----------------------------------------------------------------------|
 | **Singleton Manager** | Each manager is instantiated once in `extension.ts`'s `enable()`.  |
 | **Event-Driven**     | GSettings `changed::` signals, `pointerWatcher` callbacks, stage `button-press-event`. |
-| **Strategy**         | Activation methods (shortcut/shake/click/always) act as strategies dispatching to `_toggleSpotlight()`. |
+| **Strategy**         | Activation methods (shake/always) act as strategies dispatching to `_toggleSpotlight()`. |
 | **Fallback**         | GLSL effect is primary; Cairo repaint is fallback if GLSL init fails. |
 | **Observer**         | `GameModeClient` emits state change to multiple handlers; `_onPropertiesChanged` dispatches. |
 | **Caching**          | `SettingsManager.cacheSettings()` normalizes and caches all GSettings values to avoid repeated GI calls. |
@@ -122,7 +121,7 @@ extension.ts
 ### 3.4 Data Flow: Activation → Rendering
 
 ```
-User Action (shortcut/shake/click/always)
+User Action (shake/always)
        │
        ▼
 extension.ts:_toggleSpotlight()
@@ -218,12 +217,11 @@ find-my-mouse-example.com/
 │
 ├── src/                              # TypeScript source (edit here!)
 │   ├── extension.ts                  # EXTENSION ENTRY: lifecycle, managers, activation logic
-│   ├── prefs.ts                      # PREFERENCES ENTRY: Adwaita/GTK4 settings UI (782 lines)
+│   ├── prefs.ts                      # PREFERENCES ENTRY: Adwaita/GTK4 settings UI (≈610 lines)
 │   ├── settings.ts                   # GSettings wrapper + cached values
 │   ├── spotlight.ts                  # SpotlightManager: St.DrawingArea + Cairo repaint
 │   ├── spotlightEffect.ts            # SpotlightGLSLEffect: GLSL fragment shader + uniforms
 │   ├── mouseTracking.ts              # MouseTracker: pointerWatcher + shake detection
-│   ├── keybindings.ts                # KeybindingManager: Shell keybinding registration
 │   ├── gamemodeClient.ts             # GameModeClient: D-Bus GameMode integration
 │   ├── utils.ts                      # Shared: debugLog, parseColor, LogLevel enum
 │   └── codemap.md                    # Source directory atlas
@@ -240,7 +238,6 @@ find-my-mouse-example.com/
 │   ├── spotlight.js
 │   ├── spotlightEffect.js
 │   ├── mouseTracking.js
-│   ├── keybindings.js
 │   ├── gamemodeClient.js
 │   └── utils.js
 │
@@ -449,8 +446,6 @@ The extension defaults are carefully chosen to match Microsoft PowerToys "Find M
 | Setting                    | Key                          | GSettings Type | Default          | PowerToys Match |
 |----------------------------|------------------------------|----------------|------------------|-----------------|
 | Activation Method          | `activation-method`          | string         | `"shake"`        | ✅ shake        |
-| Keyboard Shortcut          | `find-my-mouse-activation`   | string         | `"<Super>f"`     | ≈ Ctrl double-tap (adapted for GNOME) |
-| Click Button               | `click-activation-button`    | int            | `1` (left)       | ✅ left         |
 | Disable During Game Mode   | `do-not-activate-gamemode`   | boolean        | `true`           | ✅ yes          |
 | Show on All Monitors       | `show-on-all-monitors`       | boolean        | `false`          | N/A             |
 | Log Level                  | `log-level`                  | int            | `2` (INFO)       | N/A             |
@@ -485,7 +480,7 @@ The extension defaults are carefully chosen to match Microsoft PowerToys "Find M
 |----------------------------|------------------------------|----------------|------------------|--------------------------|
 | Enable Glass Morphism      | `enable-glass-morphism`      | boolean        | `false`          | Requires OpenGL ES 3.0  |
 | Blur Radius                | `blur-radius`                | double         | `5.0`            | Range 0–50              |
-| Glass Opacity              | `glass-opacity`              | double         | `0.3`            | Range 0.1–1.0           |
+| Glass Opacity              | `glass-opacity`              | int            | `30`              | Range 0–100%            |
 | Glow Color                 | `glow-color`                 | string         | `rgba(255,255,255,0.1)` | White at 10% opacity |
 | Glass Tint                 | `glass-tint`                 | string (hex)   | `#FFFFFF1A`      | White at 10% opacity    |
 
@@ -532,7 +527,7 @@ The extension defaults are carefully chosen to match Microsoft PowerToys "Find M
 - **Gtk.ShortcutLabel** is used for the keyboard shortcut display, but the actual capture is implemented via a custom `Gtk.Dialog` with `Gtk.EventControllerKey` because GNOME Shell's built-in shortcut capture widget has limitations.
 - **Modifier-only shortcuts** are prevented: the key controller filters out `MODIFIER_KEYS` (Shift, Ctrl, Alt, Super, Meta, Caps, NumLock) to avoid setting invalid shortcuts.
 - **Color format conversion**: `_rgbaToHex()` converts `Gdk.RGBA` to `#AARRGGBB` hex format. `_parseColor()` converts hex back. The alpha channel is critical for the spotlight rendering.
-- **Settings binding**: GSettings `bind()` is used for glass morphism settings (`enable-glass-morphism`, `blur-radius`, `glass-opacity`) but NOT for other settings, which use explicit connect/set patterns.
+- **Settings binding**: GSettings `bind()` is used for glass morphism settings (`enable-glass-morphism`, `blur-radius`, `glass-opacity`) and most other settings. Glass-opacity stores int percentage (0–100), divided by 100 at runtime for GLSL uniform consumption.
 
 ### 11.7 Shake Detection
 - **Shake algorithm**: The `detectShake()` method computes `totalDistanceSquared / diagonalSquared > (sensitivity/100)²`. This detects rapid back-and-forth movement rather than straight-line movement.
@@ -548,7 +543,7 @@ The extension defaults are carefully chosen to match Microsoft PowerToys "Find M
 
 ### 11.10 Debugging
 - **Log filtering**: Use `journalctl --user --no-pager | grep "Find My Mouse"` for full log history, or `journalctl --user -f | grep "Find My Mouse"` for live tail.
-- **Log level** can be changed at runtime via Preferences → General → Logging → Log Level. Changes take effect immediately without restart.
+- **Log level** can be changed at runtime via Preferences → About → Logging → Log Level. Changes take effect immediately without restart.
 - **`globalThis.FindMyMouseGameModeAvailable`**: This global flag is set on the `globalThis` object to communicate GameMode availability from the extension process to the preferences UI process.
 
 ---
@@ -557,9 +552,7 @@ The extension defaults are carefully chosen to match Microsoft PowerToys "Find M
 
 ```
 org.gnome.shell.extensions.find-my-mouse
-├── activation-method          (s)  → "shake" | "shortcut" | "click" | "always"
-├── find-my-mouse-activation   (s)  → e.g., "<Super>f" (XML-escaped: &lt;Super&gt;f)
-├── click-activation-button    (i)  → 1 (left) | 2 (middle) | 3 (right)
+├── activation-method          (s)  → "shake" | "always"
 ├── shake-interval             (i)  → 100–5000 ms
 ├── shake-sensitivity          (i)  → 100–10000 %
 ├── do-not-activate-gamemode   (b)  → true | false
@@ -573,14 +566,14 @@ org.gnome.shell.extensions.find-my-mouse
 ├── show-on-all-monitors       (b)  → true | false
 ├── enable-glass-morphism      (b)  → true | false
 ├── blur-radius                (d)  → 0.0–50.0
-├── glass-opacity              (d)  → 0.1–1.0
+├── glass-opacity              (i)  → 0–100%
 ├── glow-color                 (s)  → "rgba(r,g,b,a)" or "#AARRGGBB"
 ├── glass-tint                 (s)  → "#AARRGGBB" hex
 ├── excluded-apps              (as) → string list (placeholder)
 └── log-level                  (i)  → 0 (ERROR) | 1 (WARN) | 2 (INFO) | 3 (DEBUG)
 ```
 
-**XML escaping note**: When setting keybinding defaults containing `<` and `>`, use `&lt;` and `&gt;` in the XML schema file. For example: `<default>'&lt;Super&gt;f'</default>`.
+
 
 ---
 
@@ -612,18 +605,16 @@ Plain classes (no GObject inheritance):
 
 | File              | Lines | Purpose                                    |
 |-------------------|-------|--------------------------------------------|
-| `src/prefs.ts`    | 782   | Largest file — the entire preferences UI   |
+| `src/prefs.ts`    | 612   | Largest file — the entire preferences UI   |
 | `src/extension.ts`| 379   | Core extension lifecycle + coordination    |
 | `src/spotlightEffect.ts` | 387 | GLSL shader implementation                |
 | `src/spotlight.ts` | 172  | Spotlight rendering manager                |
 | `src/settings.ts` | 135   | GSettings wrapper                          |
-| `src/mouseTracking.ts` | 127 | Mouse tracking + shake detection          |
 | `src/gamemodeClient.ts` | 99 | GameMode D-Bus client                     |
-| `src/keybindings.ts` | 58   | Keybinding manager                         |
 | `src/utils.ts`    | 37    | Shared utilities                           |
 | `schema XML`      | 115   | GSettings schema definitions               |
 | `README.md`       | 288   | User-facing documentation                  |
-| **Total**         | **~2593** | Source + config (excluding node_modules/dist) |
+| **Total**         | **~2460** | Source + config (excluding node_modules/dist) |
 
 ---
 

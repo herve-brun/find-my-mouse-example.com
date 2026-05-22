@@ -83,7 +83,8 @@ export class SettingsManager {
         this._cachedLogLevel = this._settings.get_int('log-level') || 2;
         this._cachedActivationMethod = this._settings.get_string('activation-method') || 'shake';
         this._cachedBlurRadius = this._settings.get_double('blur-radius') || 5.0;
-        this._cachedGlassOpacity = this._settings.get_double('glass-opacity') || 0.3;
+        const rawOpacity = this._settings.get_int('glass-opacity');
+        this._cachedGlassOpacity = (rawOpacity || 30) / 100;
         const glowStr = this._settings.get_string('glow-color') || 'rgba(255,255,255,0.1)';
         this._cachedGlowColorNormalized = this._parseRgbaString(glowStr);
         const tintStr = this._settings.get_string('glass-tint') || '#FFFFFF1A';

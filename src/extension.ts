@@ -1,9 +1,7 @@
 import { Extension } from 'resource:///org/gnome/shell/extensions/extension.js';
-import Clutter from 'gi://Clutter';
 import { SettingsManager } from './settings.js';
 import { SpotlightManager } from './spotlight.js';
 import { MouseTracker } from './mouseTracking.js';
-import { KeybindingManager } from './keybindings.js';
 import { GameModeClient } from './gamemodeClient.js';
 import { debugLog, LogLevel, setLogLevel } from './utils.js';
 
@@ -11,12 +9,9 @@ export default class FindMyMouseExtension extends Extension {
     private _settingsManager: SettingsManager | null;
     private _spotlightManager: SpotlightManager | null;
     private _mouseTracker: MouseTracker | null;
-    private _keybindingManager: KeybindingManager | null;
     private _gameModeClient: GameModeClient | null;
     private _gameModeChangedId: number;
     private _settingsChangedId: number;
-    private _shortcutChangedId: number;
-    private _mousePressHandler: number;
     private _alwaysVisibleHandler: number;
     private _logLevelChangedId: number;
     private _glassMorphismChangedId: number;
@@ -37,12 +32,9 @@ export default class FindMyMouseExtension extends Extension {
         this._settingsManager = null;
         this._spotlightManager = null;
         this._mouseTracker = null;
-        this._keybindingManager = null;
         this._gameModeClient = null;
         this._gameModeChangedId = 0;
         this._settingsChangedId = 0;
-        this._shortcutChangedId = 0;
-        this._mousePressHandler = 0;
         this._alwaysVisibleHandler = 0;
         this._logLevelChangedId = 0;
         this._glassMorphismChangedId = 0;
@@ -58,7 +50,7 @@ export default class FindMyMouseExtension extends Extension {
         this._gameModeAvailable = false;
     }
 
-    enable() {
+    async enable() {
         const settings = this.getSettings();
         const logLevel = settings.get_int('log-level') || 2;
         setLogLevel(logLevel);
@@ -92,7 +84,7 @@ export default class FindMyMouseExtension extends Extension {
         
         this._glassMorphismEnabled = settings.get_boolean('enable-glass-morphism');
         this._blurRadius = settings.get_double('blur-radius');
-        this._glassOpacity = settings.get_double('glass-opacity');
+        this._glassOpacity = settings.get_int('glass-opacity') / 100;
         this._glowColor = settings.get_string('glow-color');
         
 
@@ -110,7 +102,7 @@ export default class FindMyMouseExtension extends Extension {
             this._spotlightManager.queueRepaint();
         });
         this._glassOpacityChangedId = settings.connect('changed::glass-opacity', () => {
-            this._glassOpacity = settings.get_double('glass-opacity');
+            this._glassOpacity = settings.get_int('glass-opacity') / 100;
             this._settingsManager.cacheSettings();
             this._spotlightManager.queueRepaint();
         });
@@ -145,41 +137,23 @@ export default class FindMyMouseExtension extends Extension {
             this._spotlightManager.hide();
         }
         this._mouseTracker = new MouseTracker(this._settingsManager, (x, y) => this._handleMouseMovement(x, y));
-        this._keybindingManager = new KeybindingManager(this._settingsManager, () => this._toggleSpotlight());
 
         this._settingsChangedId = this._settingsManager.settings.connect('changed', () => {
             this._settingsManager.cacheSettings();
         });
 
-        this._shortcutChangedId = this._settingsManager.settings.connect(
-            'changed::find-my-mouse-activation',
-            () => {
-                if (this._settingsManager.cachedActivationMethod === 'shortcut') {
-                    this._keybindingManager.updateKeybinding();
-                }
-            }
-        );
-
-        this._keybindingManager.setup();
         await this._mouseTracker.setup();
-        this._setupClickActivation();
         this._setupAlwaysVisible();
         debugLog('Extension enabled', LogLevel.INFO);
     }
 
     disable() {
-        this._keybindingManager.remove();
-        this._mouseTracker.remove();
-        this._removeClickActivation();
+        this._mouseTracker?.remove();
         this._removeAlwaysVisible();
 
         if (this._settingsChangedId) {
             this._settingsManager.settings.disconnect(this._settingsChangedId);
             this._settingsChangedId = 0;
-        }
-        if (this._shortcutChangedId) {
-            this._settingsManager.settings.disconnect(this._shortcutChangedId);
-            this._shortcutChangedId = 0;
         }
         if (this._glassMorphismChangedId) {
             this._settingsManager.settings.disconnect(this._glassMorphismChangedId);
@@ -205,12 +179,15 @@ export default class FindMyMouseExtension extends Extension {
             this._settingsManager.settings.disconnect(this._ringWidthChangedId);
             this._ringWidthChangedId = 0;
         }
+        if (this._logLevelChangedId) {
+            this._settingsManager.settings.disconnect(this._logLevelChangedId);
+            this._logLevelChangedId = 0;
+        }
 
         this._spotlightManager.hide();
         this._settingsManager = null;
         this._spotlightManager = null;
         this._mouseTracker = null;
-        this._keybindingManager = null;
         
          // Clean up GameMode client
          debugLog('Disabling GameMode client...', LogLevel.INFO);
@@ -226,32 +203,6 @@ export default class FindMyMouseExtension extends Extension {
         debugLog('Extension disabled', LogLevel.INFO);
     }
 
-    _setupClickActivation() {
-        if (this._settingsManager.cachedActivationMethod === 'click') {
-            this._mousePressHandler = global.stage.connect(
-                'button-press-event',
-                (_, event) => {
-                    const button = event.get_button();
-                    const expectedButton = this._settingsManager.settings.get_int('click-activation-button') || 1;
-
-                    if (button === expectedButton) {
-                        debugLog(`Click activation (button ${button})`, LogLevel.DEBUG);
-                        this._toggleSpotlight();
-                        return Clutter.EVENT_STOP;
-                    }
-                    return Clutter.EVENT_PROPAGATE;
-                }
-            );
-        }
-    }
-
-    _removeClickActivation() {
-        if (this._mousePressHandler) {
-            global.stage.disconnect(this._mousePressHandler);
-            this._mousePressHandler = 0;
-        }
-    }
-
     _setupAlwaysVisible() {
         const method = this._settingsManager.cachedActivationMethod;
         debugLog(`Activation method is: ${method}`, LogLevel.DEBUG);
@@ -265,16 +216,10 @@ export default class FindMyMouseExtension extends Extension {
             () => {
                 const newMethod = this._settingsManager.settings.get_string('activation-method');
                 this._settingsManager.cacheSettings();
-                this._keybindingManager.remove();
-                this._mouseTracker.remove();
-                this._removeClickActivation();
-                this._keybindingManager.setup();
-                this._mouseTracker.setup();
-                this._setupClickActivation();
 
                 if (newMethod === 'always') {
                     this._showSpotlight();
-                } else if (this._spotlightManager.isVisible && newMethod !== 'always') {
+                } else if (this._spotlightManager.isVisible) {
                     this._spotlightManager.hide();
                 }
             }
@@ -285,12 +230,6 @@ export default class FindMyMouseExtension extends Extension {
         if (this._alwaysVisibleHandler) {
             this._settingsManager.settings.disconnect(this._alwaysVisibleHandler);
             this._alwaysVisibleHandler = 0;
-        }
-
-        // Débrancher l'écouteur de log-level
-        if (this._logLevelChangedId) {
-            this._settingsManager.settings.disconnect(this._logLevelChangedId);
-            this._logLevelChangedId = 0;
         }
     }
 

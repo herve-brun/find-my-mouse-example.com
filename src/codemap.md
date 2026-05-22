@@ -1,6 +1,6 @@
 # src/ — Find My Mouse Extension Source
 
-> **Lines of code**: ~2,100+ across 9 modules  
+> **Lines of code**: ~2,100+ across 8 modules  
 > **Runtime**: GNOME Shell 46–50 (Wayland)  
 > **Language**: TypeScript → compiled to `dist/*.js`  
 > **Rendering**: Dual-path — GLSL (Shell.GLSLEffect) or Cairo (St.DrawingArea fallback)
@@ -15,10 +15,8 @@ Render a circular spotlight that follows the mouse cursor. Two implementations:
 - **Cairo path** (`SpotlightManager._onRepaint`): Fallback using `St.DrawingArea` + Cairo operations (`Cairo.Operator.CLEAR` to punch a hole, `Cairo.Operator.OVER` to draw the ring).
 
 ### 1.2 Activation Management
-Four activation methods managed by `FindMyMouseExtension`:
-- **Keyboard shortcut** (`KeybindingManager`): `Main.wm.addKeybinding()` with `Shell.ActionMode.NORMAL`.
+Two activation methods managed by `FindMyMouseExtension`:
 - **Mouse shake** (`MouseTracker.detectShake`): Algorithm comparing total distance travelled vs. bounding rectangle diagonal over a time window.
-- **Mouse click** (`FindMyMouseExtension._setupClickActivation`): `global.stage` `button-press-event` handler, configurable button (left/middle/right).
 - **Always visible** (`FindMyMouseExtension._setupAlwaysVisible`): Spotlight shown on enable, never hidden by idle timeout.
 
 ### 1.3 Idle Timeout & Auto-Hide
@@ -28,7 +26,7 @@ Four activation methods managed by `FindMyMouseExtension`:
 `GameModeClient`: DBus proxy to `com.feralinteractive.GameMode`. Monitors `ClientCount` property. When Game Mode activates and `do-not-activate-gamemode` is enabled, the spotlight is suppressed. Includes exponential-backoff retry (3 attempts, up to 20s delay).
 
 ### 1.5 Preferences UI
-`FindMyMousePreferences` (extends `ExtensionPreferences`): Full GTK4/Adwaita preferences with 6 pages (General, Appearance, Timing, Shake Detection, Glass Morphism Effects). Includes shortcut capture dialog, color pickers, spin rows, combo rows, and per-page reset-to-defaults.
+`FindMyMousePreferences` (extends `ExtensionPreferences`): Full GTK4/Adwaita preferences with 6 pages (General, Appearance, Glass, Timing, Shake, About). Includes color pickers, spin rows, combo rows, and per-page reset-to-defaults.
 
 ### 1.6 Settings Caching & Normalization
 `SettingsManager`: Wraps `Gio.Settings`, caches all values on construction and on `changed` signals. Normalizes colors to `[0,1]` float range for Cairo and GLSL uniform consumption. Parses both hex (`#RRGGBBAA`) and `rgba(r,g,b,a)` strings.
@@ -44,17 +42,7 @@ Four activation methods managed by `FindMyMouseExtension`:
 ## 2. Design Patterns
 
 ### 2.1 Strategy Pattern — Activation Methods
-Four activation strategies (shortcut, shake, click, always) are selected via GSettings `activation-method`. The extension dispatches to the appropriate subsystem. When the method changes at runtime, all previous handlers are torn down and the new ones set up.
-
-```typescript
-// extension.ts — method change handler reconfigures all subsystems
-this._keybindingManager.remove();
-this._mouseTracker.remove();
-this._removeClickActivation();
-this._keybindingManager.setup();
-this._mouseTracker.setup();
-this._setupClickActivation();
-```
+Two activation strategies (shake, always) are selected via GSettings `activation-method`. The extension dispatches to the appropriate subsystem. When the method changes at runtime, all previous handlers are torn down and the new ones set up.
 
 ### 2.2 Observer Pattern — GSettings Change Signals
 The extension connects ~12 GSettings `changed::*` signal handlers to react to preference changes. Each updates the relevant cached value and triggers `queueRepaint()` on the spotlight. The `GameModeClient` also implements observer-style `onStateChanged` / `offStateChanged` / `clearStateChangedHandlers`.
@@ -67,7 +55,7 @@ this._settings.connect('changed::do-not-activate-gamemode', () => {
 ```
 
 ### 2.3 Facade Pattern — FindMyMouseExtension
-The `Extension` subclass acts as a facade over the five subsystem managers (`SettingsManager`, `SpotlightManager`, `MouseTracker`, `KeybindingManager`, `GameModeClient`). The extension's `enable()`/`disable()` orchestrate creation and teardown. The `_toggleSpotlight()` and `_showSpotlight()` methods coordinate policy (GameMode check, method check) before delegating to `SpotlightManager`.
+The `Extension` subclass acts as a facade over the four subsystem managers (`SettingsManager`, `SpotlightManager`, `MouseTracker`, `GameModeClient`). The extension's `enable()`/`disable()` orchestrate creation and teardown. The `_toggleSpotlight()` and `_showSpotlight()` methods coordinate policy (GameMode check, method check) before delegating to `SpotlightManager`.
 
 ### 2.4 Strategy Pattern — Dual Rendering Pipeline
 `SpotlightManager` tries `SpotlightGLSLEffect` first. On failure (e.g., missing OpenGL ES 3.0), it falls back to Cairo rendering. A boolean `_useGLSL` flag routes all operations (mouse position update, repaint, hide) to the active implementation.
@@ -90,10 +78,7 @@ updateMousePosition(x, y) {
 ### 2.6 Module-Level Singleton — Logging State
 The log level (`currentLogLevel`) is maintained as a module-level variable in `utils.ts`. Multiple modules import `setLogLevel`, `debugLog`, and `LogLevel`, all sharing the same mutable state. This avoids passing a logger instance through the dependency chain.
 
-### 2.7 Command Pattern — Keybinding Callback
-`KeybindingManager` wraps `Main.wm.addKeybinding()` with a stored callback reference (`_toggleSpotlight`). The callback is invoked by the GNOME Shell WM when the shortcut is pressed. The `remove()` / `updateKeybinding()` methods manage the binding lifecycle.
-
-### 2.8 Template Method — GObject Class Registration
+### 2.7 Template Method — GObject Class Registration
 `SpotlightGLSLEffect` uses `GObject.registerClass` to define a GObject subclass extending `Shell.GLSLEffect`. It overrides `vfunc_build_pipeline()` to inject the GLSL fragment shader, and `vfunc_paint_target()` to set uniforms before the default painting logic runs.
 
 ```typescript
@@ -114,44 +99,42 @@ export const SpotlightGLSLEffect = GObject.registerClass(
 ### 3.1 Module Dependency Graph
 
 ```
-┌─────────────────────────────────────────────────────────────────────┐
-│                        FindMyMouseExtension                         │
-│                       (extension.ts — 379 lines)                    │
-│  Facade: create, configure, teardown all subsystems                 │
-└────┬───────┬───────┬──────┬──────┬─────────────────────────────────┘
-     │       │       │      │      │
-     ▼       ▼       ▼      ▼      ▼
-┌────────┐ ┌────────────┐ ┌──────────┐ ┌────────────────┐ ┌──────────────┐
-│Settings│ │Spotlight   │ │Mouse     │ │Keybinding      │ │GameMode      │
-│Manager │ │Manager     │ │Tracker   │ │Manager         │ │Client        │
-│settings│ │spotlight.ts│ │mouse     │ │keybindings.ts  │ │gamemode      │
-│.ts     │ │            │ │Tracking │ │                │ │Client.ts     │
-└───┬────┘ └──┬─────────┘ │.ts       │ └───────┬────────┘ └──────┬───────┘
-    │         │           └────┬─────┘         │                 │
-    │         │                │               │                 │
-    │         ▼                │               │                 │
-    │  ┌──────────────┐       │               │                 │
-    │  │SpotlightGLSL │       │               │                 │
-    │  │Effect        │       │               │                 │
-    │  │spotlight     │       │               │                 │
-    │  │Effect.ts     │       │               │                 │
-    │  └──────────────┘       │               │                 │
-    │         │               │               │                 │
-    └─────────┼───────────────┼───────────────┼─────────────────┘
-              │               │               │
-              ▼               ▼               ▼
-        ┌──────────────────────────────────────────┐
-        │            utils.ts (log, color)         │
-        │  Shared: LogLevel, debugLog, parseColor  │
-        └──────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────────────┐
+│                       FindMyMouseExtension                         │
+│                      (extension.ts — 379 lines)                    │
+│  Facade: create, configure, teardown all subsystems                │
+└────┬───────┬───────┬──────┬───────────────────────────────────────┘
+     │       │       │      │
+     ▼       ▼       ▼      ▼
+┌────────┐ ┌────────────┐ ┌──────────┐ ┌──────────────┐
+│Settings│ │Spotlight   │ │Mouse     │ │GameMode      │
+│Manager │ │Manager     │ │Tracker   │ │Client        │
+│settings│ │spotlight.ts│ │mouse     │ │gamemode      │
+│.ts     │ │            │ │Tracking │ │Client.ts     │
+└───┬────┘ └──┬─────────┘ │.ts       │ └──────┬───────┘
+    │         │           └────┬─────┘        │
+    │         ▼                │              │
+    │  ┌──────────────┐       │              │
+    │  │SpotlightGLSL │       │              │
+    │  │Effect        │       │              │
+    │  │spotlight     │       │              │
+    │  │Effect.ts     │       │              │
+    │  └──────────────┘       │              │
+    │         │               │              │
+    └─────────┼───────────────┼──────────────┘
+              │               │
+              ▼               ▼
+        ┌──────────────────────────────┐
+        │         utils.ts             │
+        │  (log, color, utilities)     │
+        └──────────────────────────────┘
 ```
 
 **Dependency direction** (→ means "imports from"):
-- `extension.ts` → `settings.ts`, `spotlight.ts`, `mouseTracking.ts`, `keybindings.ts`, `gamemodeClient.ts`, `utils.ts`
+- `extension.ts` → `settings.ts`, `spotlight.ts`, `mouseTracking.ts`, `gamemodeClient.ts`, `utils.ts`
 - `spotlight.ts` → `settings.ts`, `utils.ts`, `spotlightEffect.ts`
 - `spotlightEffect.ts` → `settings.ts`, `utils.ts`
 - `mouseTracking.ts` → `settings.ts`, `utils.ts`
-- `keybindings.ts` → `settings.ts`, `utils.ts`
 - `gamemodeClient.ts` → `utils.ts`
 - `prefs.ts` → `utils.ts`
 - `settings.ts` → `utils.ts`
@@ -164,15 +147,14 @@ export const SpotlightGLSLEffect = GObject.registerClass(
 GNOME Shell
   └── Extension (resource:///org/gnome/shell/extensions/extension.js)
        └── FindMyMouseExtension           [extension.ts]
-            Fields:
-              - _settingsManager: SettingsManager
-              - _spotlightManager: SpotlightManager
-              - _mouseTracker: MouseTracker
-              - _keybindingManager: KeybindingManager
-              - _gameModeClient: GameModeClient
-              - ~20 GSettings signal handler IDs
-              - _lastMoveX, _lastMoveY: number
-              - Glass morphism cached values
+             Fields:
+               - _settingsManager: SettingsManager
+               - _spotlightManager: SpotlightManager
+               - _mouseTracker: MouseTracker
+               - _gameModeClient: GameModeClient
+               - ~20 GSettings signal handler IDs
+               - _lastMoveX, _lastMoveY: number
+               - Glass morphism cached values
 
 GObject
   └── Shell.GLSLEffect
@@ -193,8 +175,6 @@ Plain TypeScript Classes:
   │             _spotlightVisible, _idleTimeoutId
   ├── MouseTracker                        [mouseTracking.ts]
   │     Fields: _pointerWatch, _lastX/Y, _movementHistory[]
-  ├── KeybindingManager                   [keybindings.ts]
-  │     Fields: _settingsManager, _toggleSpotlight, _keybindingHandler
   ├── GameModeClient                      [gamemodeClient.ts]
   │     Fields: _proxy (Gio.DBusProxy), _clientCount, 
   │             _stateChangedHandlers[]
@@ -213,10 +193,9 @@ spotlight.ts       172 lines  (8%)  — Spotlight manager (GLSL + Cairo)
 settings.ts        135 lines  (6%)  — Settings caching and parsing
 mouseTracking.ts   127 lines  (6%)  — Pointer tracking + shake detection
 gamemodeClient.ts   99 lines  (5%)  — GameMode DBus integration
-keybindings.ts      58 lines  (3%)  — Keyboard shortcut management
 utils.ts            37 lines  (2%)  — Shared utilities
                    ─────
-        Total:    ~2,176 lines
+        Total:    ~2,118 lines
 ```
 
 ---
@@ -234,7 +213,7 @@ constructor(metadata)
   - Set _gameModeAvailable = false
          │
          ▼
-enable()
+async enable()
   ├── getSettings() → Gio.Settings
   ├── setLogLevel() from settings
   ├── Connect 'changed::log-level' signal
@@ -245,18 +224,13 @@ enable()
   ├── new SettingsManager(settings)
   ├── new SpotlightManager(settings, glassOpts)
   ├── new MouseTracker(settings, callback)
-  ├── new KeybindingManager(settings, toggleCallback)
   ├── Connect 'changed' and 'changed::activation-method'
-  ├── this._keybindingManager.setup()
   ├── await this._mouseTracker.setup()
-  ├── this._setupClickActivation()
   ├── this._setupAlwaysVisible()
          │
          ▼
 disable()
-  ├── this._keybindingManager.remove()
   ├── this._mouseTracker.remove()
-  ├── this._removeClickActivation()
   ├── this._removeAlwaysVisible()
   ├── Disconnect all 10+ GSettings signal IDs
   ├── this._spotlightManager.hide()
@@ -304,32 +278,41 @@ FindMyMouseExtension._handleMouseMovement(x, y)
 ### 4.3 Activation Method Dispatch Flow
 
 ```
-User action (varies by method)
-         │
-         ▼
-FindMyMouseExtension._toggleSpotlight()
-         │
-         ├── [method === 'always'] → _showSpotlight() if not visible; return
-         │
-         ├── [GameMode check]:
-         │     doNotActivateInGameMode && gameModeAvailable && gameModeActive
-         │     → _spotlightManager.hide(); return
-         │
-         └── [toggle]:
-               ├── if visible → _spotlightManager.hide()
-               └── if hidden  → _showSpotlight()
-                                 ├── GameMode re-check
-                                 ├── _spotlightManager.show(showOnAllMonitors)
-                                 │     ├── _getMonitorGeometry()
-                                 │     ├── new St.DrawingArea(geometry)
-                                 │     ├── Try new SpotlightGLSLEffect()
-                                 │     │     └── On fail → Cairo connect('repaint')
-                                 │     ├── Main.uiGroup.add_child()
-                                 │     ├── _resetIdleTimeout()
-                                 │     └── _spotlightVisible = true
-                                 │
-                                 └── global.get_pointer() → initial position
-                                 └── _spotlightManager.updateMousePosition()
+[method === 'shake']: MouseTracker detects shake → _toggleSpotlight()
+[method === 'always']: _setupAlwaysVisible() or method change → _showSpotlight()
+
+                  │
+                  ▼
+         FindMyMouseExtension._toggleSpotlight()
+                  │
+         ┌────────┴────────────┐
+         ▼                     ▼
+   [method === 'always']  [method === 'shake']
+         │                     │
+         ▼                     ▼
+   _showSpotlight()      [toggle]:
+   if not visible;       if visible → _spotlightManager.hide()
+   return                if hidden  → _showSpotlight()
+                                       │
+                                       ▼
+                              _showSpotlight()
+                                ├── [GameMode check]:
+                                │     doNotActivateInGameMode
+                                │     && gameModeAvailable
+                                │     && gameModeActive
+                                │     → hide(); return
+                                │
+                                ├── _spotlightManager.show(showOnAllMonitors)
+                                │     ├── _getMonitorGeometry()
+                                │     ├── new St.DrawingArea(geometry)
+                                │     ├── Try new SpotlightGLSLEffect()
+                                │     │     └── On fail → Cairo connect('repaint')
+                                │     ├── Main.uiGroup.add_child()
+                                │     ├── _resetIdleTimeout()
+                                │     └── _spotlightVisible = true
+                                │
+                                └── global.get_pointer() → initial position
+                                └── _spotlightManager.updateMousePosition()
 
 Idle timeout fires:
   _resetIdleTimeout() → GLib.timeout_add(idleTimeout, hide)
@@ -356,16 +339,12 @@ SettingsManager 'changed::*' handler
          │           ├── [GLSL]: _glslEffect.queue_repaint()
          │           └── [Cairo]: _spotlight.queue_repaint()
          │
-         └── [If 'changed::activation-method']
-               ├── cacheSettings()
-               ├── _keybindingManager.remove()
-               ├── _mouseTracker.remove()
-               ├── _removeClickActivation()
-               ├── _keybindingManager.setup()
-               ├── _mouseTracker.setup()
-               ├── _setupClickActivation()
-               ├── [if 'always']: _showSpotlight()
-               └── [if not 'always' && visible]: hide()
+          └── [If 'changed::activation-method']
+                ├── cacheSettings()
+                ├── _mouseTracker.remove()
+                ├── _mouseTracker.setup()
+                ├── [if 'always']: _showSpotlight()
+                └── [if not 'always' && visible]: hide()
 ```
 
 ### 4.5 GameMode State Change Flow
@@ -491,7 +470,7 @@ Shader fragment execution (per pixel):
 
 ## 5. Integration Points (GNOME Shell & System APIs)
 
-### 5.1 GNOME Shell Extension API (8 APIs)
+### 5.1 GNOME Shell Extension API (6 APIs)
 
 | # | API | Module | Usage |
 |---|-----|--------|-------|
@@ -499,82 +478,75 @@ Shader fragment execution (per pixel):
 | 2 | `Extension.getSettings()` | `extension.ts:62` | Obtains `Gio.Settings` for the extension's schema |
 | 3 | `ExtensionPreferences` class | `prefs.ts:12` | Base class for `FindMyMousePreferences` |
 | 4 | `Main.uiGroup.add_child()` | `spotlight.ts:82` | Adds `St.DrawingArea` to the UI stack |
-| 5 | `Main.wm.addKeybinding()` | `keybindings.ts:29` | Registers a system-level keyboard shortcut |
-| 6 | `Main.wm.removeKeybinding()` | `keybindings.ts:48` | Unregisters the keyboard shortcut |
-| 7 | `Main.layoutManager.monitors` | `spotlightEffect.ts:90` | Access monitor list for refresh rate detection |
-| 8 | `pointerWatcher` (dynamic import) | `mouseTracking.ts:33` | `getPointerWatcher().addWatch(16ms, callback)` — high-frequency mouse tracking |
+| 5 | `Main.layoutManager.monitors` | `spotlightEffect.ts:90` | Access monitor list for refresh rate detection |
+| 6 | `pointerWatcher` (dynamic import) | `mouseTracking.ts:33` | `getPointerWatcher().addWatch(16ms, callback)` — high-frequency mouse tracking |
 
-### 5.2 Clutter API (4 APIs)
+### 5.2 Clutter API (2 APIs)
 
 | # | API | Module | Usage |
 |---|-----|--------|-------|
-| 9 | `Clutter.Actor` | `spotlightEffect.ts:36` | Parent actor for `GLSLEffect` |
-| 10 | `Clutter.Event` / `Clutter.EVENT_STOP` / `Clutter.EVENT_PROPAGATE` | `extension.ts:240-242` | Event propagation control in click activation handler |
-| 11 | `global.stage.connect('button-press-event')` | `extension.ts:231` | Mouse click detection for click activation method |
-| 12 | `global.get_pointer()` | `spotlight.ts:154`, `extension.ts:373` | Get current mouse coordinates (used in Cairo repaint and initial show) |
+| 7 | `Clutter.Actor` | `spotlightEffect.ts:36` | Parent actor for `GLSLEffect` |
+| 8 | `global.get_pointer()` | `spotlight.ts:154`, `extension.ts:373` | Get current mouse coordinates (used in Cairo repaint and initial show) |
 
-### 5.3 Meta/Mutter API (4 APIs)
+### 5.3 Meta/Mutter API (3 APIs)
 
 | # | API | Module | Usage |
 |---|-----|--------|-------|
-| 13 | `Meta.KeyBindingFlags.NONE` | `keybindings.ts:32` | Keybinding configuration flag |
-| 14 | `Meta.MonitorManager.get()` | `spotlightEffect.ts:204-205` | Alternative refresh rate detection API |
-| 15 | `global.backend.get_monitor_manager()` | `spotlightEffect.ts:188-189` | Secondary refresh rate detection via backend |
-| 16 | `global.display.get_monitor_geometry()` / `get_n_monitors()` / `get_current_monitor()` | `spotlight.ts:41-53` | Monitor geometry computation for multi-monitor |
+| 9 | `Meta.MonitorManager.get()` | `spotlightEffect.ts:204-205` | Alternative refresh rate detection API |
+| 10 | `global.backend.get_monitor_manager()` | `spotlightEffect.ts:188-189` | Secondary refresh rate detection via backend |
+| 11 | `global.display.get_monitor_geometry()` / `get_n_monitors()` / `get_current_monitor()` | `spotlight.ts:41-53` | Monitor geometry computation for multi-monitor |
 
-### 5.4 St/Shell Toolkit API (3 APIs)
-
-| # | API | Module | Usage |
-|---|-----|--------|-------|
-| 17 | `St.DrawingArea` | `spotlight.ts:60` | Cairo-rendered full-screen overlay widget |
-| 18 | `St.DrawingArea.get_context()` | `spotlight.ts:146` | Obtain Cairo context for repaint |
-| 19 | `Shell.GLSLEffect` | `spotlightEffect.ts:26` | Base class for GLSL-based spotlight effect |
-| 20 | `Shell.ActionMode.NORMAL` | `keybindings.ts:28` | Keybinding action mode |
-| 21 | `Shell.SnippetHook.FRAGMENT` | `spotlightEffect.ts:262` | Shader injection hook point |
-
-### 5.5 GObject/GLib API (3 APIs)
+### 5.4 St/Shell Toolkit API (4 APIs)
 
 | # | API | Module | Usage |
 |---|-----|--------|-------|
-| 22 | `GObject.registerClass()` | `spotlightEffect.ts:24` | Registers `SpotlightGLSLEffect` as a proper GObject class |
-| 23 | `GLib.timeout_add()` | `spotlight.ts:132` | Idle timeout callback for auto-hide |
-| 24 | `GLib.get_monotonic_time()` | `mouseTracking.ts:63` | High-resolution timestamp for shake detection |
-| 25 | `GLib.source_remove()` | `spotlight.ts:111`, `spotlight.ts:128` | Cancel idle timeout |
+| 12 | `St.DrawingArea` | `spotlight.ts:60` | Cairo-rendered full-screen overlay widget |
+| 13 | `St.DrawingArea.get_context()` | `spotlight.ts:146` | Obtain Cairo context for repaint |
+| 14 | `Shell.GLSLEffect` | `spotlightEffect.ts:26` | Base class for GLSL-based spotlight effect |
+| 15 | `Shell.SnippetHook.FRAGMENT` | `spotlightEffect.ts:262` | Shader injection hook point |
+
+### 5.5 GObject/GLib API (4 APIs)
+
+| # | API | Module | Usage |
+|---|-----|--------|-------|
+| 16 | `GObject.registerClass()` | `spotlightEffect.ts:24` | Registers `SpotlightGLSLEffect` as a proper GObject class |
+| 17 | `GLib.timeout_add()` | `spotlight.ts:132` | Idle timeout callback for auto-hide |
+| 18 | `GLib.get_monotonic_time()` | `mouseTracking.ts:63` | High-resolution timestamp for shake detection |
+| 19 | `GLib.source_remove()` | `spotlight.ts:111`, `spotlight.ts:128` | Cancel idle timeout |
 
 ### 5.6 GIO/DBus API (3 APIs)
 
 | # | API | Module | Usage |
 |---|-----|--------|-------|
-| 26 | `Gio.Settings.get_*` / `set_*` / `bind` | `settings.ts`, `prefs.ts` | Reading/writing all 20+ extension preferences |
-| 27 | `Gio.Settings.connect('changed::*')` | `extension.ts`, `settings.ts` | Reacting to preference changes at runtime |
-| 28 | `Gio.DBusProxy.new()` / `Gio.DBusNodeInfo` | `gamemodeClient.ts:19-38` | Asynchronous DBus connection to GameMode service |
+| 20 | `Gio.Settings.get_*` / `set_*` / `bind` | `settings.ts`, `prefs.ts` | Reading/writing all 20+ extension preferences |
+| 21 | `Gio.Settings.connect('changed::*')` | `extension.ts`, `settings.ts` | Reacting to preference changes at runtime |
+| 22 | `Gio.DBusProxy.new()` / `Gio.DBusNodeInfo` | `gamemodeClient.ts:19-38` | Asynchronous DBus connection to GameMode service |
 
-### 5.7 GTK4/Adwaita API (10 APIs)
+### 5.7 GTK4/Adwaita API (9 APIs)
 
 | # | API | Module | Usage |
 |---|-----|--------|-------|
-| 29 | `Adw.PreferencesWindow` | `prefs.ts:17` | The main preferences window |
-| 30 | `Adw.PreferencesPage` | `prefs.ts:21` | Six preference pages |
-| 31 | `Adw.PreferencesGroup` | `prefs.ts:27` | Grouping related preferences |
-| 32 | `Adw.ComboRow` | `prefs.ts:33` | Dropdown for activation method, click button, log level |
-| 33 | `Adw.SpinRow` | `prefs.ts:378` | Numeric inputs for radius, zoom, timeout, etc. |
-| 34 | `Adw.SwitchRow` | `prefs.ts:226` | Toggle for GameMode suppression, multi-monitor, glass morphism |
-| 35 | `Adw.ActionRow` | `prefs.ts:61` | For color pickers, about button, reset rows |
-| 36 | `Adw.AboutWindow` | `prefs.ts:725` | About dialog with release notes |
-| 37 | `Gtk.ColorButton` | `prefs.ts:364` | Color pickers with alpha support |
-| 38 | `Gtk.ShortcutLabel` / `Gtk.EventControllerKey` | `prefs.ts:67-141` | Custom shortcut capture dialog |
+| 23 | `Adw.PreferencesWindow` | `prefs.ts:17` | The main preferences window |
+| 24 | `Adw.PreferencesPage` | `prefs.ts:21` | Six preference pages |
+| 25 | `Adw.PreferencesGroup` | `prefs.ts:27` | Grouping related preferences |
+| 26 | `Adw.ComboRow` | `prefs.ts:33` | Dropdown for activation method, log level |
+| 27 | `Adw.SpinRow` | `prefs.ts:378` | Numeric inputs for radius, zoom, timeout, etc. |
+| 28 | `Adw.SwitchRow` | `prefs.ts:226` | Toggle for GameMode suppression, multi-monitor, glass morphism |
+| 29 | `Adw.ActionRow` | `prefs.ts:61` | For color pickers, about button, reset rows |
+| 30 | `Adw.AboutWindow` | `prefs.ts:725` | About dialog with release notes |
+| 31 | `Gtk.ColorButton` | `prefs.ts:364` | Color pickers with alpha support |
 
 ### 5.8 Cairo API (5 APIs)
 
 | # | API | Module | Usage |
 |---|-----|--------|-------|
-| 39 | `Cairo.Context` (`cr`) | `spotlight.ts:146` | Cairo rendering context from `St.DrawingArea` |
-| 40 | `Cairo.Operator.SOURCE` | `spotlight.ts:150` | Dim background overlay |
-| 41 | `Cairo.Operator.CLEAR` | `spotlight.ts:159` | Punch transparent hole for spotlight |
-| 42 | `Cairo.Operator.OVER` | `spotlight.ts:164` | Draw spotlight ring arc |
-| 43 | `cr.arc()` / `cr.fill()` / `cr.stroke()` | `spotlight.ts:160-168` | Circle geometry for spotlight hole and ring |
+| 32 | `Cairo.Context` (`cr`) | `spotlight.ts:146` | Cairo rendering context from `St.DrawingArea` |
+| 33 | `Cairo.Operator.SOURCE` | `spotlight.ts:150` | Dim background overlay |
+| 34 | `Cairo.Operator.CLEAR` | `spotlight.ts:159` | Punch transparent hole for spotlight |
+| 35 | `Cairo.Operator.OVER` | `spotlight.ts:164` | Draw spotlight ring arc |
+| 36 | `cr.arc()` / `cr.fill()` / `cr.stroke()` | `spotlight.ts:160-168` | Circle geometry for spotlight hole and ring |
 
-**Total distinct GNOME/System APIs documented: 43**
+**Total distinct GNOME/System APIs documented: 36**
 
 ---
 
@@ -619,16 +591,14 @@ Used by: `SettingsManager` cached colors, GLSL uniforms, Cairo `setSourceRGBA`
 
 ## 7. Settings Schema Overview
 
-The extension defines 20 GSettings keys in `org.gnome.shell.extensions.find-my-mouse`:
+The extension defines 18 GSettings keys in `org.gnome.shell.extensions.find-my-mouse`:
 
 | Key | Type | Default | Page |
 |-----|------|---------|------|
 | `activation-method` | string | `'shake'` | General |
-| `find-my-mouse-activation` | string | `'<Super>f'` | General |
-| `click-activation-button` | int | `1` | General |
 | `show-on-all-monitors` | bool | `false` | General |
 | `do-not-activate-gamemode` | bool | `true` | General |
-| `log-level` | int | `2` (INFO) | General |
+| `log-level` | int | `2` (INFO) | About |
 | `background-color` | string | `'#00000080'` | Appearance |
 | `spotlight-color` | string | `'#FFFFFF80'` | Appearance |
 | `spotlight-radius` | int | `100` | Appearance |
@@ -638,11 +608,11 @@ The extension defines 20 GSettings keys in `org.gnome.shell.extensions.find-my-m
 | `animation-duration` | int | `500` | Timing |
 | `shake-interval` | int | `1000` | Shake Detection |
 | `shake-sensitivity` | int | `400` | Shake Detection |
-| `enable-glass-morphism` | bool | `false` | Glass Morphism |
-| `blur-radius` | double | `5.0` | Glass Morphism |
-| `glass-opacity` | double | `0.3` | Glass Morphism |
-| `glow-color` | string | `'rgba(255,255,255,0.1)'` | Glass Morphism |
-| `glass-tint` | string | `'#FFFFFF1A'` | Glass Morphism |
+| `enable-glass-morphism` | bool | `false` | Glass |
+| `blur-radius` | double | `5.0` | Glass |
+| `glass-opacity` | int | `30` | Glass |
+| `glow-color` | string | `'rgba(255,255,255,0.1)'` | Glass |
+| `glass-tint` | string | `'#FFFFFF1A'` | Glass |
 | `excluded-apps` | string[] | `[]` | (unused in code) |
 
 ---
@@ -653,16 +623,13 @@ The extension defines 20 GSettings keys in `org.gnome.shell.extensions.find-my-m
 |----------|----------|----------|
 | GLSL effect initialization fails | Catch → fallback to Cairo with `_useGLSL = false` | `spotlight.ts:76-80` |
 | GameMode DBus service unavailable | Exponential backoff retry (3 attempts, 5s→10s→20s) | `gamemodeClient.ts:49-65` |
-| Keybinding registration fails | Try/catch with ERROR log; no crash | `keybindings.ts:40-42` |
-| Keybinding removal fails | Try/catch — silently ignore if never set | `keybindings.ts:48-51` |
 | Refresh rate detection fails | Multiple method fallbacks; default to 60 Hz | `spotlightEffect.ts:166-225` |
 | `global.display.get_monitor_index_for_rect()` fails | Fallback: manual geometry search | `spotlightEffect.ts:68-81` |
 | Monitor API version mismatches | 4 methods tried: `Main.layoutManager`, `global.display.get_monitors()`, `global.screen.get_monitors()`, direct `Meta.MonitorManager` | `spotlightEffect.ts:89-98` |
 | Missing/invalid color strings | `parseColor` returns `[0,0,0,255]` default; `_parseRgbaString` falls back to hex parsing | `utils.ts:27-37`, `settings.ts:121-134` |
 | `St.DrawingArea.get_context()` returns null | Guard clause: `if (!cr) return;` | `spotlight.ts:147` |
 | Idle timeout fires after spotlight already hidden | `_idleTimeoutId` set to 0 after `hide()` — harmless `GLib.source_remove(0)` | `spotlight.ts:110-113` |
-| Mouse press handler during non-click mode | Handler only registered when `activation-method === 'click'` | `extension.ts:230` |
-| Activation method changes at runtime | Full teardown and re-setup of keyboard, mouse, click handlers | `extension.ts:266-273` |
+| Activation method changes at runtime | Full teardown and re-setup of mouse and always-visible handlers | `extension.ts:266-273` |
 
 ---
 
