@@ -65,6 +65,14 @@ export class SpotlightManager {
         });
     }
 
+    private _getCurrentPointerPosition(): [number, number] {
+        if (this._lastPointerX !== null && this._lastPointerY !== null) {
+            return [this._lastPointerX, this._lastPointerY];
+        }
+
+        return global.get_pointer();
+    }
+
     _getMonitorGeometry(showOnAllMonitors: boolean): MonitorGeometry {
         if (showOnAllMonitors) {
             let x = 0;
@@ -278,7 +286,7 @@ export class SpotlightManager {
             return;
         }
 
-        const [mx, my] = global.get_pointer();
+        const [mx, my] = this._getCurrentPointerPosition();
         const radius = this._settingsManager.cachedRadius;
         const zoom = this._currentZoom;
         const centerX = mx - area.x;
