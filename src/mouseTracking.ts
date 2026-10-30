@@ -76,14 +76,18 @@ export class MouseTracker {
         ) {
             oldestIndex++;
         }
+
         if (oldestIndex > 0) {
             this._movementHistory = this._movementHistory.slice(oldestIndex);
         }
 
         let totalDistanceSquared = 0;
-        let currentX = 0, currentY = 0;
-        let minX = currentX, maxX = currentX;
-        let minY = currentY, maxY = currentY;
+        let currentX = 0;
+        let currentY = 0;
+        let minX = 0;
+        let maxX = 0;
+        let minY = 0;
+        let maxY = 0;
 
         for (const mov of this._movementHistory) {
             currentX += mov.dx;
@@ -98,13 +102,12 @@ export class MouseTracker {
         const rectWidth = maxX - minX;
         const rectHeight = maxY - minY;
         const diagonalSquared = rectWidth * rectWidth + rectHeight * rectHeight;
-
         const shakeFactor = this._settingsManager.cachedShakeSensitivity / 100;
+
         if (
             diagonalSquared > 0 &&
             totalDistanceSquared / diagonalSquared > shakeFactor * shakeFactor
         ) {
-            debugLog('Shake detected!', LogLevel.INFO);
             this._movementHistory = [];
             this._lastX = -1;
             this._lastY = -1;

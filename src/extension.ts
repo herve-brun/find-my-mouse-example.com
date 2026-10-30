@@ -18,6 +18,7 @@ export default class FindMyMouseExtension extends Extension {
     private _lastMoveX: number;
     private _lastMoveY: number;
     private _gameModeAvailable: boolean;
+
     constructor(metadata: any) {
         super(metadata);
         this._settingsManager = null;
@@ -31,8 +32,6 @@ export default class FindMyMouseExtension extends Extension {
         this._ringWidthChangedId = 0;
         this._lastMoveX = -1;
         this._lastMoveY = -1;
-        
-        // Flag to indicate GameMode service availability for preferences UI
         this._gameModeAvailable = false;
     }
 
@@ -40,21 +39,21 @@ export default class FindMyMouseExtension extends Extension {
         const settings = this.getSettings();
         const logLevel = settings.get_int('log-level') || 2;
         setLogLevel(logLevel);
-        
+
         this._logLevelChangedId = settings.connect('changed::log-level', () => {
             const newLogLevel = settings.get_int('log-level');
             setLogLevel(newLogLevel);
             debugLog(`Log level changed to ${newLogLevel}`, LogLevel.INFO);
         });
-        
+
         this._gameModeClient = new GameModeClient();
         this._gameModeClient.setup();
         this._gameModeClient.onStateChanged((active) => {
-            debugLog(`GameMode state updated: ${active}`, LogLevel.INFO);
             this._gameModeAvailable = true;
             if (typeof globalThis !== 'undefined') {
                 (globalThis as any).FindMyMouseGameModeAvailable = this._gameModeAvailable;
             }
+
             if (this._settingsManager && this._spotlightManager) {
                 const doNotActivateInGameMode = this._settingsManager.cachedDoNotActivateInGameMode;
                 const currentMethod = this._settingsManager.cachedActivationMethod;
@@ -67,26 +66,24 @@ export default class FindMyMouseExtension extends Extension {
                 }
             }
         });
-        
-        this._ringWidthChangedId = settings.connect('changed::spotlight-ring-width', () => {
-            this._settingsManager.cacheSettings();
-            this._spotlightManager.queueRepaint();
-        });
-        
-        this._settingsManager = new SettingsManager(settings);
 
+        this._ringWidthChangedId = settings.connect('changed::spotlight-ring-width', () => {
+            this._settingsManager?.cacheSettings();
+            this._spotlightManager?.queueRepaint();
+        });
+
+        this._settingsManager = new SettingsManager(settings);
         this._spotlightManager = new SpotlightManager(this._settingsManager);
-        
-        // Re-check GameMode state now that managers are initialized
-        // (the state change handler may have fired before they were ready)
+
         if (this._gameModeAvailable && this._gameModeClient?.isActive && this._settingsManager.cachedDoNotActivateInGameMode) {
             debugLog('Hiding spotlight: GameMode is already active at extension init', LogLevel.INFO);
             this._spotlightManager.hide();
         }
+
         this._mouseTracker = new MouseTracker(this._settingsManager, (x, y) => this._handleMouseMovement(x, y));
 
         this._settingsChangedId = this._settingsManager.settings.connect('changed', () => {
-            this._settingsManager.cacheSettings();
+            this._settingsManager?.cacheSettings();
             this._spotlightManager?.queueRepaint();
         });
 
@@ -100,54 +97,53 @@ export default class FindMyMouseExtension extends Extension {
         this._removeAlwaysVisible();
 
         if (this._settingsChangedId) {
-            this._settingsManager.settings.disconnect(this._settingsChangedId);
+            this._settingsManager?.settings.disconnect(this._settingsChangedId);
             this._settingsChangedId = 0;
         }
         if (this._ringWidthChangedId) {
-            this._settingsManager.settings.disconnect(this._ringWidthChangedId);
+            this._settingsManager?.settings.disconnect(this._ringWidthChangedId);
             this._ringWidthChangedId = 0;
         }
         if (this._logLevelChangedId) {
-            this._settingsManager.settings.disconnect(this._logLevelChangedId);
+            this._settingsManager?.settings.disconnect(this._logLevelChangedId);
             this._logLevelChangedId = 0;
         }
 
-        this._spotlightManager.destroyImmediately();
+        this._spotlightManager?.destroyImmediately();
         this._settingsManager = null;
         this._spotlightManager = null;
         this._mouseTracker = null;
-        
-         // Clean up GameMode client
-         debugLog('Disabling GameMode client...', LogLevel.INFO);
-         if (this._gameModeClient) {
-             this._gameModeClient.clearStateChangedHandlers();
-             if (this._gameModeClient && this._gameModeClient._proxy) {
-                 this._gameModeClient._proxy.run_dispose();
-             }
-             this._gameModeClient = null;
-             debugLog('GameMode client disabled.', LogLevel.INFO);
-         }
-        
+
+        debugLog('Disabling GameMode client...', LogLevel.INFO);
+        if (this._gameModeClient) {
+            this._gameModeClient.clearStateChangedHandlers();
+            if (this._gameModeClient && this._gameModeClient._proxy) {
+                this._gameModeClient._proxy.run_dispose();
+            }
+            this._gameModeClient = null;
+            debugLog('GameMode client disabled.', LogLevel.INFO);
+        }
+
         debugLog('Extension disabled', LogLevel.INFO);
     }
 
     _setupAlwaysVisible() {
-        const method = this._settingsManager.cachedActivationMethod;
+        const method = this._settingsManager?.cachedActivationMethod;
         debugLog(`Activation method is: ${method}`, LogLevel.DEBUG);
         if (method === 'always') {
             debugLog('Showing spotlight (always mode)');
             this._showSpotlight();
         }
 
-        this._alwaysVisibleHandler = this._settingsManager.settings.connect(
+        this._alwaysVisibleHandler = this._settingsManager!.settings.connect(
             'changed::activation-method',
             () => {
-                const newMethod = this._settingsManager.settings.get_string('activation-method');
-                this._settingsManager.cacheSettings();
+                const newMethod = this._settingsManager?.settings.get_string('activation-method');
+                this._settingsManager?.cacheSettings();
 
                 if (newMethod === 'always') {
                     this._showSpotlight();
-                } else if (this._spotlightManager.isVisible) {
+                } else if (this._spotlightManager?.isVisible) {
                     this._spotlightManager.hide();
                 }
             }
@@ -156,15 +152,15 @@ export default class FindMyMouseExtension extends Extension {
 
     _removeAlwaysVisible() {
         if (this._alwaysVisibleHandler) {
-            this._settingsManager.settings.disconnect(this._alwaysVisibleHandler);
+            this._settingsManager?.settings.disconnect(this._alwaysVisibleHandler);
             this._alwaysVisibleHandler = 0;
         }
     }
 
     _handleMouseMovement(x: number, y: number): void {
-        this._spotlightManager.updateMousePosition(x, y);
+        this._spotlightManager?.updateMousePosition(x, y);
 
-        if (this._spotlightManager.isVisible) {
+        if (this._spotlightManager?.isVisible) {
             if (this._lastMoveX >= 0) {
                 const dx = Math.abs(x - this._lastMoveX);
                 const dy = Math.abs(y - this._lastMoveY);
@@ -180,43 +176,30 @@ export default class FindMyMouseExtension extends Extension {
         this._lastMoveX = x;
         this._lastMoveY = y;
 
-        if (this._settingsManager.cachedActivationMethod === 'shake') {
-            if (this._mouseTracker.detectShake(x, y)) {
+        if (this._settingsManager?.cachedActivationMethod === 'shake') {
+            if (this._mouseTracker?.detectShake(x, y)) {
                 this._toggleSpotlight();
             }
         }
     }
 
     _toggleSpotlight() {
-        const method = this._settingsManager.cachedActivationMethod;
+        const method = this._settingsManager?.cachedActivationMethod;
 
-        // "Always Visible" mode takes precedence over all other checks
         if (method === 'always') {
-            if (!this._spotlightManager.isVisible) {
+            if (!this._spotlightManager?.isVisible) {
                 this._showSpotlight();
             }
             return;
         }
 
-        // Check if GameMode is active and we should not activate in GameMode
-        // This setting prevents the spotlight from appearing when GameMode is active,
-        // ensuring a distraction-free gaming experience.
-        const doNotActivateInGameMode = this._settingsManager.cachedDoNotActivateInGameMode;
-        
-        // Only check GameMode status if:
-        // 1. The setting is enabled
-        // 2. The GameMode service is available
-        // 3. GameMode is currently active
-        debugLog(`GameMode check: doNotActivateInGameMode=${doNotActivateInGameMode}, _gameModeAvailable=${this._gameModeAvailable}, isActive=${this._gameModeClient?.isActive}`, LogLevel.INFO);
-        debugLog(`Current global GameMode available: ${globalThis.FindMyMouseGameModeAvailable}`, LogLevel.INFO);
+        const doNotActivateInGameMode = this._settingsManager?.cachedDoNotActivateInGameMode;
         if (doNotActivateInGameMode && this._gameModeAvailable && this._gameModeClient?.isActive) {
-            debugLog('Spotlight not shown: GameMode is active and setting is enabled', LogLevel.INFO);
-            this._spotlightManager.hide();
+            this._spotlightManager?.hide();
             return;
         }
 
-        // Toggle spotlight for other activation methods
-        if (this._spotlightManager.isVisible) {
+        if (this._spotlightManager?.isVisible) {
             this._spotlightManager.hide();
         } else {
             this._showSpotlight();
@@ -224,23 +207,14 @@ export default class FindMyMouseExtension extends Extension {
     }
 
     _showSpotlight() {
-        const showOnAllMonitors = this._settingsManager.settings.get_boolean('show-on-all-monitors') || false;
-        debugLog(`showOnAllMonitors = ${showOnAllMonitors}`);
-        
-        // Don't show if GameMode is active and suppression is enabled
-        if (this._settingsManager.cachedDoNotActivateInGameMode && this._gameModeClient?.isActive) {
-            debugLog('Spotlight not shown: GameMode is active', LogLevel.INFO);
+        const showOnAllMonitors = this._settingsManager?.settings.get_boolean('show-on-all-monitors') || false;
+        if (this._settingsManager?.cachedDoNotActivateInGameMode && this._gameModeClient?.isActive) {
             return;
         }
 
-        // Show the spotlight
-        this._spotlightManager.show(showOnAllMonitors);
-        
-        // Get current mouse position and update spotlight immediately
-        const [mouseX, mouseY] = global.get_pointer();
-        debugLog(`Setting initial spotlight position to mouse coordinates: (${mouseX}, ${mouseY})`);
-        this._spotlightManager.updateMousePosition(mouseX, mouseY);
-        
+        this._spotlightManager?.show(showOnAllMonitors);
 
+        const [mouseX, mouseY] = global.get_pointer();
+        this._spotlightManager?.updateMousePosition(mouseX, mouseY);
     }
 }
