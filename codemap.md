@@ -158,6 +158,7 @@ extension.ts:_showSpotlight()
 | Node.js        | 22       | For TypeScript compilation & tooling     |
 | npm            | 10+      | Bundled with Node.js                     |
 | glib-compile-schemas | System | From `libglib2.0-bin` (Ubuntu) |
+| mutter-devkit | GNOME 49+ | Required by `gnome-shell --devkit` to draw the host window; Ubuntu: `sudo apt install mutter-dev-bin` (provides `/usr/libexec/mutter-devkit`). Without it the nested shell runs headless. |
 
 ### 4.2 NPM Scripts Reference
 
@@ -195,6 +196,8 @@ npm run build
 # 5. Restart shell (Alt+F2, r) or test in nested session
 
 # 6. Test in nested session
+# GNOME 49+ needs mutter-devkit (Ubuntu: sudo apt install mutter-dev-bin)
+# Without it --devkit runs headless and no window appears.
 # GNOME 49+:
 dbus-run-session gnome-shell --devkit --wayland
 # GNOME < 49:
@@ -372,7 +375,7 @@ find-my-mouse-example.com/
 ### 8.2 Manual Testing Commands
 
 ```bash
-# Nested Wayland (GNOME 49+)
+# Nested Wayland (GNOME 49+) — requires mutter-devkit (Ubuntu: sudo apt install mutter-dev-bin)
 dbus-run-session gnome-shell --devkit --wayland
 
 # Nested Wayland (GNOME < 49)
@@ -491,7 +494,7 @@ The extension defaults are carefully chosen to match Microsoft PowerToys "Find M
 
 ### 11.3 Wayland & Input
 - **Extension runs in Wayland** — modifier key (Ctrl) double-press is unreliable in Wayland. The custom keybinding (`<Super>f` default) is the recommended activation method.
-- **No shell restart** for testing — use a nested session via `dbus-run-session gnome-shell --devkit --wayland` (GNOME 49+) or `--nested` (older).
+- **No shell restart** for testing — use a nested session via `dbus-run-session gnome-shell --devkit --wayland` (GNOME 49+) or `--nested` (older). GNOME 50 removed `--nested` entirely. On GNOME 49+, `--devkit` needs the external `mutter-devkit` binary to draw the host window (Ubuntu: `sudo apt install mutter-dev-bin`); without it the shell starts headless and nothing appears on screen.
 - **PointerWatcher** is imported dynamically (`await import(...)`) in `MouseTracker.setup()` because GNOME Shell < 48 may not expose it as a static resource.
 
 ### 11.4 GameMode Integration

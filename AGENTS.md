@@ -28,6 +28,10 @@ npm run build:schemas
 glib-compile-schemas schemas/
 
 # Test in nested Wayland session (no shell restart needed)
+# GNOME 49+ needs the mutter-devkit helper to draw the host window:
+#   Ubuntu/Debian: sudo apt install mutter-dev-bin
+#   Other distros: install the package providing /usr/libexec/mutter-devkit
+# Without it, --devkit starts headless and no window appears.
 # For GNOME Shell 49+, use the devkit mode for better debugging
 # For older versions, use the nested mode with backtrace warnings
 if [ "$(gnome-shell --version | awk '{print int($3)}')" -ge 49 ]; then
@@ -106,7 +110,7 @@ Runs on PR events (opened, edited, synchronize, reopened):
 - **Cairo context** obtained via `area.get_context()` in `repaint` signal handler
 - **Use `queue_repaint()`** not `queue_redraw()` for St.DrawingArea
 - **Extension runs in Wayland** - modifier key (Ctrl) double-press unreliable; use shake or always-visible activation
-- **No shell restart** - user tests via nested session
+- **No shell restart** - user tests via nested session (GNOME 49+ requires `mutter-dev-bin` on Ubuntu; without it `--devkit` runs headless with no visible window)
 - **Debugging**: Use `journalctl --user --no-pager | grep "Find My Mouse"` for logs
 - **Spotlight visibility**: Tracked via `_spotlightVisible` boolean
 - **Zoom animation**: Uses `Clutter.Timeline` with `easeOutQuad` easing. Start zoom and animation duration are configurable in preferences.
