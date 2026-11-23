@@ -8,15 +8,24 @@ export class GameModeClient {
     private _clientCount: number;
     private _stateChangedHandlers: StateChangeHandler[];
     private _retryCount: number;
+    private _retryTimerId: ReturnType<typeof setTimeout> | null;
+    private _destroyed: boolean;
 
     constructor() {
         this._proxy = null;
         this._clientCount = 0;
         this._stateChangedHandlers = [];
         this._retryCount = 0;
+        this._retryTimerId = null;
+        this._destroyed = false;
     }
 
     setup() {
+        if (this._destroyed) return;
+        if (this._retryTimerId !== null) {
+            clearTimeout(this._retryTimerId);
+            this._retryTimerId = null;
+        }
         const GameModeClientInterface = '<node>' +
             '  <interface name="com.feralinteractive.GameMode">' +
             '    <property name="ClientCount" type="i" access="read"/>' +
@@ -38,7 +47,12 @@ export class GameModeClient {
             null,
             (o, res) => {
          try {
-                      this._proxy = Gio.DBusProxy.new_finish(res);
+                      const proxy = Gio.DBusProxy.new_finish(res);
+                      if (this._destroyed) {
+                          proxy.run_dispose();
+                          return;
+                      }
+                      this._proxy = proxy;
                       this._proxy.connect('g-properties-changed', this._onPropertiesChanged.bind(this));
                       this._clientCount = this._proxy.ClientCount;
                       debugLog(`GameMode initialized, ClientCount: ${this._clientCount}`, LogLevel.INFO);
@@ -46,6 +60,7 @@ export class GameModeClient {
                       // Emit initial state
                       this._emitStateChanged(this._clientCount > 0);
                  } catch (e) {
+                      if (this._destroyed) return;
                       this._retryCount++;
                       debugLog(`Error initializing GameMode: ${e.message}`, LogLevel.ERROR);
                       
@@ -61,7 +76,10 @@ export class GameModeClient {
                       
                       const delay = Math.min(5000 * Math.pow(2, this._retryCount - 1), 20000);
                       debugLog(`GameMode service not available, retrying in ${delay/1000} seconds...`, LogLevel.WARN);
-                      setTimeout(() => this.setup(), delay);
+                      this._retryTimerId = setTimeout(() => {
+                          this._retryTimerId = null;
+                          this.setup();
+                      }, delay);
                  }
             }
         );
@@ -91,6 +109,20 @@ export class GameModeClient {
     
     clearStateChangedHandlers() {
         this._stateChangedHandlers = [];
+    }
+
+    /** Cancel pending D-Bus retries and release the proxy on extension disable. */
+    destroy(): void {
+        this._destroyed = true;
+        if (this._retryTimerId !== null) {
+            clearTimeout(this._retryTimerId);
+            this._retryTimerId = null;
+        }
+        this.clearStateChangedHandlers();
+        if (this._proxy) {
+            this._proxy.run_dispose();
+            this._proxy = null;
+        }
     }
 
     get isActive() {

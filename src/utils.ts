@@ -11,6 +11,11 @@ export function setLogLevel(level: number): void {
     currentLogLevel = level;
 }
 
+// Guard expensive message formatting on hot paths (mouse moves, repaints).
+export function isLogLevelEnabled(level: number): boolean {
+    return level <= currentLogLevel;
+}
+
 export function debugLog(message: string, level: number = LogLevel.DEBUG): void {
     if (level <= currentLogLevel) {
         const levelPrefix: string = {

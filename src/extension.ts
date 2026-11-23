@@ -3,10 +3,12 @@ import { SettingsManager } from './settings.js';
 import { SpotlightManager } from './spotlight.js';
 import { MouseTracker } from './mouseTracking.js';
 import { GameModeClient } from './gamemodeClient.js';
-import { debugLog, LogLevel, setLogLevel } from './utils.js';
+import { debugLog, isLogLevelEnabled, LogLevel, setLogLevel } from './utils.js';
+
+import GLib from "gi://GLib";
 
 export default class FindMyMouseExtension extends Extension {
-    private _settingsManager: SettingsManager | null;
+    private _settingsManager: SettingsManager;
     private _spotlightManager: SpotlightManager | null;
     private _mouseTracker: MouseTracker | null;
     private _gameModeClient: GameModeClient | null;
@@ -14,10 +16,11 @@ export default class FindMyMouseExtension extends Extension {
     private _settingsChangedId: number;
     private _alwaysVisibleHandler: number;
     private _logLevelChangedId: number;
-    private _ringWidthChangedId: number;
     private _lastMoveX: number;
     private _lastMoveY: number;
     private _gameModeAvailable: boolean;
+    private _lastMoveTime: number;
+
     constructor(metadata: any) {
         super(metadata);
         this._settingsManager = null;
@@ -28,25 +31,28 @@ export default class FindMyMouseExtension extends Extension {
         this._settingsChangedId = 0;
         this._alwaysVisibleHandler = 0;
         this._logLevelChangedId = 0;
-        this._ringWidthChangedId = 0;
         this._lastMoveX = -1;
         this._lastMoveY = -1;
         
         // Flag to indicate GameMode service availability for preferences UI
         this._gameModeAvailable = false;
+
+        this._lastMoveTime = 0; 
     }
 
     async enable() {
         const settings = this.getSettings();
         const logLevel = settings.get_int('log-level') || 2;
         setLogLevel(logLevel);
-        
+
         this._logLevelChangedId = settings.connect('changed::log-level', () => {
             const newLogLevel = settings.get_int('log-level');
             setLogLevel(newLogLevel);
             debugLog(`Log level changed to ${newLogLevel}`, LogLevel.INFO);
         });
-        
+
+        debugLog("I'm starting :)", LogLevel.INFO);
+
         this._gameModeClient = new GameModeClient();
         this._gameModeClient.setup();
         this._gameModeClient.onStateChanged((active) => {
@@ -68,15 +74,13 @@ export default class FindMyMouseExtension extends Extension {
             }
         });
         
-        this._ringWidthChangedId = settings.connect('changed::spotlight-ring-width', () => {
-            this._settingsManager.cacheSettings();
-            this._spotlightManager.queueRepaint();
-        });
-        
         this._settingsManager = new SettingsManager(settings);
 
         this._spotlightManager = new SpotlightManager(this._settingsManager);
-        
+
+        // The generic 'changed' handler below already refreshes the cache and
+        // queues a repaint for every key, including spotlight-ring-width.
+
         // Re-check GameMode state now that managers are initialized
         // (the state change handler may have fired before they were ready)
         if (this._gameModeAvailable && this._gameModeClient?.isActive && this._settingsManager.cachedDoNotActivateInGameMode) {
@@ -103,10 +107,6 @@ export default class FindMyMouseExtension extends Extension {
             this._settingsManager.settings.disconnect(this._settingsChangedId);
             this._settingsChangedId = 0;
         }
-        if (this._ringWidthChangedId) {
-            this._settingsManager.settings.disconnect(this._ringWidthChangedId);
-            this._ringWidthChangedId = 0;
-        }
         if (this._logLevelChangedId) {
             this._settingsManager.settings.disconnect(this._logLevelChangedId);
             this._logLevelChangedId = 0;
@@ -120,10 +120,7 @@ export default class FindMyMouseExtension extends Extension {
          // Clean up GameMode client
          debugLog('Disabling GameMode client...', LogLevel.INFO);
          if (this._gameModeClient) {
-             this._gameModeClient.clearStateChangedHandlers();
-             if (this._gameModeClient && this._gameModeClient._proxy) {
-                 this._gameModeClient._proxy.run_dispose();
-             }
+             this._gameModeClient.destroy();
              this._gameModeClient = null;
              debugLog('GameMode client disabled.', LogLevel.INFO);
          }
@@ -142,8 +139,8 @@ export default class FindMyMouseExtension extends Extension {
         this._alwaysVisibleHandler = this._settingsManager.settings.connect(
             'changed::activation-method',
             () => {
+                // The generic 'changed' handler refreshes the cache separately.
                 const newMethod = this._settingsManager.settings.get_string('activation-method');
-                this._settingsManager.cacheSettings();
 
                 if (newMethod === 'always') {
                     this._showSpotlight();
@@ -162,29 +159,44 @@ export default class FindMyMouseExtension extends Extension {
     }
 
     _handleMouseMovement(x: number, y: number): void {
-        this._spotlightManager.updateMousePosition(x, y);
+      const now = GLib.get_monotonic_time();
+      const wasTracked = this._lastMoveX >= 0;
+      const dx = wasTracked ? x - this._lastMoveX : 0;
+      const dy = wasTracked ? y - this._lastMoveY : 0;
 
-        if (this._spotlightManager.isVisible) {
-            if (this._lastMoveX >= 0) {
-                const dx = Math.abs(x - this._lastMoveX);
-                const dy = Math.abs(y - this._lastMoveY);
-                if (dx >= 5 || dy >= 5) {
-                    this._spotlightManager.queueRepaint();
-                }
-            }
-            this._lastMoveX = x;
-            this._lastMoveY = y;
-            return;
+      if (isLogLevelEnabled(LogLevel.DEBUG)) {
+        if (wasTracked) {
+          const deltaMs = (now - this._lastMoveTime) / 1000;
+          debugLog(
+            `Extension mouse move: (${x}, ${y}) | Δx=${dx}, Δy=${dy} | Δt=${deltaMs.toFixed(2)}ms | Spotlight visible: ${this._spotlightManager?.isVisible}`,
+            LogLevel.DEBUG,
+          );
+        } else {
+          debugLog(
+            `Extension mouse move: (${x}, ${y}) | First movement`,
+            LogLevel.DEBUG,
+          );
         }
+      }
+      this._lastMoveX = x;
+      this._lastMoveY = y;
+      this._lastMoveTime = now;
 
-        this._lastMoveX = x;
-        this._lastMoveY = y;
+      this._spotlightManager.updateMousePosition(x, y);
 
-        if (this._settingsManager.cachedActivationMethod === 'shake') {
-            if (this._mouseTracker.detectShake(x, y)) {
-                this._toggleSpotlight();
-            }
+      if (this._spotlightManager.isVisible) {
+        // Only reset the idle timeout / cancel a fade for meaningful movement.
+        if (wasTracked && (Math.abs(dx) >= 5 || Math.abs(dy) >= 5)) {
+          this._spotlightManager.queueRepaint();
         }
+        return;
+      }
+
+      if (this._settingsManager.cachedActivationMethod === "shake") {
+        if (this._mouseTracker.detectShake(x, y)) {
+          this._toggleSpotlight();
+        }
+      }
     }
 
     _toggleSpotlight() {

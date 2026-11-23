@@ -1,6 +1,6 @@
 import GLib from 'gi://GLib';
 import type { SettingsManager } from './settings.js';
-import { debugLog, LogLevel } from './utils.js';
+import { debugLog, isLogLevelEnabled, LogLevel } from './utils.js';
 
 interface PointerWatch {
     remove(): void;
@@ -12,6 +12,8 @@ interface MovementRecord {
     tick: number;
 }
 
+const MAX_HISTORY = 100;
+
 export class MouseTracker {
     private _settingsManager: SettingsManager;
     private _handleMouseMovement: (x: number, y: number) => void;
@@ -19,6 +21,9 @@ export class MouseTracker {
     private _lastX: number;
     private _lastY: number;
     private _movementHistory: MovementRecord[];
+    private _historyStart: number;
+    private _historyCount: number;
+    private _lastTime: number;
 
     constructor(settingsManager: SettingsManager, handleMouseMovement: (x: number, y: number) => void) {
         this._settingsManager = settingsManager;
@@ -26,7 +31,10 @@ export class MouseTracker {
         this._pointerWatch = null;
         this._lastX = -1;
         this._lastY = -1;
-        this._movementHistory = [];
+        this._lastTime = 0;
+        this._movementHistory = Array.from({ length: MAX_HISTORY }, () => ({ dx: 0, dy: 0, tick: 0 }));
+        this._historyStart = 0;
+        this._historyCount = 0;
     }
 
     async setup() {
@@ -46,9 +54,27 @@ export class MouseTracker {
     }
 
     handleMouseMovement(x, y) {
-        // Don't overwrite _lastX/_lastY here — detectShake() sets them when called,
-        // and the extension's callback uses its own tracking for movement detection.
-        this._handleMouseMovement(x, y);
+      const now = GLib.get_monotonic_time(); // ✅ μs → seconds
+      if (isLogLevelEnabled(LogLevel.DEBUG)) {
+        if (this._lastX >= 0) {
+          const dx = x - this._lastX;
+          const dy = y - this._lastY;
+          const deltaMs = (now - this._lastTime) / 1000;
+          debugLog(
+            `Mouse move: (${x}, ${y}) | Δx=${dx}, Δy=${dy} | Δt=${deltaMs.toFixed(2)}ms`,
+            LogLevel.DEBUG,
+          );
+        } else {
+          debugLog(`Mouse move: (${x}, ${y}) | First movement`, LogLevel.DEBUG);
+        }
+      }
+      this._lastX = x;
+      this._lastY = y;
+      this._lastTime = now;
+
+      // Don't overwrite _lastX/_lastY here — detectShake() sets them when called,
+      // and the extension's callback uses its own tracking for movement detection.
+      this._handleMouseMovement(x, y);
     }
 
     detectShake(x, y) {
@@ -62,22 +88,26 @@ export class MouseTracker {
         const dy = y - this._lastY;
         const now = GLib.get_monotonic_time() / 1000;
 
-        this._movementHistory.push({ dx, dy, tick: now });
-
-        if (this._movementHistory.length > 100) {
-            this._movementHistory.shift();
+        // Fixed-size ring buffer: pointer events arrive every 16 ms, so pushing,
+        // shifting and slicing an array on each one only creates GC pressure.
+        const slot = (this._historyStart + this._historyCount) % MAX_HISTORY;
+        const record = this._movementHistory[slot];
+        record.dx = dx;
+        record.dy = dy;
+        record.tick = now;
+        if (this._historyCount < MAX_HISTORY) {
+            this._historyCount++;
+        } else {
+            this._historyStart = (this._historyStart + 1) % MAX_HISTORY;
         }
 
         const cutoffTime = now - this._settingsManager.cachedShakeInterval;
-        let oldestIndex = 0;
         while (
-            oldestIndex < this._movementHistory.length &&
-            this._movementHistory[oldestIndex].tick <= cutoffTime
+            this._historyCount > 0 &&
+            this._movementHistory[this._historyStart].tick <= cutoffTime
         ) {
-            oldestIndex++;
-        }
-        if (oldestIndex > 0) {
-            this._movementHistory = this._movementHistory.slice(oldestIndex);
+            this._historyStart = (this._historyStart + 1) % MAX_HISTORY;
+            this._historyCount--;
         }
 
         let totalDistanceSquared = 0;
@@ -85,7 +115,8 @@ export class MouseTracker {
         let minX = currentX, maxX = currentX;
         let minY = currentY, maxY = currentY;
 
-        for (const mov of this._movementHistory) {
+        for (let i = 0; i < this._historyCount; i++) {
+            const mov = this._movementHistory[(this._historyStart + i) % MAX_HISTORY];
             currentX += mov.dx;
             currentY += mov.dy;
             totalDistanceSquared += mov.dx * mov.dx + mov.dy * mov.dy;
@@ -105,9 +136,7 @@ export class MouseTracker {
             totalDistanceSquared / diagonalSquared > shakeFactor * shakeFactor
         ) {
             debugLog('Shake detected!', LogLevel.INFO);
-            this._movementHistory = [];
-            this._lastX = -1;
-            this._lastY = -1;
+            this.clearHistory();
             return true;
         }
 
@@ -117,7 +146,8 @@ export class MouseTracker {
     }
 
     clearHistory() {
-        this._movementHistory = [];
+        this._historyStart = 0;
+        this._historyCount = 0;
         this._lastX = -1;
         this._lastY = -1;
     }
