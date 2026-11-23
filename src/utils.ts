@@ -16,15 +16,16 @@ export function isLogLevelEnabled(level: number): boolean {
     return level <= currentLogLevel;
 }
 
+const LOG_PREFIX: Record<number, string> = {
+    [LogLevel.ERROR]: "ERROR",
+    [LogLevel.WARN]: "WARN",
+    [LogLevel.INFO]: "INFO",
+    [LogLevel.DEBUG]: "DEBUG"
+};
+
 export function debugLog(message: string, level: number = LogLevel.DEBUG): void {
     if (level <= currentLogLevel) {
-        const levelPrefix: string = {
-            [LogLevel.ERROR]: "ERROR",
-            [LogLevel.WARN]: "WARN",
-            [LogLevel.INFO]: "INFO",
-            [LogLevel.DEBUG]: "DEBUG"
-        }[level] || "LOG";
-        console.log(`Find My Mouse [${levelPrefix}]: ${message}`);
+        console.log(`Find My Mouse [${LOG_PREFIX[level] || "LOG"}]: ${message}`);
     }
 }
 

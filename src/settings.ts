@@ -3,8 +3,6 @@ import { parseColor, debugLog, LogLevel } from './utils.js';
 
 export class SettingsManager {
     private _settings: Gio.Settings;
-    private _cachedBgColor: [number, number, number, number] | null;
-    private _cachedSpotlightColor: [number, number, number, number] | null;
     private _cachedBgColorNormalized: [number, number, number, number];
     private _cachedSpotlightColorNormalized: [number, number, number, number];
     private _cachedRadius: number;
@@ -20,8 +18,6 @@ export class SettingsManager {
 
     constructor(settings: Gio.Settings) {
         this._settings = settings;
-        this._cachedBgColor = null;
-        this._cachedSpotlightColor = null;
         this._cachedBgColorNormalized = [0, 0, 0, 0.5];
         this._cachedSpotlightColorNormalized = [1, 1, 1, 0.5];
         this._cachedRadius = 100;
@@ -48,20 +44,20 @@ export class SettingsManager {
         const bgColorStr = this._settings.get_string('background-color') || '#00000080';
         const spotlightColorStr = this._settings.get_string('spotlight-color') || '#FFFFFF80';
 
-        this._cachedBgColor = parseColor(bgColorStr);
-        this._cachedSpotlightColor = parseColor(spotlightColorStr);
+        const bgColor = parseColor(bgColorStr);
+        const spotlightColor = parseColor(spotlightColorStr);
 
         this._cachedBgColorNormalized = [
-            this._cachedBgColor[0] / 255,
-            this._cachedBgColor[1] / 255,
-            this._cachedBgColor[2] / 255,
-            this._cachedBgColor[3] / 255
+            bgColor[0] / 255,
+            bgColor[1] / 255,
+            bgColor[2] / 255,
+            bgColor[3] / 255
         ];
         this._cachedSpotlightColorNormalized = [
-            this._cachedSpotlightColor[0] / 255,
-            this._cachedSpotlightColor[1] / 255,
-            this._cachedSpotlightColor[2] / 255,
-            this._cachedSpotlightColor[3] / 255
+            spotlightColor[0] / 255,
+            spotlightColor[1] / 255,
+            spotlightColor[2] / 255,
+            spotlightColor[3] / 255
         ];
 
         this._cachedRadius = this._settings.get_int('spotlight-radius') || 100;

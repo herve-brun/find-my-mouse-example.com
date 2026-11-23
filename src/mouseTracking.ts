@@ -1,6 +1,6 @@
 import GLib from 'gi://GLib';
 import type { SettingsManager } from './settings.js';
-import { debugLog, isLogLevelEnabled, LogLevel } from './utils.js';
+import { debugLog, LogLevel } from './utils.js';
 
 interface PointerWatch {
     remove(): void;
@@ -23,7 +23,6 @@ export class MouseTracker {
     private _movementHistory: MovementRecord[];
     private _historyStart: number;
     private _historyCount: number;
-    private _lastTime: number;
 
     constructor(settingsManager: SettingsManager, handleMouseMovement: (x: number, y: number) => void) {
         this._settingsManager = settingsManager;
@@ -31,7 +30,6 @@ export class MouseTracker {
         this._pointerWatch = null;
         this._lastX = -1;
         this._lastY = -1;
-        this._lastTime = 0;
         this._movementHistory = Array.from({ length: MAX_HISTORY }, () => ({ dx: 0, dy: 0, tick: 0 }));
         this._historyStart = 0;
         this._historyCount = 0;
@@ -51,30 +49,6 @@ export class MouseTracker {
             this._pointerWatch.remove();
             this._pointerWatch = null;
         }
-    }
-
-    handleMouseMovement(x, y) {
-      const now = GLib.get_monotonic_time(); // ✅ μs → seconds
-      if (isLogLevelEnabled(LogLevel.DEBUG)) {
-        if (this._lastX >= 0) {
-          const dx = x - this._lastX;
-          const dy = y - this._lastY;
-          const deltaMs = (now - this._lastTime) / 1000;
-          debugLog(
-            `Mouse move: (${x}, ${y}) | Δx=${dx}, Δy=${dy} | Δt=${deltaMs.toFixed(2)}ms`,
-            LogLevel.DEBUG,
-          );
-        } else {
-          debugLog(`Mouse move: (${x}, ${y}) | First movement`, LogLevel.DEBUG);
-        }
-      }
-      this._lastX = x;
-      this._lastY = y;
-      this._lastTime = now;
-
-      // Don't overwrite _lastX/_lastY here — detectShake() sets them when called,
-      // and the extension's callback uses its own tracking for movement detection.
-      this._handleMouseMovement(x, y);
     }
 
     detectShake(x, y) {

@@ -3,6 +3,15 @@ import { debugLog, LogLevel } from './utils.js';
 
 type StateChangeHandler = (active: boolean) => void;
 
+const GAMEMODE_CLIENT_INTERFACE = '<node>' +
+    '  <interface name="com.feralinteractive.GameMode">' +
+    '    <property name="ClientCount" type="i" access="read"/>' +
+    '  </interface>' +
+    '</node>';
+const GAMEMODE_DBUS_NAME = 'com.feralinteractive.GameMode';
+const GAMEMODE_DBUS_PATH = '/com/feralinteractive/GameMode';
+const GAMEMODE_DBUS_IFACE = 'com.feralinteractive.GameMode';
+
 export class GameModeClient {
     _proxy: Gio.DBusProxy | null;
     private _clientCount: number;
@@ -26,16 +35,7 @@ export class GameModeClient {
             clearTimeout(this._retryTimerId);
             this._retryTimerId = null;
         }
-        const GameModeClientInterface = '<node>' +
-            '  <interface name="com.feralinteractive.GameMode">' +
-            '    <property name="ClientCount" type="i" access="read"/>' +
-            '  </interface>' +
-            '</node>';
-
-        const nodeInfo = Gio.DBusNodeInfo.new_for_xml(GameModeClientInterface);
-        const GAMEMODE_DBUS_NAME = 'com.feralinteractive.GameMode';
-        const GAMEMODE_DBUS_PATH = '/com/feralinteractive/GameMode';
-        const GAMEMODE_DBUS_IFACE = 'com.feralinteractive.GameMode';
+        const nodeInfo = Gio.DBusNodeInfo.new_for_xml(GAMEMODE_CLIENT_INTERFACE);
 
         Gio.DBusProxy.new(
             Gio.DBus.session,

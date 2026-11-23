@@ -12,7 +12,6 @@ export default class FindMyMouseExtension extends Extension {
     private _spotlightManager: SpotlightManager | null;
     private _mouseTracker: MouseTracker | null;
     private _gameModeClient: GameModeClient | null;
-    private _gameModeChangedId: number;
     private _settingsChangedId: number;
     private _alwaysVisibleHandler: number;
     private _logLevelChangedId: number;
@@ -27,7 +26,6 @@ export default class FindMyMouseExtension extends Extension {
         this._spotlightManager = null;
         this._mouseTracker = null;
         this._gameModeClient = null;
-        this._gameModeChangedId = 0;
         this._settingsChangedId = 0;
         this._alwaysVisibleHandler = 0;
         this._logLevelChangedId = 0;
