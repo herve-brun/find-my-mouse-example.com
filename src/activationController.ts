@@ -54,6 +54,9 @@ export class ActivationController {
         if (method === 'always') {
             if (!this._spotlightManager.isVisible)
                 this._spotlightManager.show(false);
+            else
+                // A repeat activation must cancel any in-progress fade-out.
+                this._spotlightManager.queueRepaint();
             return;
         }
 
@@ -66,7 +69,9 @@ export class ActivationController {
         }
 
         if (this._spotlightManager.isVisible) {
-            // A second activation refreshes the spotlight instead of hiding it.
+            // A second activation refreshes the spotlight instead of hiding it:
+            // queueRepaint() also cancels a fade-out started just before.
+            this._spotlightManager.queueRepaint();
             this.resetIdleTimeout();
             return;
         }

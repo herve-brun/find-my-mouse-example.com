@@ -1,10 +1,10 @@
 # src/ — Find My Mouse Extension Source
 
-> **Module count**: 12 TypeScript modules → compiled to `dist/*.js`
+> **Module count**: 13 TypeScript modules → compiled to `dist/*.js`
 > **Runtime**: GNOME Shell 46–50 (Wayland)
 > **Language**: TypeScript → JavaScript (NodeNext module resolution)
 > **Updated**: 2026-11-24
-> **Rendering**: Cairo via `St.DrawingArea` with `Clutter.Timeline` zoom animation
+> **Rendering**: four `St.Widget` dim actors + small pointer-local Cairo `St.DrawingArea` mask, with `Clutter.Timeline` zoom animation
 
 ---
 
@@ -12,8 +12,9 @@
 
 ### 1.1 Spotlight Rendering
 `spotlight.ts` renders and animates only; it no longer owns an idle timer.
-- `SpotlightManager.show()` creates the `St.DrawingArea` and connects `repaint`.
-- `_onRepaint` uses `Cairo.Operator.CLEAR` for the transparent hole and `Cairo.Operator.OVER` for the ring.
+- `SpotlightManager.show()` creates a clipping group with four dim `St.Widget` actors and a small `St.DrawingArea` mask, and connects `repaint`.
+- `_onMaskRepaint` uses `Cairo.Operator.CLEAR` for the transparent hole and `Cairo.Operator.OVER` for the ring; only the mask is rasterised by Cairo.
+- `spotlightLayout.ts` computes the mask/dim rectangles as pure math (no GNOME imports), clipped to the monitor bounds.
 - `_startZoomAnimation()` uses `Clutter.Timeline` with `easeOutQuad` to shrink from `spotlight-zoom` to the configured radius.
 - Geometry is the current monitor or the bounding box of all monitors (`show-on-all-monitors`); `isVisible` is the visibility source of truth.
 
@@ -33,7 +34,7 @@
 
 ### 1.4 Activation Policy
 `activationController.ts` owns activation and the idle timeout (previously in `SpotlightManager`).
-- `activate(source)` is show-only for `'shortcut'`, `'gesture'` and `'always'`; a repeat activation only refreshes the idle timeout, never toggles the spotlight off.
+- `activate(source)` is show-only for `'shortcut'`, `'gesture'` and `'always'`; a repeat activation refreshes the idle timeout and repaints (cancelling any fade-out), never toggles the spotlight off.
 - Game Mode suppression is checked here (`do-not-activate-gamemode` + `GameModeClient.isActive`).
 - `notifyActivity()` repaints and resets the idle timeout for pointer activity; `hide()` clears the timer and hides feedback/spotlight.
 - In `'always'` mode the spotlight is shown once and no idle timeout is scheduled.
@@ -105,6 +106,7 @@ The `Extension` subclass creates, configures and tears down all subsystems and t
        │              │                │                │               │
        │              └──► spotlight.ts (show/hide/isVisible)           │
        │                   gestureFeedback.ts (hide via feedback)       │
+       │                   spotlightLayout.ts (pure layout math)       │
        │                                                                │
        │                         gestureDetector.ts ◄────────────────────┘
        │                         (no imports; pure)
@@ -123,8 +125,9 @@ Practice session (separate process boundary, no direct imports):
 Import directions:
 - `extension.ts` imports every manager (including `practiceService.ts`) plus `utils.ts`.
 - `activationController.ts` imports types from `settings.ts` and `spotlight.ts`, plus `utils.ts`.
+- `spotlight.ts` imports the pure `spotlightLayout.ts` helper.
 - `mouseTracking.ts` imports `gestureDetector.ts` and `utils.ts`.
-- `gestureDetector.ts` imports nothing.
+- `gestureDetector.ts` and `spotlightLayout.ts` import nothing.
 - `prefs.ts` imports `utils.ts` and `practiceClient.ts`.
 - `practiceService.ts` imports `mouseTracking.ts` types and `utils.ts`; `practiceClient.ts` imports `Gio`/`GLib` only — they never import each other.
 - No circular dependencies.
@@ -226,9 +229,9 @@ activate(source)
   ├── if !enabled → return
   ├── if method === 'always' → show once if hidden; no idle timeout
   ├── if suppressGameMode && GameMode active → log and return
-  ├── if spotlight visible → resetIdleTimeout(); return  (show-only, never toggle)
+  ├── if spotlight visible → queueRepaint() + resetIdleTimeout(); return  (show-only, never toggle)
   ├── spotlightManager.show(show-on-all-monitors)
-  │     ├── geometry, St.DrawingArea, 'repaint' → Cairo hole + ring
+  │     ├── geometry + 4 dim actors + small Cairo mask (hole + ring)
   │     └── Clutter.Timeline zoom (initialZoom → 1, easeOutQuad)
   ├── spotlightManager.updateMousePosition(global.get_pointer())
   ├── resetIdleTimeout()  (idle-timeout ms → activationController.hide())
@@ -418,6 +421,7 @@ The former `MovementRecord {dx, dy, tick}` structure and the 100-entry movement 
 4. Repaints are skipped for pointer deltas below 5 px.
 5. `ActivationController` clears the idle timeout on every reset/hide.
 6. `GestureFeedback` creates a small actor only during an attempt and destroys it immediately afterward.
+7. The spotlight dim area is four `St.Widget` actors; only the pointer-local mask is rasterised by Cairo, and it is clipped to the monitor so zoom never rasterises off-screen pixels.
 
 ---
 
@@ -426,6 +430,7 @@ The former `MovementRecord {dx, dy, tick}` structure and the 100-entry movement 
 | Concern | Validation Method | Relevant File |
 |---|---|---|
 | Gesture state machine | `npm test` → `node --test test/*.test.mjs`; synthesized pointer streams, including the retired 1500 ms/30 px tutorial cadence (no activation) and a normal 900 ms/180 ms gesture (activation) | `test/gestureDetector.test.mjs`, `src/gestureDetector.ts` |
+| Spotlight layout | `npm test` → mask/dim tiling, negative monitor origins, edge clipping, zoom larger than monitor | `test/spotlightLayout.test.mjs`, `src/spotlightLayout.ts` |
 | Type correctness | `npm run check` (`tsc --noEmit`) | `tsconfig.json` |
 | Lint | `npm run lint` | `eslint.config.js` |
 | Schema syntax | `xmllint` + `glib-compile-schemas` | `schemas/*.xml` |

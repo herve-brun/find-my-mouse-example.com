@@ -13,7 +13,7 @@
 **Find My Mouse** is a GNOME Shell extension (GNOME 46–50, Wayland) that replicates the Microsoft PowerToys "Find My Mouse" spotlight feature. Its purpose is to help users who frequently lose their cursor on screen — especially on high-resolution, multi-monitor, or presentation setups — by rendering a customizable circular spotlight that highlights the mouse cursor position.
 
 ### 1.2 What This Repository Owns
-- **Spotlight Rendering** — Cairo-based rendering of the spotlight overlay via `St.DrawingArea` with zoom animation via `Clutter.Timeline`.
+- **Spotlight Rendering** — Hybrid overlay: four solid `St.Widget` dim actors plus a small pointer-local Cairo `St.DrawingArea` mask for the hole and ring, with zoom animation via `Clutter.Timeline`.
 - **Mouse Tracking** — GNOME Shell `PointerWatcher` adapter that owns the authoritative last pointer position and feeds absolute positions and per-sample deltas into a gesture detector.
 - **Gesture Detection** — A pure, import-free "wave then stop" state machine with injected monotonic millisecond timestamps.
 - **Activation Policy** — Show-only activation from the keyboard shortcut or the gesture; idle timeout and Game Mode suppression live in `ActivationController`.
@@ -54,7 +54,7 @@ src/prefs.ts  →  dist/prefs.js
 ```
 src/spotlight.ts  →  dist/spotlight.js
 ```
-- `SpotlightManager.show()` creates the `St.DrawingArea` and connects `repaint` for Cairo rendering.
+- `SpotlightManager.show()` creates a clipping group with four dim widgets and a small `St.DrawingArea` mask, and connects `repaint` for Cairo rendering of the hole and ring.
 - `Cairo.Operator.CLEAR` punches the transparent hole; `Cairo.Operator.OVER` draws the ring border.
 - `Clutter.Timeline` shrinks the spotlight from `spotlight-zoom` to the configured radius with `easeOutQuad`.
 
@@ -80,7 +80,7 @@ src/practiceService.ts + src/practiceClient.ts → dist/*.js
 ┌─────────────────────────────────────────────────────────┐
 │                    GNOME Shell                            │
 │  Main.uiGroup                                             │
-│   ├── St.DrawingArea (full-screen spotlight; Cairo)       │
+│   ├── Group: 4 dim actors + small Cairo mask (spotlight)  │
 │   └── St.DrawingArea (~40x40 pointer-local progress ring) │
 └─────────────────────────────────────────────────────────┘
 
@@ -124,7 +124,8 @@ src/practiceService.ts + src/practiceClient.ts → dist/*.js
 extension.ts
   ├── settings.ts             (SettingsManager — GSettings cache)
   ├── activationController.ts (ActivationController — activation policy + idle timeout)
-  ├── spotlight.ts            (SpotlightManager — Cairo spotlight + zoom animation)
+  ├── spotlight.ts            (SpotlightManager — hybrid spotlight + zoom animation)
+  │     └── spotlightLayout.ts (pure mask/dim rectangle layout, no imports)
   ├── mouseTracking.ts        (MouseTracker — pointerWatcher adapter; GestureEventInfo)
   │     └── gestureDetector.ts (GestureDetector — pure state machine, no imports)
   ├── gestureFeedback.ts      (GestureFeedback — progress ring + optional sound)
@@ -138,7 +139,7 @@ settings.ts, spotlight.ts, mouseTracking.ts, gamemodeClient.ts, gestureFeedback.
 practiceService.ts
   └── utils.ts (via settings.ts where applicable)
 ```
-`gestureDetector.ts` has no imports at all: it is testable with `node:test` without GNOME Shell or GJS. `practiceClient.ts` and `practiceService.ts` communicate only over the session bus; neither imports the other.
+`gestureDetector.ts` and `spotlightLayout.ts` have no imports at all: both are testable with `node:test` without GNOME Shell or GJS. `practiceClient.ts` and `practiceService.ts` communicate only over the session bus; neither imports the other.
 
 ### 3.3 Design Patterns
 
@@ -185,10 +186,10 @@ shortcut (<Super>f) ────────────────► Activati
 ActivationController.activate()
         ├── 'always': show once if not visible; no idle timeout
         ├── GameMode suppression check (cachedDoNotActivateInGameMode)
-        ├── if visible: reset idle timeout only (never toggle off)
+        ├── if visible: queueRepaint() + reset idle timeout (never toggle off)
         └── SpotlightManager.show(showOnAllMonitors)
                   ├── St.DrawingArea geometry (monitor or all)
-                  ├── 'repaint' → Cairo overlay + clear hole + ring
+                  ├── small Cairo mask + 4 dim actors (clear hole + ring)
                   └── Clutter.Timeline zoom (easeOutQuad)
 idle timeout (idle-timeout ms) ─────► ActivationController.hide()
 ```
@@ -287,7 +288,8 @@ find-my-mouse-example.com/
 │   ├── activationController.ts       # Activation policy + idle timeout
 │   ├── gestureDetector.ts            # Pure "wave then stop" state machine
 │   ├── gestureFeedback.ts            # Pointer-local progress ring + optional sound
-│   ├── spotlight.ts                  # Cairo spotlight + zoom animation
+│   ├── spotlight.ts                  # Hybrid spotlight rendering + zoom animation
+│   ├── spotlightLayout.ts            # Pure mask/dim rectangle layout math
 │   ├── mouseTracking.ts              # pointerWatcher → GestureSample adapter
 │   ├── gamemodeClient.ts             # GameMode D-Bus client
 │   ├── practiceService.ts            # Shell-side practice D-Bus service + watchdog
@@ -300,8 +302,9 @@ find-my-mouse-example.com/
 │   ├── gschemas.compiled            # Binary compiled schema (gitignored)
 │   └── codemap.md                    # Schema directory atlas
 │
-├── test/                             # node:test unit tests for the gesture detector
-│   └── gestureDetector.test.mjs
+├── test/                             # node:test unit tests (pure modules)
+│   ├── gestureDetector.test.mjs
+│   └── spotlightLayout.test.mjs
 │
 ├── po/                               # gettext catalogs
 │   ├── find-my-mouse@herve-brun.github.io.pot  # Translation template
@@ -393,7 +396,7 @@ find-my-mouse-example.com/
 
 | Type | Status | Details |
 |---|---|---|
-| Unit tests | ✅ `npm test` | `npm run build && node --test test/*.test.mjs`; synthesized pointer streams cover deliberate wave, jitter, circles, drags, warps, cooldown, pause/gap behavior, the retired 1500 ms/30 px tutorial cadence (no activation) and a normal 900 ms/180 ms gesture (activation) |
+| Unit tests | ✅ `npm test` | `npm run build && node --test test/*.test.mjs`; synthesized pointer streams cover deliberate wave, jitter, circles, drags, warps, cooldown, pause/gap behavior, the retired 1500 ms/30 px tutorial cadence (no activation) and a normal 900 ms/180 ms gesture (activation); layout tests cover mask/dim tiling, negative monitor origins, edge clipping and zoom larger than the monitor |
 | Type checking | ✅ `npm run check` | `tsc --noEmit` |
 | Linting | ✅ `npm run lint` | ESLint with TypeScript rules |
 | Schema validation | ✅ CI job | `xmllint` + `glib-compile-schemas` |
@@ -482,6 +485,7 @@ Fixed detector thresholds: arm speed ≥400 px/s, horizontal dominance ≥2:1, r
 - Get the Cairo context inside the `repaint` handler with `area.get_context()` and dispose it with `cr.$dispose()`.
 - Use `queue_repaint()` (not `queue_redraw()`) for `St.DrawingArea`.
 - Recalculate monitor geometry when `show-on-all-monitors` changes.
+- Only the pointer-local mask is Cairo-rasterised; the four dim actors are `St.Widget` with inline CSS colour (no `Clutter.Color`, which changed across GNOME versions).
 - `Clutter.Timeline` zoom uses manual `easeOutQuad`; cancel in-progress timelines before showing again.
 - Tear down actors immediately on `disable()` to avoid stale animation callbacks.
 
@@ -585,7 +589,8 @@ Plain classes (no GObject inheritance):
 | `activationController.ts` | Show-only activation and idle timeout |
 | `gestureDetector.ts` | Pure "wave then stop" state machine |
 | `gestureFeedback.ts` | Pointer-local progress ring; best-effort sound via `canberra-gtk-play` |
-| `spotlight.ts` | Cairo rendering and Clutter zoom animation only |
+| `spotlight.ts` | Hybrid spotlight rendering (4 dim actors + small Cairo mask) and Clutter zoom animation only |
+| `spotlightLayout.ts` | Pure mask/dim rectangle layout math; no GNOME imports |
 | `mouseTracking.ts` | pointerWatcher adapter, guards, 16 ms settle clock |
 | `gamemodeClient.ts` | GameMode D-Bus proxy with retry |
 | `practiceService.ts` | Practice session owner: D-Bus methods/signals, 10 s watchdog, gesture-event routing without real activation |

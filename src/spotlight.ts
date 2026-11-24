@@ -5,6 +5,7 @@ import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import type { SettingsManager } from './settings.js';
+import { computeSpotlightLayout, type LayoutRect, type MonitorBox } from './spotlightLayout.js';
 import { debugLog, isLogLevelEnabled, LogLevel } from './utils.js';
 
 /** EASE_OUT_QUAD: t * (2 - t) — Clutter.get_progress() is linear, so we apply easing manually. */
@@ -12,12 +13,7 @@ function easeOutQuad(t: number): number {
     return t * (2 - t);
 }
 
-interface MonitorGeometry {
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-}
+type MonitorGeometry = MonitorBox;
 
 interface FadeParams {
     opacity: number;
@@ -31,7 +27,12 @@ type FadeableActor = Clutter.Actor & { ease(params: FadeParams): void };
 
 export class SpotlightManager {
     private _settingsManager: SettingsManager;
-    private _spotlight: St.DrawingArea | null;
+    /** Root group: four solid dim actors plus the small Cairo mask. */
+    private _spotlight: Clutter.Actor | null;
+    private _mask: St.DrawingArea | null;
+    private _dimRects: St.Widget[];
+    private _geometry: MonitorGeometry | null;
+    private _dimColorStyle: string;
     private _spotlightVisible: boolean;
     private _zoomTimeline: Clutter.Timeline | null;
     private _currentZoom: number;
@@ -53,6 +54,10 @@ export class SpotlightManager {
             debugLog(`Cannot read interface settings: ${e}`, LogLevel.WARN);
         }
         this._spotlight = null;
+        this._mask = null;
+        this._dimRects = [];
+        this._geometry = null;
+        this._dimColorStyle = '';
         this._spotlightVisible = false;
         this._zoomTimeline = null;
         this._currentZoom = 1;
@@ -91,33 +96,53 @@ export class SpotlightManager {
     }
 
     show(showOnAllMonitors: boolean): void {
-        // Cancel any in-progress fade-out and destroy old actor synchronously.
-        // This prevents a stale ease onComplete from destroying the new actor.
+        // Cancel any in-progress fade-out and destroy old actors synchronously.
+        // This prevents a stale ease onComplete from destroying the new overlay.
         if (this._spotlight) {
             this._spotlight.remove_all_transitions();
             this._destroySpotlightActor();
         }
 
         const geometry = this._getMonitorGeometry(showOnAllMonitors);
+        this._geometry = geometry;
 
-        this._spotlight = new St.DrawingArea({
+        // Never reuse a stale position from a previous display: anchor the
+        // mask to the current cursor before the first repaint.
+        const [pointerX, pointerY] = global.get_pointer();
+        this._lastMouseX = pointerX;
+        this._lastMouseY = pointerY;
+
+        // Only the small mask is rasterised by Cairo. The dim area is four
+        // plain-colour actors, so moving the pointer never repaints the whole
+        // monitor through Cairo or uploads a full-size texture.
+        const group = new Clutter.Actor({
             x: geometry.x,
             y: geometry.y,
             width: geometry.width,
             height: geometry.height,
             opacity: 255,
+            clip_to_allocation: true,
+            reactive: false,
         });
+        this._spotlight = group;
 
-        // Offscreen redirection forces a full-size buffer; configure it once per actor,
-        // not on every repaint.
-        this._spotlight.set_offscreen_redirect(Clutter.OffscreenRedirect.ALWAYS);
+        // St.Widget with an inline CSS colour avoids Clutter.Color, whose
+        // constructor/boxed type changed across GNOME Shell versions.
+        this._dimRects = Array.from({ length: 4 }, () => new St.Widget({
+            reactive: false,
+        }));
+        for (const rect of this._dimRects)
+            group.add_child(rect);
 
-        // Always use Cairo repaint (no blur effect — Shell.BlurEffect can't do selective blur)
-        this._spotlight.connect('repaint', this._onRepaint.bind(this));
+        this._mask = new St.DrawingArea({ reactive: false });
+        this._mask.connect('repaint', this._onMaskRepaint.bind(this));
+        group.add_child(this._mask);
 
-        Main.uiGroup.add_child(this._spotlight);
-        this._spotlight.show();
+        Main.uiGroup.add_child(group);
+        group.show();
         this._spotlightVisible = true;
+
+        this._layoutOverlay();
 
         // Start zoom-in animation: large circle shrinks to final radius
         this._startZoomAnimation();
@@ -125,7 +150,7 @@ export class SpotlightManager {
 
     updateMousePosition(x: number, y: number): void {
         // The pointer watcher only fires on position changes. Keep this guard so
-        // duplicate coordinates never trigger a full-screen repaint.
+        // duplicate coordinates never trigger a mask repaint.
         if (x === this._lastMouseX && y === this._lastMouseY) return;
         this._lastMouseX = x;
         this._lastMouseY = y;
@@ -133,8 +158,9 @@ export class SpotlightManager {
         if (isLogLevelEnabled(LogLevel.DEBUG)) {
             debugLog(`Spotlight updateMousePosition: (${x}, ${y})`, LogLevel.DEBUG);
         }
-        if (this._spotlight) {
-            this._spotlight.queue_repaint();
+        if (this._mask) {
+            this._layoutOverlay();
+            this._mask.queue_repaint();
         }
     }
 
@@ -143,15 +169,15 @@ export class SpotlightManager {
             debugLog('Spotlight queueRepaint called', LogLevel.DEBUG);
         }
 
-        if (this._spotlight) {
+        if (this._spotlight && this._mask) {
             // If a fade-out ease is running, mouse activity should cancel it and re-show
-            const actor = this._spotlight as Clutter.Actor;
-            if (actor.get_transition('opacity')) {
-                actor.remove_all_transitions();
-                actor.opacity = 255;
+            if (this._spotlight.get_transition('opacity')) {
+                this._spotlight.remove_all_transitions();
+                this._spotlight.opacity = 255;
                 this._spotlightVisible = true;
             }
-            this._spotlight.queue_repaint();
+            this._layoutOverlay();
+            this._mask.queue_repaint();
         }
     }
 
@@ -165,17 +191,19 @@ export class SpotlightManager {
             this._zoomTimeline = null;
         }
 
-        if (!this._spotlight) return;
+        if (!this._spotlight || !this._mask) return;
 
         if (!this._animationsEnabled()) {
             this._currentZoom = 1;
-            this._spotlight.queue_repaint();
+            this._layoutOverlay();
+            this._mask.queue_repaint();
             return;
         }
 
         // Start at the large zoom value
         this._currentZoom = initialZoom;
-        this._spotlight.queue_repaint();
+        this._layoutOverlay();
+        this._mask.queue_repaint();
 
         this._zoomTimeline = new Clutter.Timeline({ duration });
         this._zoomTimeline.set_actor(this._spotlight);
@@ -186,8 +214,9 @@ export class SpotlightManager {
             const progress = this._zoomTimeline.get_progress();
             const eased = easeOutQuad(progress);
             this._currentZoom = 1 + (initialZoom - 1) * (1 - eased);
-            if (this._spotlight) {
-                this._spotlight.queue_repaint();
+            if (this._mask) {
+                this._layoutOverlay();
+                this._mask.queue_repaint();
             }
         });
 
@@ -195,8 +224,9 @@ export class SpotlightManager {
             this._zoomTimeline = null;
             if (isFinished) {
                 this._currentZoom = 1;
-                if (this._spotlight) {
-                    this._spotlight.queue_repaint();
+                if (this._mask) {
+                    this._layoutOverlay();
+                    this._mask.queue_repaint();
                 }
             }
         });
@@ -206,9 +236,15 @@ export class SpotlightManager {
 
     private _destroySpotlightActor(): void {
         if (this._spotlight) {
+            // Destroying the group destroys its four dim actors and the mask.
             this._spotlight.destroy();
             this._spotlight = null;
         }
+        this._mask = null;
+        this._dimRects = [];
+        this._geometry = null;
+        // New rects are created by show(): force _updateDimColor() to style them.
+        this._dimColorStyle = '';
         this._spotlightVisible = false;
     }
 
@@ -226,10 +262,10 @@ export class SpotlightManager {
                 return;
             }
 
-            // Fade out via actor.ease(), then destroy on completion
-            const actor = this._spotlight as unknown as FadeableActor;
-            actor.remove_all_transitions();
-            actor.ease({
+            // Fade the whole group out, then destroy all overlay actors.
+            const group = this._spotlight as unknown as FadeableActor;
+            group.remove_all_transitions();
+            group.ease({
                 opacity: 0,
                 duration: this._settingsManager.cachedAnimationDuration,
                 mode: Clutter.AnimationMode.EASE_OUT_QUAD,
@@ -257,18 +293,61 @@ export class SpotlightManager {
         this._interfaceSettings = null;
     }
 
-    _onRepaint(area: St.DrawingArea): void {
+    private _pointerPosition(): [number, number] {
+        // The pointer watcher already supplies coordinates; avoid a GI round-trip
+        // on every repaint. Fall back once before the first position update.
+        return this._lastMouseX >= 0
+            ? [this._lastMouseX, this._lastMouseY]
+            : global.get_pointer();
+    }
+
+    private _updateDimColor(): void {
+        const [r, g, b, a] = this._settingsManager.cachedBgColorNormalized;
+        const style =
+            `background-color: rgba(${Math.round(r * 255)}, ${Math.round(g * 255)}, ` +
+            `${Math.round(b * 255)}, ${a});`;
+        if (style === this._dimColorStyle) return;
+
+        this._dimColorStyle = style;
+        for (const rect of this._dimRects)
+            rect.style = style;
+    }
+
+    private _layoutOverlay(): void {
+        if (!this._spotlight || !this._mask || !this._geometry) return;
+
+        const [mx, my] = this._pointerPosition();
+        const layout = computeSpotlightLayout(
+            this._geometry,
+            mx,
+            my,
+            this._settingsManager.cachedRadius * this._currentZoom,
+            this._settingsManager.cachedRingWidth,
+        );
+
+        this._updateDimColor();
+        const dims: LayoutRect[] = layout.dims;
+        for (let i = 0; i < dims.length; i++) {
+            const rect: LayoutRect = dims[i];
+            this._dimRects[i].set_position(rect.x, rect.y);
+            this._dimRects[i].set_size(rect.width, rect.height);
+        }
+        this._mask.set_position(layout.mask.x, layout.mask.y);
+        this._mask.set_size(layout.mask.width, layout.mask.height);
+    }
+
+    private _onMaskRepaint(area: St.DrawingArea): void {
         const now = GLib.get_monotonic_time();
         if (this._lastRepaintTime > 0 && isLogLevelEnabled(LogLevel.DEBUG)) {
             const deltaMs = (now - this._lastRepaintTime) / 1000;
-            debugLog(`Repaint delta: ${deltaMs.toFixed(2)}ms`, LogLevel.DEBUG);
+            debugLog(`Mask repaint delta: ${deltaMs.toFixed(2)}ms`, LogLevel.DEBUG);
         }
         this._lastRepaintTime = now;
         this._repaintCount++;
 
         if ((now - this._fpsTimer) / 1000000 >= 1.0) {
             if (isLogLevelEnabled(LogLevel.DEBUG)) {
-                debugLog(`FPS: ${this._repaintCount.toFixed(1)}`, LogLevel.DEBUG);
+                debugLog(`Mask FPS: ${this._repaintCount.toFixed(1)}`, LogLevel.DEBUG);
             }
             this._repaintCount = 0;
             this._fpsTimer = now;
@@ -277,15 +356,15 @@ export class SpotlightManager {
         const cr = area.get_context();
         if (!cr) return;
 
-        // The pointer watcher already supplies coordinates; avoid a GI round-trip
-        // on every repaint. Fall back once before the first position update.
-        const [mx, my] = this._lastMouseX >= 0
-            ? [this._lastMouseX, this._lastMouseY]
-            : global.get_pointer();
-        const radius = this._settingsManager.cachedRadius;
-        const zoom = this._currentZoom;
+        const radius = this._settingsManager.cachedRadius * this._currentZoom;
+        const [mx, my] = this._pointerPosition();
+        const originX = this._geometry?.x ?? 0;
+        const originY = this._geometry?.y ?? 0;
+        const centerX = mx - originX - area.x;
+        const centerY = my - originY - area.y;
 
-        // Dark overlay
+        // Dark corners inside the small square; the four surrounding dim actors
+        // cover the rest of the monitor.
         const bgColor = this._settingsManager.cachedBgColorNormalized;
         cr.setOperator(Cairo.Operator.SOURCE);
         cr.setSourceRGBA(bgColor[0], bgColor[1], bgColor[2], bgColor[3]);
@@ -293,7 +372,7 @@ export class SpotlightManager {
 
         // Clear circle
         cr.setOperator(Cairo.Operator.CLEAR);
-        cr.arc(mx - area.x, my - area.y, radius * zoom, 0, Math.PI * 2);
+        cr.arc(centerX, centerY, radius, 0, Math.PI * 2);
         cr.fill();
 
         // Spotlight ring
@@ -306,7 +385,7 @@ export class SpotlightManager {
             spotlightColor[3],
         );
         cr.setLineWidth(this._settingsManager.cachedRingWidth);
-        cr.arc(mx - area.x, my - area.y, radius * zoom, 0, Math.PI * 2);
+        cr.arc(centerX, centerY, radius, 0, Math.PI * 2);
         cr.stroke();
 
         cr.$dispose();
