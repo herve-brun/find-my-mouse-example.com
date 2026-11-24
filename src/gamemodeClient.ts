@@ -15,6 +15,7 @@ const GAMEMODE_DBUS_IFACE = 'com.feralinteractive.GameMode';
 
 export class GameModeClient {
     _proxy: Gio.DBusProxy | null;
+    private _propertiesChangedId: number;
     private _clientCount: number;
     private _stateChangedHandlers: StateChangeHandler[];
     private _retryCount: number;
@@ -23,6 +24,7 @@ export class GameModeClient {
 
     constructor() {
         this._proxy = null;
+        this._propertiesChangedId = 0;
         this._clientCount = 0;
         this._stateChangedHandlers = [];
         this._retryCount = 0;
@@ -49,10 +51,13 @@ export class GameModeClient {
             (o, res) => {
                 try {
                     const proxy = Gio.DBusProxy.new_finish(res);
-                    if (this._destroyed)
+                    if (this._destroyed) {
+                        // Shutdown already happened: drop the proxy before
+                        // connecting any signal so GJS can reclaim it.
                         return;
+                    }
                     this._proxy = proxy;
-                    this._proxy.connect(
+                    this._propertiesChangedId = this._proxy.connect(
                         'g-properties-changed',
                         this._onPropertiesChanged.bind(this),
                     );
@@ -136,6 +141,9 @@ export class GameModeClient {
             this._retryTimerId = null;
         }
         this.clearStateChangedHandlers();
+        if (this._proxy && this._propertiesChangedId)
+            this._proxy.disconnect(this._propertiesChangedId);
+        this._propertiesChangedId = 0;
         this._proxy = null;
     }
 
