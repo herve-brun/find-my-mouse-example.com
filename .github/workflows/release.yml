@@ -39,6 +39,7 @@ jobs:
           zip_file="find-my-mouse@herve-brun.github.io.zip"
           expected_files=(
             "metadata.json"
+            "LICENSE.md"
             "extension.js"
             "prefs.js"
             "settings.js"
