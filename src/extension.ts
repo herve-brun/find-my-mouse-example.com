@@ -8,7 +8,10 @@ import { MouseTracker } from './mouseTracking.js';
 import { GameModeClient } from './gamemodeClient.js';
 import { debugLog, isLogLevelEnabled, LogLevel, setLogLevel } from './utils.js';
 
-import GLib from "gi://GLib";
+import GLib from 'gi://GLib';
+import Meta from 'gi://Meta';
+import Shell from 'gi://Shell';
+import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
 export default class FindMyMouseExtension extends Extension {
     private _settingsManager: SettingsManager;
@@ -81,6 +84,15 @@ export default class FindMyMouseExtension extends Extension {
 
         this._spotlightManager = new SpotlightManager(this._settingsManager);
 
+        // Keyboard activation, so the spotlight is not mouse-only.
+        Main.wm.addKeybinding(
+            'find-my-mouse-activation',
+            settings,
+            Meta.KeyBindingFlags.IGNORE_AUTOREPEAT,
+            Shell.ActionMode.NORMAL | Shell.ActionMode.OVERVIEW,
+            () => this._toggleSpotlight(),
+        );
+
         // The generic 'changed' handler below already refreshes the cache and
         // queues a repaint for every key, including spotlight-ring-width.
 
@@ -109,6 +121,7 @@ export default class FindMyMouseExtension extends Extension {
 
     disable() {
         this._enabled = false;
+        Main.wm.removeKeybinding('find-my-mouse-activation');
         this._mouseTracker?.remove();
         this._removeAlwaysVisible();
 
@@ -168,50 +181,52 @@ export default class FindMyMouseExtension extends Extension {
     }
 
     _handleMouseMovement(x: number, y: number): void {
-      const now = GLib.get_monotonic_time();
-      const wasTracked = this._lastMoveX >= 0;
-      const dx = wasTracked ? x - this._lastMoveX : 0;
-      const dy = wasTracked ? y - this._lastMoveY : 0;
+        const now = GLib.get_monotonic_time();
+        const wasTracked = this._lastMoveX >= 0;
+        const dx = wasTracked ? x - this._lastMoveX : 0;
+        const dy = wasTracked ? y - this._lastMoveY : 0;
 
-      if (isLogLevelEnabled(LogLevel.DEBUG)) {
-        if (wasTracked) {
-          const deltaMs = (now - this._lastMoveTime) / 1000;
-          debugLog(
-            `Extension mouse move: (${x}, ${y}) | Δx=${dx}, Δy=${dy} | Δt=${deltaMs.toFixed(2)}ms | Spotlight visible: ${this._spotlightManager?.isVisible}`,
-            LogLevel.DEBUG,
-          );
-        } else {
-          debugLog(
-            `Extension mouse move: (${x}, ${y}) | First movement`,
-            LogLevel.DEBUG,
-          );
+        if (isLogLevelEnabled(LogLevel.DEBUG)) {
+            if (wasTracked) {
+                const deltaMs = (now - this._lastMoveTime) / 1000;
+                debugLog(
+                    `Extension mouse move: (${x}, ${y}) | Δx=${dx}, Δy=${dy} | Δt=${deltaMs.toFixed(2)}ms | Spotlight visible: ${this._spotlightManager?.isVisible}`,
+                    LogLevel.DEBUG,
+                );
+            } else {
+                debugLog(
+                    `Extension mouse move: (${x}, ${y}) | First movement`,
+                    LogLevel.DEBUG,
+                );
+            }
         }
-      }
-      this._lastMoveX = x;
-      this._lastMoveY = y;
-      this._lastMoveTime = now;
+        this._lastMoveX = x;
+        this._lastMoveY = y;
+        this._lastMoveTime = now;
 
-      this._spotlightManager.updateMousePosition(x, y);
+        this._spotlightManager.updateMousePosition(x, y);
 
-      if (this._spotlightManager.isVisible) {
-        // Only reset the idle timeout / cancel a fade for meaningful movement.
-        if (wasTracked && (Math.abs(dx) >= 5 || Math.abs(dy) >= 5)) {
-          this._spotlightManager.queueRepaint();
+        if (this._spotlightManager.isVisible) {
+            // Only reset the idle timeout / cancel a fade for meaningful movement.
+            if (wasTracked && (Math.abs(dx) >= 5 || Math.abs(dy) >= 5)) {
+                this._spotlightManager.queueRepaint();
+            }
+            return;
         }
-        return;
-      }
 
-      if (this._settingsManager.cachedActivationMethod === "shake") {
-        if (this._mouseTracker.detectShake(x, y)) {
-          this._toggleSpotlight();
+        if (this._settingsManager.cachedActivationMethod === 'shake') {
+            if (this._mouseTracker.detectShake(x, y)) {
+                this._toggleSpotlight();
+            }
         }
-      }
     }
 
     _toggleSpotlight() {
+        if (!this._enabled)
+            return;
         const method = this._settingsManager.cachedActivationMethod;
 
-        // "Always Visible" mode takes precedence over all other checks
+        // 'Always Visible' mode takes precedence over all other checks
         if (method === 'always') {
             if (!this._spotlightManager.isVisible) {
                 this._showSpotlight();
@@ -247,6 +262,8 @@ export default class FindMyMouseExtension extends Extension {
     }
 
     _showSpotlight() {
+        if (!this._enabled)
+            return;
         const showOnAllMonitors = this._settingsManager.settings.get_boolean('show-on-all-monitors') || false;
         debugLog(`showOnAllMonitors = ${showOnAllMonitors}`);
         

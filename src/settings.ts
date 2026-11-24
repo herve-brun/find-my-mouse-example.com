@@ -20,7 +20,7 @@ export class SettingsManager {
     constructor(settings: Gio.Settings) {
         this._settings = settings;
         this._cachedBgColorNormalized = [0, 0, 0, 0.5];
-        this._cachedSpotlightColorNormalized = [1, 1, 1, 0.5];
+        this._cachedSpotlightColorNormalized = [1, 1, 1, 0.8];
         this._cachedRadius = 100;
         this._cachedZoom = 9.0;
         this._cachedAnimationDuration = 500;
@@ -44,7 +44,7 @@ export class SettingsManager {
         if (!this._settings) return;
 
         const bgColorStr = this._settings.get_string('background-color') || '#00000080';
-        const spotlightColorStr = this._settings.get_string('spotlight-color') || '#FFFFFF80';
+        const spotlightColorStr = this._settings.get_string('spotlight-color') || '#FFFFFFCC';
 
         const bgColor = parseColor(bgColorStr);
         const spotlightColor = parseColor(spotlightColorStr);

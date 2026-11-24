@@ -17,21 +17,21 @@ export function isLogLevelEnabled(level: number): boolean {
 }
 
 const LOG_PREFIX: Record<number, string> = {
-    [LogLevel.ERROR]: "ERROR",
-    [LogLevel.WARN]: "WARN",
-    [LogLevel.INFO]: "INFO",
-    [LogLevel.DEBUG]: "DEBUG"
+    [LogLevel.ERROR]: 'ERROR',
+    [LogLevel.WARN]: 'WARN',
+    [LogLevel.INFO]: 'INFO',
+    [LogLevel.DEBUG]: 'DEBUG',
 };
 
 export function debugLog(message: string, level: number = LogLevel.DEBUG): void {
     if (level <= currentLogLevel) {
-        console.log(`Find My Mouse [${LOG_PREFIX[level] || "LOG"}]: ${message}`);
+        console.log(`Find My Mouse [${LOG_PREFIX[level] || 'LOG'}]: ${message}`);
     }
 }
 
 export function parseColor(colorStr: string, defaultAlpha: number = 255): [number, number, number, number] {
-    if (!colorStr || colorStr === "") return [0, 0, 0, defaultAlpha];
-    const hex = colorStr.replace("#", "");
+    if (!colorStr || colorStr === '') return [0, 0, 0, defaultAlpha];
+    const hex = colorStr.replace('#', '');
     if (hex.length >= 6) {
         const r = parseInt(hex.substring(0, 2), 16);
         const g = parseInt(hex.substring(2, 4), 16);

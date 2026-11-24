@@ -89,7 +89,7 @@ src/spotlight.ts  →  dist/spotlight.js   (Cairo rendering)
 ┌─────────────────────────────────────────────────────────┐
 │              GSettings Schema Layer                      │
 │  schemas/org.gnome.shell.extensions.find-my-mouse.xml   │
-│  13 keys: activation, colors, timing                   │
+│  14 keys: activation, shortcut, colors, timing         │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -293,7 +293,7 @@ find-my-mouse-example.com/
 |----------------------------|-----------------------------------------------|------------------------|-----------------------------------------|
 | `Extension`                | `resource:///org/gnome/shell/extensions/extension.js` | extension.ts   | Base class for extension lifecycle      |
 | `ExtensionPreferences`     | `resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js` | prefs.ts | Base class for preferences UI           |
-| `*Main`                    | `resource:///org/gnome/shell/ui/main.js`       | spotlight.ts, keybindings.ts | `Main.uiGroup`, `Main.wm`        |
+| `*Main`                    | `resource:///org/gnome/shell/ui/main.js`       | spotlight.ts, extension.ts | `Main.uiGroup`, `Main.wm`       |
 | `getPointerWatcher`        | `resource:///org/gnome/shell/ui/pointerWatcher.js` | mouseTracking.ts | Cursor position tracking                |
 | `St.DrawingArea`           | `gi://St`                                     | spotlight.ts          | Clutter actor for Cairo rendering       |
 | `Shell.ActionMode` | `gi://Shell` | extension.ts | Keybinding modes |
@@ -434,7 +434,7 @@ ci: add schema validation to test workflow
 
 ## 10. Default Values (PowerToys-Matched)
 
-The extension defaults are carefully chosen to match Microsoft PowerToys "Find My Mouse" behavior, with additional GNOME-specific additions.
+The extension defaults are carefully chosen to match Microsoft PowerToys "Find My Mouse" behavior, with two GNOME-specific adjustments: the ring color is 80% opaque white for a 3:1 contrast ratio, and a keyboard shortcut (`<Super>f`) is available.
 
 ### 10.1 General
 
@@ -450,7 +450,7 @@ The extension defaults are carefully chosen to match Microsoft PowerToys "Find M
 | Setting                    | Key                          | GSettings Type | Default          | PowerToys Match |
 |----------------------------|------------------------------|----------------|------------------|-----------------|
 | Background Color           | `background-color`           | string (hex)   | `#00000080`      | ✅ black 50%    |
-| Ring Color                 | `spotlight-color`            | string (hex)   | `#FFFFFF80`      | ✅ white 50%    |
+| Ring Color                 | `spotlight-color`            | string (hex)   | `#FFFFFFCC`      | Adjusted (white 80%, 3:1 contrast) |
 | Spotlight Radius           | `spotlight-radius`           | int            | `100` px         | ✅ 100px        |
 | Initial Zoom               | `spotlight-zoom`             | double         | `9.0`            | ✅ 9x           |
 | Ring Width                 | `spotlight-ring-width`       | int            | `2` px           | N/A (GNOME-specific) |
@@ -490,6 +490,7 @@ The extension defaults are carefully chosen to match Microsoft PowerToys "Find M
 - **Monitor geometry** must be recalculated when `showOnAllMonitors` changes. The SpotlightManager calculates combined geometry across all monitors.
 - **Zoom animation**: Uses `Clutter.Timeline` with manual `easeOutQuad` easing. The zoom starts large (`spotlight-zoom`) and shrinks to 1× over `animation-duration` ms. Cancel in-progress zooms before showing again to avoid stale callbacks.
 - **Immediate teardown**: Use `destroyImmediately()` (not `hide()`) during extension `disable()` to avoid async animation races during shutdown.
+- **Reduced motion**: When `org.gnome.desktop.interface enable-animations` is false, `SpotlightManager` skips the zoom and destroys the actor instead of fading it out.
 
 ### 11.3 Wayland & Input
 - **Extension runs in Wayland** — modifier key (Ctrl) double-press is unreliable in Wayland. The custom keybinding (`<Super>f` default) is the recommended activation method.
@@ -509,8 +510,8 @@ The extension defaults are carefully chosen to match Microsoft PowerToys "Find M
 - **Ambient types** are imported in `ambient.d.ts` using `@girs/*` packages. These enable type checking for GNOME Shell/GJS APIs.
 
 ### 11.6 Preferences UI
-- **Gtk.ShortcutLabel** is used for the keyboard shortcut display, but the actual capture is implemented via a custom `Gtk.Dialog` with `Gtk.EventControllerKey` because GNOME Shell's built-in shortcut capture widget has limitations.
-- **Modifier-only shortcuts** are prevented: the key controller filters out `MODIFIER_KEYS` (Shift, Ctrl, Alt, Super, Meta, Caps, NumLock) to avoid setting invalid shortcuts.
+- **Gtk.ShortcutLabel** displays the accelerator stored in `find-my-mouse-activation`; the binding itself is registered by `extension.ts` with `Main.wm.addKeybinding()`. GTK4 has no public shortcut entry widget, so `prefs.ts` captures a new accelerator with a modal `Gtk.Dialog` + `Gtk.EventControllerKey` (modifiers appear live in a `Gtk.ShortcutLabel`, the completed sequence is shown briefly, Escape cancels, BackSpace clears, modifier-only keys are rejected). The row is disabled with an explanatory subtitle when `activation-method` is `always`.
+- **Accessible names** are set explicitly on suffix buttons (`Gtk.ColorButton`, "Reset" buttons) with `Gtk.Widget.update_property([Gtk.AccessibleProperty.LABEL], …)`, since the row title alone is not announced as the button's name.
 - **Color format conversion**: `_rgbaToHex()` converts `Gdk.RGBA` to `#AARRGGBB` hex format. `_parseColor()` converts hex back. The alpha channel is critical for the spotlight rendering.
 - **Settings binding**: GSettings `bind()` is used for `spotlight-radius`, `spotlight-zoom`, `idle-timeout`, `animation-duration`, `shake-interval`, `show-on-all-monitors`, `do-not-activate-gamemode`, `spotlight-ring-width`, and `log-level`. Manual read/write is used for color pickers and activation method.
 
@@ -533,6 +534,7 @@ The extension defaults are carefully chosen to match Microsoft PowerToys "Find M
 ```
 org.gnome.shell.extensions.find-my-mouse
 ├── activation-method          (s)  → "shake" | "always"
+├── find-my-mouse-activation   (as) → ['<Super>f']
 ├── shake-interval             (i)  → 100–5000 ms
 ├── shake-sensitivity          (i)  → 100–10000 %
 ├── do-not-activate-gamemode   (b)  → true | false

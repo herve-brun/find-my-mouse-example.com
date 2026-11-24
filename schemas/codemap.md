@@ -8,7 +8,7 @@ This folder serves three roles:
 
 1. **Schema Authority** — Every configurable property in the extension is declared here first. The TypeScript sources (`src/settings.ts`, `src/prefs.ts`, `src/extension.ts`, `src/spotlight.ts`, `src/mouseTracking.ts`) are consumers and must stay in sync with this definition.
 2. **GSI (GSettings Introspection) Contract** — The XML defines the D-Bus-accessible surface of the extension's configuration. Other tools (`gsettings`, `dconf-editor`, GNOME Control Center) can read/write these keys without touching the extension code.
-3. **PowerToys Defaults Repository** — All default values are intentionally chosen to match Microsoft PowerToys Find My Mouse behaviour (documented per-key in descriptions).
+3. **PowerToys Defaults Repository** — Most default values match Microsoft PowerToys Find My Mouse behaviour (documented per-key in descriptions). Two GNOME-specific exceptions: `spotlight-color` uses 80% opaque white for contrast, and `find-my-mouse-activation` provides a keyboard shortcut.
 
 Files in this directory:
 
@@ -226,11 +226,12 @@ The `npm run build:dist` pipeline includes `build:schemas` so the ZIP distributi
 | 03 | `shake-sensitivity` | `i` | `400` | — | `cachedShakeSensitivity` | `mouseTracking.ts`, `prefs.ts` | Yes (400%) |
 | 04 | `do-not-activate-gamemode` | `b` | `true` | — | `cachedDoNotActivateInGameMode` | `extension.ts`, `prefs.ts` | N/A (GNOME-specific) |
 | 05 | `background-color` | `s` | `'#00000080'` | — | `cachedBgColorNormalized` [0–1] | `spotlight.ts` | Yes (black 50%) |
-| 06 | `spotlight-color` | `s` | `'#FFFFFF80'` | — | `cachedSpotlightColorNormalized` [0–1] | `spotlight.ts` | Yes (white 50%) |
+| 06 | `spotlight-color` | `s` | `'#FFFFFFCC'` | — | `cachedSpotlightColorNormalized` [0–1] | `spotlight.ts` | Adjusted (white 80%, contrast) |
 | 07 | `spotlight-radius` | `i` | `100` | — | `cachedRadius` | `spotlight.ts` | Yes (100px) |
 | 08 | `spotlight-zoom` | `d` | `9.0` | — | `cachedZoom` | `spotlight.ts` | Yes (9x) |
 | 09 | `idle-timeout` | `i` | `1000` | — | `cachedIdleTimeout` | `spotlight.ts`, `prefs.ts` | Yes (1000ms) |
 | 10 | `animation-duration` | `i` | `500` | — | `cachedAnimationDuration` | `prefs.ts` (reserved) | Yes (500ms) |
+| 11 | `find-my-mouse-activation` | `as` | `['<Super>f']` | — | raw strv | `extension.ts`, `prefs.ts` | N/A (GNOME-specific) |
 | 12 | `log-level` | `i` | `2` | — | `cachedLogLevel` | `utils.ts`, `extension.ts`, `prefs.ts` | N/A |
 | 13 | `show-on-all-monitors` | `b` | `false` | — | raw boolean | `extension.ts`, `prefs.ts` | N/A |
 | 14 | `spotlight-ring-width` | `i` | `2` | [0, 20] | `cachedRingWidth` | `spotlight.ts`, `prefs.ts` | N/A |

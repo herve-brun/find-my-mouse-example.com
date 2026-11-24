@@ -118,7 +118,7 @@ Runs on PR events (opened, edited, synchronize, reopened):
 
 ## Default Values (PowerToys-matched)
 - Background: `#00000080` (black 50% opacity)
-- Spotlight: `#FFFFFF80` (white 50% opacity)
+- Spotlight: `#FFFFFFCC` (white 80% opacity; raised from PowerToys' 50% to keep a 3:1 contrast ratio)
 - Radius: 100px, Zoom: 9.0x, Animation: 500ms
 - Idle timeout: 1000ms (hide after mouse stops)
 - Shake: 1000px distance, 400% sensitivity, 1000ms interval

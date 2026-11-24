@@ -497,11 +497,12 @@ The extension defines 14 GSettings keys in `org.gnome.shell.extensions.find-my-m
 | Key | Type | Default | Page |
 |-----|------|---------|------|
 | `activation-method` | string | `'shake'` | General |
+| `find-my-mouse-activation` | string[] | `['<Super>f']` | General (capture dialog with live preview; disabled in Always Visible mode) |
 | `show-on-all-monitors` | bool | `false` | General |
 | `do-not-activate-gamemode` | bool | `true` | General |
 | `log-level` | int | `2` (INFO) | About |
 | `background-color` | string | `'#00000080'` | Appearance |
-| `spotlight-color` | string | `'#FFFFFF80'` | Appearance |
+| `spotlight-color` | string | `'#FFFFFFCC'` | Appearance |
 | `spotlight-radius` | int | `100` | Appearance |
 | `spotlight-zoom` | double | `9.0` | Appearance |
 | `spotlight-ring-width` | int | `2` | Appearance |

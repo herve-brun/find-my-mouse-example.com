@@ -6,6 +6,11 @@
       <summary>Activation method</summary>
       <description>How to activate the spotlight: shake, always</description>
     </key>
+    <key name="find-my-mouse-activation" type="as">
+      <default>['&lt;Super&gt;f']</default>
+      <summary>Activation shortcut</summary>
+      <description>Keyboard shortcut that toggles the spotlight</description>
+    </key>
     <key name="shake-interval" type="i">
       <default>1000</default>
       <summary>Shake detection interval</summary>
@@ -27,10 +32,11 @@
       <description>Color of the spotlight backdrop with alpha (PowerToys default: #00000080 = black 50%)</description>
     </key>
     <key name="spotlight-color" type="s">
-      <default>'#FFFFFF80'</default>
+      <default>'#FFFFFFCC'</default>
       <summary>Ring Color</summary>
       <description>
-        Color of the ring at the edge of the spotlight area.
+        Color of the ring at the edge of the spotlight area. The default is
+        80% opaque white to keep a 3:1 contrast ratio on light desktops.
       </description>
     </key>
     <key name="spotlight-radius" type="i">

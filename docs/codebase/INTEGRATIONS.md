@@ -41,12 +41,12 @@
 | Key                          | Type   | Default Value       | Description                                                                 |
 |-----------------------------|--------|---------------------|-----------------------------------------------------------------------------|
 | `activation-method`         | String | `'shake'`           | Activation method: `shortcut`, `shake`, `click`, `always`.                 |
-| `find-my-mouse-activation`  | String | `'<Super>f'`        | Keyboard shortcut for activation.                                         |
+| `find-my-mouse-activation`  | String[] | `['<Super>f']`    | Keyboard shortcut for activation.                                         |
 | `click-activation-button`   | Int    | `1`                 | Mouse button for click activation (1=left, 2=middle, 3=right).           |
 | `shake-interval`            | Int    | `1000`              | Time window (ms) for shake detection.                                     |
 | `shake-sensitivity`         | Int    | `400`               | Shake sensitivity factor (400% = 4x).                                     |
 | `background-color`          | String | `'#00000080'`       | Background color with alpha (black, 50% opacity).                         |
-| `spotlight-color`           | String | `'#FFFFFF80'`       | Spotlight color with alpha (white, 50% opacity).                         |
+| `spotlight-color`           | String | `'#FFFFFFCC'`       | Spotlight color with alpha (white, 80% opacity, 3:1 contrast).           |
 | `spotlight-radius`          | Int    | `100`               | Spotlight radius in pixels.                                                |
 | `spotlight-zoom`            | Double | `9.0`               | Initial zoom factor for animation.                                        |
 | `idle-timeout`              | Int    | `1000`              | Time (ms) before hiding after mouse stops.                              |

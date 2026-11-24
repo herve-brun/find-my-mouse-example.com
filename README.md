@@ -15,6 +15,7 @@
 
 - **🎯 Spotlight Effect**: Highlights the mouse cursor with customizable radius, color, and zoom.
 - **🤲 Shake Activation**: Activate the spotlight by quickly shaking the mouse (sensitivity configurable).
+- **⌨️ Keyboard Shortcut**: Toggle the spotlight with `<Super>F` (change it in **Preferences → General → Activation Shortcut**).
 - **📝 Dynamic Logging**: Real-time log level adjustments (ERROR, WARN, INFO, DEBUG) without restarting.
 - **🖥️ Multi-Monitor Support**: Works across multiple monitors with DPI awareness.
 - **⚙️ Shake Activation**: Configurable sensitivity and distance threshold.
@@ -76,6 +77,7 @@
 | Method          | Description                       |
 |-----------------|-----------------------------------|
 | **Mouse Shake** | Quickly move mouse back and forth |
+| **Keyboard Shortcut** | Press `Super+F` to toggle the spotlight |
 
 ### ⚙️ Configuration
 
