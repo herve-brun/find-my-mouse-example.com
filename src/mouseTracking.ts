@@ -45,6 +45,7 @@ export class MouseTracker {
     private _canDetect: DetectionAllowedHandler;
     private _detector: GestureDetector;
     private _pointerWatch: PointerWatch | null;
+    private _removed: boolean;
     private _tickId: number;
     private _lastX: number | null;
     private _lastY: number | null;
@@ -61,6 +62,7 @@ export class MouseTracker {
         this._canDetect = canDetect;
         this._detector = new GestureDetector(this._buildConfig());
         this._pointerWatch = null;
+        this._removed = false;
         this._tickId = 0;
         this._lastX = null;
         this._lastY = null;
@@ -70,6 +72,8 @@ export class MouseTracker {
         const { getPointerWatcher } = await import(
             'resource:///org/gnome/shell/ui/pointerWatcher.js'
         );
+        if (this._removed)
+            return;
         const watcher = getPointerWatcher();
         this._pointerWatch = watcher.addWatch(SAMPLE_INTERVAL_MS, (x, y) => {
             this._handleSample(x, y);
@@ -78,6 +82,7 @@ export class MouseTracker {
     }
 
     remove(): void {
+        this._removed = true;
         if (this._pointerWatch) {
             this._pointerWatch.remove();
             this._pointerWatch = null;

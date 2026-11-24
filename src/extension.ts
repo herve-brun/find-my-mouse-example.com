@@ -146,10 +146,13 @@ export default class FindMyMouseExtension extends Extension {
             this._spotlightManager?.queueRepaint();
         });
 
-        await this._mouseTracker.setup();
+        // Keep a local reference: disable() nulls the field while the import
+        // resolves, and the watch added after the await must still be removed.
+        const mouseTracker = this._mouseTracker;
+        await mouseTracker.setup();
         if (!this._enabled) {
             // disable() ran while the pointer watcher module was loading.
-            this._mouseTracker?.remove();
+            mouseTracker.remove();
             return;
         }
 
