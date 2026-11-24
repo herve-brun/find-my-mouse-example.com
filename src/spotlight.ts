@@ -254,6 +254,7 @@ export class SpotlightManager {
         this._currentZoom = 1;
         this._spotlight?.remove_all_transitions();
         this._destroySpotlightActor();
+        this._interfaceSettings = null;
     }
 
     _onRepaint(area: St.DrawingArea): void {
