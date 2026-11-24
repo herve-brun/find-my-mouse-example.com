@@ -1,6 +1,6 @@
 # Find My Mouse — GNOME Shell Extension
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 [![GNOME Shell](https://img.shields.io/badge/GNOME-Shell-46+-blueviolet)](https://www.gnome.org/)
 [![CI](https://img.shields.io/github/actions/workflow/status/herve-brun/find-my-mouse-example.com/test.yml?branch=main&label=CI)](https://github.com/herve-brun/find-my-mouse-example.com/actions/workflows/test.yml)
 [![Release](https://img.shields.io/github/actions/workflow/status/herve-brun/find-my-mouse-example.com/release.yml?branch=main&label=Release)](https://github.com/herve-brun/find-my-mouse-example.com/actions/workflows/release.yml)
@@ -171,6 +171,6 @@ Fork the repository, create a branch, edit `src/*.ts`, run `npm test` and `npm r
 
 ## License
 
-[MIT License](LICENSE.md), including a non-endorsement clause: the name "Hervé Brun" cannot be used to promote or advertise derived works without prior written authorization.
+[GNU General Public License v3.0 or later](LICENSE.md). GNOME Shell extensions must be distributed under GPL-compatible terms; see the [GNOME extension review guidelines](https://gjs.guide/extensions/review-guidelines/review-guidelines.html#licensing).
 
 Project documentation and architecture notes are in `codemap.md` and `docs/codebase/`.
