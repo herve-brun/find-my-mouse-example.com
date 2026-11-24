@@ -61,7 +61,7 @@ jobs:
           node-version: '22'
 
       - name: Install system dependencies
-        run: sudo apt-get update && sudo apt-get install -y libglib2.0-bin
+        run: sudo apt-get update && sudo apt-get install -y gettext libglib2.0-bin
 
       - name: Install dependencies
         run: npm ci

@@ -48,7 +48,7 @@ src/extension.ts  →  dist/extension.js
 ```
 src/prefs.ts  →  dist/prefs.js
 ```
-`FindMyMousePreferences` extends `ExtensionPreferences`. `fillPreferencesWindow(window: Adw.PreferencesWindow)` builds the whole dialog, including the Mouse Gesture page with presets, fine-tuning, the live "Try the Gesture" practice session, and About release notes (updated for the 1.2.0 release by the designer lane). Practice instructions are derived from current GSettings values; the dialog has no auto-close timer and falls back to text-only instructions when the D-Bus service is unavailable.
+`FindMyMousePreferences` extends `ExtensionPreferences`. `fillPreferencesWindow(window: Adw.PreferencesWindow)` builds the whole dialog, including the Mouse Gesture page with presets, fine-tuning, the live "Try the Gesture" practice session, and About release notes (updated for the 1.2.0 release by the designer lane). User-facing strings are marked with `gettext` (`_()`); translations are initialized automatically from the `gettext-domain` in `metadata.json`. Practice instructions are derived from current GSettings values; the dialog has no auto-close timer and falls back to text-only instructions when the D-Bus service is unavailable.
 
 ### 2.3 Spotlight Rendering Entry
 ```
@@ -241,7 +241,10 @@ prefs client degrades to a text-only fallback if the proxy cannot be created.
 | `npm test` | `npm run build && node --test test/*.test.mjs` | Build, then run unit tests with `node:test` |
 | `npm run build` | `clean && tsc -p tsconfig.prod.json` | Clean `dist/` and compile TypeScript |
 | `npm run build:schemas` | `glib-compile-schemas schemas/` | Compile GSettings XML |
-| `postbuild` | `build:schemas && cp metadata.json && cp -r schemas` | Auto-runs after build |
+| `npm run i18n:pot` | `xgettext` on `dist/*.js` | Regenerate the gettext POT from compiled sources |
+| `npm run i18n:update` | `i18n:pot` + `msgmerge` | Refresh template and merge into `en`/`fr`/`es` PO files |
+| `npm run i18n:build` | `msgfmt --check` | Validate PO files and compile `.mo` files into `dist/locale/` |
+| `postbuild` | `build:schemas && i18n:build && cp metadata.json && cp schemas` | Auto-runs after build |
 | `npm run build:dist` | `build && cd dist && zip -qr ../find-my-mouse@herve-brun.github.io.zip .` | Distribution ZIP for EGO |
 
 ### 4.3 TypeScript Configurations
@@ -300,12 +303,18 @@ find-my-mouse-example.com/
 ├── test/                             # node:test unit tests for the gesture detector
 │   └── gestureDetector.test.mjs
 │
+├── po/                               # gettext catalogs
+│   ├── find-my-mouse@herve-brun.github.io.pot  # Translation template
+│   ├── en.po, fr.po, es.po            # English (source), French, Spanish
+│   └── (compiled .mo files live under dist/locale/)
+│
 ├── dist/                             # Compiled JS output (gitignored, auto-generated)
 │   ├── extension.js, prefs.js, settings.js, spotlight.js
 │   ├── activationController.js, gestureDetector.js, gestureFeedback.js
 │   ├── mouseTracking.js, gamemodeClient.js, practiceService.js,
 │   │   practiceClient.js, utils.js
-│   └── schemas/                      # gschemas.compiled + XML
+│   ├── schemas/                      # gschemas.compiled + XML
+│   └── locale/<lang>/LC_MESSAGES/    # Compiled gettext catalogs
 │
 ├── .github/                          # CI/CD
 │   ├── workflows/
@@ -388,6 +397,7 @@ find-my-mouse-example.com/
 | Type checking | ✅ `npm run check` | `tsc --noEmit` |
 | Linting | ✅ `npm run lint` | ESLint with TypeScript rules |
 | Schema validation | ✅ CI job | `xmllint` + `glib-compile-schemas` |
+| Translation validation | ✅ `npm test` | `msgfmt --check --check-format` compiles `en`/`fr`/`es` catalogs during `postbuild` |
 | Metadata validation | ✅ CI job | Python script |
 | Manual testing | ✅ Documented | Nested Wayland/Xephyr; concrete gesture scenarios in `docs/codebase/TESTING.md` |
 
@@ -464,6 +474,7 @@ Fixed detector thresholds: arm speed ≥400 px/s, horizontal dominance ≥2:1, r
 
 ### 11.1 Build & Schema
 - Compile the schema after any `schemas/*.xml` edit: `glib-compile-schemas schemas/` or `npm run build:schemas`. ZIP validation expects `schemas/gschemas.compiled`.
+- After adding or changing `_()` strings in `src/prefs.ts`, run `npm run i18n:update`, translate the changed PO entries, and commit the POT/PO files. `gettext` (`msgfmt`) is now a build prerequisite.
 - The `dist/` directory is gitignored; run `npm run build` (or `npm test`, which builds first) before testing.
 - `npm test` builds and runs `node --test test/*.test.mjs`; keep `gestureDetector.ts` import-free so it remains unit-testable without GNOME Shell.
 

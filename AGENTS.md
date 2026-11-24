@@ -29,6 +29,9 @@ npm run build:dist
 # Compile GSettings schema (required after schema changes)
 npm run build:schemas
 
+# Regenerate gettext template and merge into en/fr/es PO files (requires gettext)
+npm run i18n:update
+
 # Or manually:
 glib-compile-schemas schemas/
 
@@ -117,6 +120,7 @@ Runs on PR events (opened, edited, synchronize, reopened):
 
 ## Critical Gotchas
 - **Always compile schema** after modifying `schemas/*.xml`: `glib-compile-schemas schemas/` or `npm run build:schemas`
+- **Translations**: mark Preferences strings with `_()` in `src/prefs.ts`. `metadata.json` already sets `gettext-domain`, so GNOME Shell initializes catalogs automatically. After string changes, run `npm run i18n:update`, translate changed PO entries, and commit `po/*.pot`/`po/*.po`. Builds require `msgfmt` and emit compiled catalogs under `dist/locale/<lang>/LC_MESSAGES/`.
 - **Cairo context** obtained via `area.get_context()` in `repaint` signal handler
 - **Use `queue_repaint()`** not `queue_redraw()` for St.DrawingArea
 - **Extension runs in Wayland** — Ctrl double-press is unreliable; use the `<Super>f` shortcut or the mouse gesture. The mouse gesture is a deliberate horizontal wave followed by stopping: it arms at ≥400 px/s with ≥2:1 horizontal dominance, counts 3 reversals of ≥90 px each within 900 ms (speed must dip below 20% of the sweep peak), then requires the pointer to settle below 150 px/s within 180 ms. Cooldown is 1500 ms. Tuning keys are `gesture-reversals` (3), `gesture-sweep` (90 px), `gesture-window` (900 ms), `gesture-settle` (180 ms), `gesture-cooldown` (1500 ms), `gesture-ignore-buttons` (true), `gesture-ignore-fullscreen` (true), `gesture-sound` (false). `shake-interval` and `shake-sensitivity` are deprecated compatibility keys and are not read by the detector.

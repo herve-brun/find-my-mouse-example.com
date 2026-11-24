@@ -1,0 +1,567 @@
+# Find My Mouse translation template.
+# Copyright (C) 2026 Hervé Brun
+# This file is distributed under the same license as the Find My Mouse package.
+# Hervé Brun <herve-brun@users.noreply.github.com>, 2026.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Find My Mouse 1.2.0\n"
+"Report-Msgid-Bugs-To: https://github.com/herve-brun/find-my-mouse-"
+"example.com/issues\n"
+"POT-Creation-Date: 2026-11-24 14:53+0100\n"
+"PO-Revision-Date: 2026-11-24 14:53+0100\n"
+"Last-Translator: Hervé Brun <herve-brun@users.noreply.github.com>\n"
+"Language-Team: French\n"
+"Language: fr\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\n"
+
+#: dist/prefs.js:57
+msgid "General"
+msgstr "Général"
+
+#: dist/prefs.js:62
+msgid "Activation"
+msgstr "Activation"
+
+#: dist/prefs.js:63
+msgid "Configure how Find My Mouse is activated"
+msgstr "Configurer l’activation de Find My Mouse"
+
+#: dist/prefs.js:67
+msgid "Activation Method"
+msgstr "Méthode d’activation"
+
+#: dist/prefs.js:68
+msgid "Shortcut and mouse gesture both work in the first mode"
+msgstr ""
+"Dans le premier mode, le raccourci et le geste de la souris fonctionnent "
+"tous deux"
+
+#: dist/prefs.js:70
+msgid "Shortcut + Mouse Gesture"
+msgstr "Raccourci + geste de la souris"
+
+#: dist/prefs.js:71
+msgid "Always Visible"
+msgstr "Toujours visible"
+
+#: dist/prefs.js:83
+msgid "Activation Shortcut"
+msgstr "Raccourci d’activation"
+
+#: dist/prefs.js:84
+msgid "Toggle the spotlight from the keyboard"
+msgstr "Afficher/masquer le projecteur depuis le clavier"
+
+#: dist/prefs.js:92
+msgid "Change"
+msgstr "Modifier"
+
+#: dist/prefs.js:95
+msgid "Change Activation Shortcut"
+msgstr "Modifier le raccourci d’activation"
+
+#: dist/prefs.js:111
+msgid "Unavailable in Always Visible mode: the spotlight is already on screen"
+msgstr "Indisponible en mode Toujours visible : le projecteur est déjà affiché"
+
+#: dist/prefs.js:112
+msgid ""
+"Shortcut and gesture both activate the spotlight; change the shortcut here"
+msgstr ""
+"Le raccourci et le geste activent tous deux le projecteur ; modifiez le "
+"raccourci ici"
+
+#: dist/prefs.js:125
+msgid "Disable During Game Mode"
+msgstr "Désactiver pendant le mode jeu"
+
+#: dist/prefs.js:126
+msgid "Keep spotlight off while Game Mode is active"
+msgstr "Garder le projecteur désactivé lorsque le mode jeu est actif"
+
+#: dist/prefs.js:131
+msgid "Multi-Monitor"
+msgstr "Multi-écrans"
+
+#: dist/prefs.js:132
+msgid "Settings for multi-monitor setups"
+msgstr "Paramètres pour les configurations multi-écrans"
+
+#: dist/prefs.js:136
+msgid "Show on All Monitors"
+msgstr "Afficher sur tous les écrans"
+
+#: dist/prefs.js:137
+msgid "When enabled, spotlight covers all connected monitors"
+msgstr ""
+"Lorsque cette option est activée, le projecteur couvre tous les écrans "
+"connectés"
+
+#: dist/prefs.js:145 dist/prefs.js:158
+msgid "Reset General Settings to Defaults"
+msgstr "Rétablir les paramètres généraux par défaut"
+
+#: dist/prefs.js:146 dist/prefs.js:248 dist/prefs.js:303 dist/prefs.js:639
+msgid "Restore default values"
+msgstr "Rétablir les valeurs par défaut"
+
+#: dist/prefs.js:149 dist/prefs.js:251 dist/prefs.js:306 dist/prefs.js:642
+#: dist/prefs.js:728
+msgid "Reset"
+msgstr "Réinitialiser"
+
+#: dist/prefs.js:163
+msgid "Appearance"
+msgstr "Apparence"
+
+#: dist/prefs.js:169
+msgid "Customize the spotlight appearance"
+msgstr "Personnaliser l’apparence du projecteur"
+
+#: dist/prefs.js:173 dist/prefs.js:180
+msgid "Background Color"
+msgstr "Couleur d’arrière-plan"
+
+#: dist/prefs.js:174
+msgid "Color of the spotlight backdrop"
+msgstr "Couleur du fond du projecteur"
+
+#: dist/prefs.js:189
+msgid "Spotlight Radius (px)"
+msgstr "Rayon du projecteur (px)"
+
+#: dist/prefs.js:190
+msgid "Radius of the circle (default: 100)"
+msgstr "Rayon du cercle (par défaut : 100)"
+
+#: dist/prefs.js:200
+msgid "Spotlight Initial Zoom"
+msgstr "Zoom initial du projecteur"
+
+#: dist/prefs.js:201
+msgid "Starts big and shrinks (default: 9x)"
+msgstr "Commence grand puis rétrécit (par défaut : 9×)"
+
+#: dist/prefs.js:212
+msgid "Ring"
+msgstr "Anneau"
+
+#: dist/prefs.js:213
+msgid "Configure the spotlight ring border"
+msgstr "Configurer le bord de l’anneau du projecteur"
+
+#: dist/prefs.js:217 dist/prefs.js:224
+msgid "Ring Color"
+msgstr "Couleur de l’anneau"
+
+#: dist/prefs.js:218
+msgid "Color of the ring that outlines the spotlight circle"
+msgstr "Couleur de l’anneau qui entoure le cercle du projecteur"
+
+#: dist/prefs.js:233
+msgid "Ring Width (px)"
+msgstr "Épaisseur de l’anneau (px)"
+
+#: dist/prefs.js:234
+msgid "Thickness of the spotlight border circle"
+msgstr "Épaisseur du cercle qui borde le projecteur"
+
+#: dist/prefs.js:247 dist/prefs.js:264
+msgid "Reset Appearance Settings to Defaults"
+msgstr "Rétablir les paramètres d’apparence par défaut"
+
+#: dist/prefs.js:269 dist/prefs.js:274
+msgid "Timing"
+msgstr "Temporisation"
+
+#: dist/prefs.js:275
+msgid "Configure timeouts and delays"
+msgstr "Configurer les délais d’attente"
+
+#: dist/prefs.js:279
+msgid "Idle Timeout (ms)"
+msgstr "Délai d’inactivité (ms)"
+
+#: dist/prefs.js:280
+msgid "Wait time after mouse stops before hiding (default: 1000ms)"
+msgstr ""
+"Délai après l’arrêt de la souris avant masquage (par défaut : 1 000 ms)"
+
+#: dist/prefs.js:290
+msgid "Animation Duration (ms)"
+msgstr "Durée de l’animation (ms)"
+
+#: dist/prefs.js:291
+msgid "Fade-out animation time (default: 500ms)"
+msgstr "Durée de l’animation de disparition (par défaut : 500 ms)"
+
+#: dist/prefs.js:302 dist/prefs.js:314
+msgid "Reset Timing Settings to Defaults"
+msgstr "Rétablir les paramètres de temporisation par défaut"
+
+#: dist/prefs.js:319 dist/prefs.js:324
+msgid "Mouse Gesture"
+msgstr "Geste de la souris"
+
+#: dist/prefs.js:325
+msgid ""
+"Move the pointer sideways about a hand's width, then stop. The spotlight "
+"appears when you stop."
+msgstr ""
+"Déplacez le pointeur latéralement sur environ la largeur d’une main, puis "
+"arrêtez-vous. Le projecteur apparaît lorsque vous vous arrêtez."
+
+#: dist/prefs.js:329
+msgid "Gesture effort"
+msgstr "Force du geste"
+
+#: dist/prefs.js:330
+msgid "Standard is the default"
+msgstr "« Standard » est la valeur par défaut"
+
+#: dist/prefs.js:332
+msgid "Light"
+msgstr "Léger"
+
+#: dist/prefs.js:333
+msgid "Standard"
+msgstr "Standard"
+
+#: dist/prefs.js:334
+msgid "Firm"
+msgstr "Ferme"
+
+#: dist/prefs.js:381
+msgid "Fine-tune gesture"
+msgstr "Affiner le geste"
+
+#: dist/prefs.js:382
+msgid "Adjust each threshold individually"
+msgstr "Ajustez chaque seuil individuellement"
+
+#: dist/prefs.js:386
+msgid "Direction Changes"
+msgstr "Changements de direction"
+
+#: dist/prefs.js:387
+msgid "Direction changes required"
+msgstr "Nombre de changements de direction requis"
+
+#: dist/prefs.js:397
+msgid "Sweep Distance (px)"
+msgstr "Distance de balayage (px)"
+
+#: dist/prefs.js:398
+msgid "Minimum travel per sweep"
+msgstr "Distance minimale par balayage"
+
+#: dist/prefs.js:408
+msgid "Gesture Window (ms)"
+msgstr "Fenêtre du geste (ms)"
+
+#: dist/prefs.js:409
+msgid "Time allowed for the whole gesture"
+msgstr "Temps imparti pour l’ensemble du geste"
+
+#: dist/prefs.js:419
+msgid "Settle Time (ms)"
+msgstr "Délai d’arrêt (ms)"
+
+#: dist/prefs.js:420
+msgid "Time allowed to stop after the last change"
+msgstr "Temps imparti pour s’arrêter après le dernier changement"
+
+#: dist/prefs.js:430
+msgid "Cooldown (ms)"
+msgstr "Temps de recharge (ms)"
+
+#: dist/prefs.js:431
+msgid "Ignore further gestures after activation"
+msgstr "Ignorer les gestes suivants après l’activation"
+
+#: dist/prefs.js:441
+msgid "Ignore Mouse Buttons"
+msgstr "Ignorer les boutons de la souris"
+
+#: dist/prefs.js:442
+msgid "Skip gestures while a mouse button is held down"
+msgstr "Ignorer les gestes tant qu’un bouton de la souris est maintenu enfoncé"
+
+#: dist/prefs.js:447
+msgid "Ignore Fullscreen Apps"
+msgstr "Ignorer les applications en plein écran"
+
+#: dist/prefs.js:448
+msgid "Skip gestures in fullscreen apps such as games"
+msgstr "Ignorer les gestes dans les applications en plein écran comme les jeux"
+
+#: dist/prefs.js:453
+msgid "Confirmation Sound"
+msgstr "Son de confirmation"
+
+#: dist/prefs.js:454
+msgid "Play a short sound when the spotlight appears"
+msgstr "Jouer un court son lorsque le projecteur apparaît"
+
+#: dist/prefs.js:459
+#, javascript-format
+msgid "Wave the pointer sideways with %s direction changes."
+msgstr "Agitez le pointeur latéralement avec %s changements de direction."
+
+#: dist/prefs.js:460
+#, javascript-format
+msgid "Cover at least %s px on each sweep."
+msgstr "Parcourez au moins %s px à chaque balayage."
+
+#: dist/prefs.js:461
+#, javascript-format
+msgid "Stop within %s ms after the last change."
+msgstr "Arrêtez-vous dans les %s ms suivant le dernier changement."
+
+#: dist/prefs.js:462
+#, javascript-format
+msgid "Finish the whole gesture within %s ms."
+msgstr "Terminez l’ensemble du geste en %s ms."
+
+#: dist/prefs.js:464
+msgid ""
+"Live practice is not available right now, so nothing is being detected. "
+"Follow these steps at your own pace."
+msgstr ""
+"L’entraînement en direct n’est pas disponible pour le moment ; rien n’est "
+"détecté. Suivez ces étapes à votre rythme."
+
+#: dist/prefs.js:465
+msgid "Live detection has stopped. Follow these steps at your own pace."
+msgstr ""
+"La détection en direct s’est arrêtée. Suivez ces étapes à votre rythme."
+
+#: dist/prefs.js:477 dist/prefs.js:512
+msgid "Try the Gesture"
+msgstr "Essayer le geste"
+
+#: dist/prefs.js:481
+msgid "Close"
+msgstr "Fermer"
+
+#: dist/prefs.js:492
+msgid "Connecting to the shell extension…"
+msgstr "Connexion à l’extension du shell…"
+
+#: dist/prefs.js:513
+msgid ""
+"Gesture detection is live. The spotlight itself will not appear during "
+"practice — watch the progress ring near the pointer. Text-only steps are "
+"available below if you prefer."
+msgstr ""
+"La détection du geste est active. Le projecteur lui-même n’apparaîtra pas "
+"pendant l’entraînement — regardez l’anneau de progression près du pointeur. "
+"Des étapes en texte sont disponibles ci-dessous si vous le préférez."
+
+#: dist/prefs.js:516
+msgid "Retry"
+msgstr "Réessayer"
+
+#: dist/prefs.js:517
+msgid "Text-only steps"
+msgstr "Étapes en texte"
+
+#: dist/prefs.js:518
+msgid "Done"
+msgstr "Terminé"
+
+#: dist/prefs.js:552
+msgid "Starting practice…"
+msgstr "Démarrage de l’entraînement…"
+
+#: dist/prefs.js:558
+msgid "Waiting for the gesture…"
+msgstr "En attente du geste…"
+
+#: dist/prefs.js:575
+msgid "Started — now wave"
+msgstr "C’est parti — agitez le pointeur"
+
+#: dist/prefs.js:578
+#, javascript-format
+msgid "%s/%s direction changes"
+msgstr "%s/%s changements de direction"
+
+#: dist/prefs.js:581
+msgid "Now stop"
+msgstr "Arrêtez-vous maintenant"
+
+#: dist/prefs.js:588
+msgid "That's the gesture — press <Super>f or wave to reveal the pointer."
+msgstr ""
+"C’est le bon geste — appuyez sur <Super>f ou agitez le pointeur pour le "
+"révéler."
+
+#: dist/prefs.js:591
+msgid "Stay horizontal, move faster, cover enough distance, then stop sharply."
+msgstr ""
+"Restez horizontal, allez plus vite, parcourez une distance suffisante, puis "
+"arrêtez net."
+
+#: dist/prefs.js:623 dist/prefs.js:627 dist/prefs.js:630
+msgid "Practice"
+msgstr "Entraînement"
+
+#: dist/prefs.js:624
+msgid "Try the gesture with live feedback"
+msgstr "Essayez le geste avec un retour en direct"
+
+#: dist/prefs.js:638 dist/prefs.js:653
+msgid "Reset Mouse Gesture Settings to Defaults"
+msgstr "Rétablir les paramètres du geste de la souris par défaut"
+
+#: dist/prefs.js:658 dist/prefs.js:663
+msgid "About"
+msgstr "À propos"
+
+#: dist/prefs.js:667
+msgid "Version"
+msgstr "Version"
+
+#: dist/prefs.js:674
+msgid "Website"
+msgstr "Site web"
+
+#: dist/prefs.js:684
+msgid "Credits and License"
+msgstr "Crédits et licence"
+
+#: dist/prefs.js:685
+msgid "View credits, license, and release notes"
+msgstr "Voir les crédits, la licence et les notes de version"
+
+#: dist/prefs.js:693
+msgid "Logging"
+msgstr "Journalisation"
+
+#: dist/prefs.js:694
+msgid "Configure extension logging verbosity"
+msgstr "Configurer le niveau de détail des journaux de l’extension"
+
+#: dist/prefs.js:698
+msgid "Log Level"
+msgstr "Niveau de journalisation"
+
+#: dist/prefs.js:699
+msgid "Set the maximum log level to display"
+msgstr "Définir le niveau maximal à afficher"
+
+#: dist/prefs.js:701
+msgid "Errors Only"
+msgstr "Erreurs uniquement"
+
+#: dist/prefs.js:702
+msgid "Warnings and Errors"
+msgstr "Avertissements et erreurs"
+
+#: dist/prefs.js:703
+msgid "Info and Above"
+msgstr "Informations et plus"
+
+#: dist/prefs.js:704
+msgid "Debug (Verbose)"
+msgstr "Débogage (détaillé)"
+
+#: dist/prefs.js:724 dist/prefs.js:736
+msgid "Reset Logging to Defaults"
+msgstr "Rétablir la journalisation par défaut"
+
+#: dist/prefs.js:725
+msgid "Restore the default log level"
+msgstr "Rétablir le niveau de journalisation par défaut"
+
+#: dist/prefs.js:746
+msgid "Set Activation Shortcut"
+msgstr "Définir le raccourci d’activation"
+
+#: dist/prefs.js:759
+msgid "Press the new shortcut — modifiers appear as you type"
+msgstr ""
+"Appuyez sur le nouveau raccourci — les modificateurs apparaissent pendant la "
+"saisie"
+
+#: dist/prefs.js:770
+msgid "Escape to cancel, BackSpace to clear"
+msgstr "Échap pour annuler, Retour arrière pour effacer"
+
+#: dist/prefs.js:807
+msgid "Include at least one modifier key"
+msgstr "Incluez au moins une touche modificatrice"
+
+#: dist/prefs.js:812
+msgid "That key cannot be used as a shortcut"
+msgstr "Cette touche ne peut pas être utilisée comme raccourci"
+
+#: dist/prefs.js:841
+msgid "Find My Mouse"
+msgstr "Find My Mouse"
+
+#. Translators: replace this with your name and email, if you wish.
+#: dist/prefs.js:851
+msgid "translator-credits"
+msgstr ""
+
+#: dist/prefs.js:852
+msgid ""
+"A GNOME Shell extension that helps you locate your mouse cursor by creating "
+"a spotlight effect around it. Inspired by Microsoft PowerToys Find My Mouse "
+"feature."
+msgstr ""
+"Une extension GNOME Shell qui vous aide à localiser le curseur de la souris "
+"en créant un effet de projecteur autour de lui. Inspirée de la "
+"fonctionnalité Find My Mouse de Microsoft PowerToys."
+
+#: dist/prefs.js:854
+msgid "What is new:"
+msgstr "Nouveautés :"
+
+#: dist/prefs.js:856
+msgid ""
+"Wave-and-stop mouse gesture: move the pointer sideways, then pause to reveal "
+"it."
+msgstr ""
+"Geste « agiter puis arrêter » : déplacez le pointeur latéralement, puis "
+"marquez une pause pour le révéler."
+
+#: dist/prefs.js:857
+msgid "The keyboard shortcut is always available alongside the gesture."
+msgstr "Le raccourci clavier est toujours disponible en complément du geste."
+
+#: dist/prefs.js:858
+msgid ""
+"A small progress ring follows the pointer while a gesture is in progress."
+msgstr ""
+"Un petit anneau de progression suit le pointeur pendant l’exécution d’un "
+"geste."
+
+#: dist/prefs.js:859
+msgid ""
+"Light, Standard, and Firm presets, plus fine-grained controls for each "
+"threshold."
+msgstr ""
+"Des préréglages Léger, Standard et Ferme, ainsi que des réglages fins pour "
+"chaque seuil."
+
+#: dist/prefs.js:860
+msgid ""
+"Practice mode uses real gesture detection with live feedback in the "
+"preferences dialog."
+msgstr ""
+"Le mode Entraînement utilise la détection réelle des gestes avec un retour "
+"en direct dans la fenêtre des préférences."
+
+#: dist/prefs.js:861
+msgid ""
+"A text-only fallback explains the gesture when live practice is unavailable."
+msgstr ""
+"Une solution de repli en texte explique le geste lorsque l’entraînement en "
+"direct n’est pas disponible."

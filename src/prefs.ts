@@ -13,8 +13,9 @@ import {
 import { setLogLevel, LogLevel } from './utils.js';
 import { PracticeClient } from './practiceClient.js';
 
+/** `pattern` must come from gettext; GJS provides String.prototype.format. */
 function formatSetting(pattern: string, value: number): string {
-    return pattern.replace('%s', String(value));
+    return pattern.format(value);
 }
 
 /** Suffix widgets need their own name: the row title is not enough for a screen reader. */
@@ -746,10 +747,10 @@ export default class FindMyMousePreferences extends ExtensionPreferences {
                     setStatus(_('Started — now wave'));
                 } else if (progress.event === 'progress') {
                     setStatus(
-                        formatSetting(
-                            _('%s/%s direction changes'),
+                        _('%s/%s direction changes').format(
                             progress.progress,
-                        ).replace('%s', String(progress.total)),
+                            progress.total,
+                        ),
                     );
                 } else if (progress.event === 'ready') {
                     setStatus(_('Now stop'));
@@ -1081,6 +1082,7 @@ export default class FindMyMousePreferences extends ExtensionPreferences {
             website: 'https://github.com/herve-brun/find-my-mouse-example.com',
             developers: ['Hervé Brun'],
             designers: ['Microsoft PowerToys Team (inspiration)'],
+            // Translators: replace this with your name and email, if you wish.
             translator_credits: _('translator-credits'),
             comments: _(
                 'A GNOME Shell extension that helps you locate your mouse cursor by creating a spotlight effect around it. Inspired by Microsoft PowerToys Find My Mouse feature.',

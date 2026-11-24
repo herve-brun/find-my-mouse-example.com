@@ -19,6 +19,9 @@ jobs:
         with:
           node-version: '22'
 
+      - name: Install translation tools
+        run: sudo apt-get update && sudo apt-get install -y gettext libglib2.0-bin
+
       - name: Install dependencies
         run: npm ci
 
@@ -40,11 +43,19 @@ jobs:
             "prefs.js"
             "settings.js"
             "spotlight.js"
+            "activationController.js"
+            "gestureDetector.js"
+            "gestureFeedback.js"
             "mouseTracking.js"
             "gamemodeClient.js"
+            "practiceService.js"
+            "practiceClient.js"
             "utils.js"
             "schemas/gschemas.compiled"
             "schemas/org.gnome.shell.extensions.find-my-mouse.gschema.xml"
+            "locale/en/LC_MESSAGES/find-my-mouse@herve-brun.github.io.mo"
+            "locale/fr/LC_MESSAGES/find-my-mouse@herve-brun.github.io.mo"
+            "locale/es/LC_MESSAGES/find-my-mouse@herve-brun.github.io.mo"
           )
           echo "--- ZIP contents ---"
           unzip -l "$zip_file"

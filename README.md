@@ -18,10 +18,11 @@ A GNOME Shell extension (GNOME 46–50, Wayland) that highlights the pointer wit
 - **Multi-monitor**: show on the current monitor or on the bounding box of all monitors.
 - **Practice mode**: "Try the Gesture" in Preferences runs a real gesture session through the extension, with live progress feedback and retry/cancel, without showing the spotlight.
 - **Dynamic logging**: log level adjustable at runtime in Preferences → About.
+- **Translations**: gettext catalogs for English (source), French and Spanish.
 
 ## Installation
 
-Prerequisites: GNOME Shell 46 or later, Git, Node.js 22+, npm, and `glib-compile-schemas` (from `libglib2.0-bin` on Ubuntu/Debian).
+Prerequisites: GNOME Shell 46 or later, Git, Node.js 22+, npm, `glib-compile-schemas` (from `libglib2.0-bin` on Ubuntu/Debian) and `msgfmt` (from `gettext` on Ubuntu/Debian).
 
 ```bash
 git clone https://github.com/herve-brun/find-my-mouse-example.com.git
@@ -33,7 +34,7 @@ mkdir -p ~/.local/share/gnome-shell/extensions/find-my-mouse@herve-brun.github.i
 cp -r dist/* metadata.json ~/.local/share/gnome-shell/extensions/find-my-mouse@herve-brun.github.io/
 ```
 
-`npm run build` compiles TypeScript from `src/` into `dist/`, compiles the GSettings schema, and copies the schema and `metadata.json` into `dist/`. Restart GNOME Shell (`Alt+F2`, `r`, `Enter`, or log out/in; Wayland sessions may require logout) and enable the extension with `gnome-extensions-app` or `gnome-extensions enable find-my-mouse@herve-brun.github.io`.
+`npm run build` compiles TypeScript from `src/` into `dist/`, compiles the GSettings schema and translation catalogs, and copies the schema and `metadata.json` into `dist/`. Restart GNOME Shell (`Alt+F2`, `r`, `Enter`, or log out/in; Wayland sessions may require logout) and enable the extension with `gnome-extensions-app` or `gnome-extensions enable find-my-mouse@herve-brun.github.io`.
 
 ## Usage
 
@@ -73,6 +74,30 @@ Open GNOME Extensions → Find My Mouse → settings. The **Mouse Gesture** page
 
 `shake-interval` and `shake-sensitivity` remain in the schema so existing user settings stay valid; they are deprecated, hidden in Preferences, and no longer read by the detector.
 
+## Translations
+
+User-facing strings are marked with `gettext` (`_()`) in `src/prefs.ts`. The `gettext-domain` in `metadata.json` makes GNOME Shell initialize the catalogs automatically; the compiled `.mo` files are installed under `dist/locale/<lang>/LC_MESSAGES/`.
+
+| Language | Catalog |
+|---|---|
+| English (source) | `po/en.po` |
+| French | `po/fr.po` |
+| Spanish | `po/es.po` |
+
+The template is `po/find-my-mouse@herve-brun.github.io.pot`. After adding or changing translatable strings:
+
+```bash
+npm run build            # compile dist/*.js first
+npm run i18n:update      # regenerate the POT and merge it into every PO
+npm test                 # msgfmt verifies headers and format placeholders
+```
+
+`npm run i18n:pot` only regenerates the template. To check a translated preferences dialog without changing the system locale:
+
+```bash
+LANGUAGE=fr gnome-extensions prefs find-my-mouse@herve-brun.github.io
+```
+
 ## Development
 
 Source files are TypeScript under `src/` and compile to `dist/` (gitignored). Edit only `.ts` files.
@@ -99,6 +124,9 @@ src/
 | `npm run lint` | ESLint on `src/` |
 | `npm run build` | Clean `dist/`, compile TypeScript, compile schema, copy schema and metadata |
 | `npm run build:schemas` | Compile the GSettings XML schema |
+| `npm run i18n:pot` | Regenerate the gettext POT from compiled `dist/*.js` |
+| `npm run i18n:update` | Regenerate the POT and merge it into `en`, `fr` and `es` PO files |
+| `npm run i18n:build` | Validate PO files and compile `.mo` catalogs into `dist/locale/` |
 | `npm run build:dist` | Build and create a distributable ZIP for EGO upload |
 | `npm test` | Build, then run `node --test test/*.test.mjs` |
 
