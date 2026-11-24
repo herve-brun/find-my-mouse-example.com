@@ -1081,7 +1081,6 @@ export default class FindMyMousePreferences extends ExtensionPreferences {
             license_type: 3, // Gtk.License.GTK_LICENSE_GPL_3_0,
             website: 'https://github.com/herve-brun/find-my-mouse-example.com',
             developers: ['Hervé Brun'],
-            designers: ['Microsoft PowerToys Team (inspiration)'],
             // Translators: replace this with your name and email, if you wish.
             translator_credits: _('translator-credits'),
             comments: _(
