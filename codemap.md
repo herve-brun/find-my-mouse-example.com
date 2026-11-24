@@ -48,7 +48,7 @@ src/extension.ts  →  dist/extension.js
 ```
 src/prefs.ts  →  dist/prefs.js
 ```
-`FindMyMousePreferences` extends `ExtensionPreferences`. `fillPreferencesWindow(window: Adw.PreferencesWindow)` builds the whole dialog, including the Mouse Gesture page with presets, fine-tuning, the live "Try the Gesture" practice session, and About release notes (updated for the 1.2.0 release by the designer lane). User-facing strings are marked with `gettext` (`_()`); translations are initialized automatically from the `gettext-domain` in `metadata.json`. Practice instructions are derived from current GSettings values; the dialog has no auto-close timer and falls back to text-only instructions when the D-Bus service is unavailable.
+`FindMyMousePreferences` extends `ExtensionPreferences`. `fillPreferencesWindow(window: Adw.PreferencesWindow)` builds the whole dialog, including the Mouse Gesture page with presets, fine-tuning, the live "Try the Gesture" practice session, and About release notes (updated for the 1.0.0 release by the designer lane). User-facing strings are marked with `gettext` (`_()`); translations are initialized automatically from the `gettext-domain` in `metadata.json`. Practice instructions are derived from current GSettings values; the dialog has no auto-close timer and falls back to text-only instructions when the D-Bus service is unavailable.
 
 ### 2.3 Spotlight Rendering Entry
 ```
@@ -332,7 +332,7 @@ find-my-mouse-example.com/
 ├── screenshots/                      # README screenshots
 ├── node_modules/                     # Dependencies (gitignored)
 │
-├── metadata.json                     # version-name 1.2.0; shell 46–50
+├── metadata.json                     # version-name 1.0.0; shell 46–50
 ├── ambient.d.ts
 ├── gnome-shell-extensions.d.ts
 ├── tsconfig.json

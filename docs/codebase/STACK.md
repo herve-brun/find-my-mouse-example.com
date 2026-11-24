@@ -2,7 +2,7 @@
 
 ## Project Intent
 
-The Find My Mouse GNOME Shell extension (GNOME 46–50, Wayland) highlights the pointer with a circular spotlight, modelled on PowerToys Find My Mouse. Activation is show-only from the `<Super>f` shortcut or a deliberate horizontal wave followed by stopping; "Always Visible" is opt-in. The extension supports multi-monitor setups, GameMode suppression, live gesture practice over D-Bus, and runtime log level changes. Version: 1.2.0.
+The Find My Mouse GNOME Shell extension (GNOME 46–50, Wayland) highlights the pointer with a circular spotlight, modelled on PowerToys Find My Mouse. Activation is show-only from the `<Super>f` shortcut or a deliberate horizontal wave followed by stopping; "Always Visible" is opt-in. The extension supports multi-monitor setups, GameMode suppression, live gesture practice over D-Bus, and runtime log level changes. Version: 1.0.0.
 
 ### Key Features
 - Cairo spotlight with configurable radius, colors, ring width, zoom and animation duration.

@@ -6,7 +6,7 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Find My Mouse 1.2.0\n"
+"Project-Id-Version: Find My Mouse 1.0.0\n"
 "Report-Msgid-Bugs-To: https://github.com/herve-brun/find-my-mouse-"
 "example.com/issues\n"
 "POT-Creation-Date: 2026-11-24 14:57+0100\n"
