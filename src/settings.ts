@@ -11,6 +11,14 @@ export class SettingsManager {
     private _cachedIdleTimeout: number;
     private _cachedShakeInterval: number;
     private _cachedShakeSensitivity: number;
+    private _cachedGestureReversals: number;
+    private _cachedGestureSweep: number;
+    private _cachedGestureWindow: number;
+    private _cachedGestureSettle: number;
+    private _cachedGestureCooldown: number;
+    private _cachedGestureIgnoreButtons: boolean;
+    private _cachedGestureIgnoreFullscreen: boolean;
+    private _cachedGestureSound: boolean;
     private _cachedActivationMethod: string;
     private _cachedRingWidth: number;
     private _cachedDoNotActivateInGameMode: boolean;
@@ -27,6 +35,14 @@ export class SettingsManager {
         this._cachedIdleTimeout = 1000;
         this._cachedShakeInterval = 1000;
         this._cachedShakeSensitivity = 400;
+        this._cachedGestureReversals = 3;
+        this._cachedGestureSweep = 90;
+        this._cachedGestureWindow = 900;
+        this._cachedGestureSettle = 180;
+        this._cachedGestureCooldown = 1500;
+        this._cachedGestureIgnoreButtons = true;
+        this._cachedGestureIgnoreFullscreen = true;
+        this._cachedGestureSound = false;
         this._cachedActivationMethod = 'shake';
         this._cachedRingWidth = 2;
         this._cachedDoNotActivateInGameMode = true;
@@ -68,6 +84,14 @@ export class SettingsManager {
         this._cachedIdleTimeout = this._settings.get_int('idle-timeout') || 1000;
         this._cachedShakeInterval = this._settings.get_int('shake-interval') || 1000;
         this._cachedShakeSensitivity = this._settings.get_int('shake-sensitivity') || 400;
+        this._cachedGestureReversals = this._settings.get_int('gesture-reversals') || 3;
+        this._cachedGestureSweep = this._settings.get_int('gesture-sweep') || 90;
+        this._cachedGestureWindow = this._settings.get_int('gesture-window') || 900;
+        this._cachedGestureSettle = this._settings.get_int('gesture-settle') || 180;
+        this._cachedGestureCooldown = this._settings.get_int('gesture-cooldown') || 1500;
+        this._cachedGestureIgnoreButtons = this._settings.get_boolean('gesture-ignore-buttons');
+        this._cachedGestureIgnoreFullscreen = this._settings.get_boolean('gesture-ignore-fullscreen');
+        this._cachedGestureSound = this._settings.get_boolean('gesture-sound');
         this._cachedLogLevel = this._settings.get_int('log-level') || 2;
         this._cachedActivationMethod = this._settings.get_string('activation-method') || 'shake';
         this._cachedDoNotActivateInGameMode = this._settings.get_boolean('do-not-activate-gamemode');
@@ -82,8 +106,18 @@ export class SettingsManager {
     get cachedZoom() { return this._cachedZoom; }
     get cachedAnimationDuration() { return this._cachedAnimationDuration; }
     get cachedIdleTimeout() { return this._cachedIdleTimeout; }
+    /** @deprecated The ratio-based detector is no longer used. */
     get cachedShakeInterval() { return this._cachedShakeInterval; }
+    /** @deprecated The ratio-based detector is no longer used. */
     get cachedShakeSensitivity() { return this._cachedShakeSensitivity; }
+    get cachedGestureReversals() { return this._cachedGestureReversals; }
+    get cachedGestureSweep() { return this._cachedGestureSweep; }
+    get cachedGestureWindow() { return this._cachedGestureWindow; }
+    get cachedGestureSettle() { return this._cachedGestureSettle; }
+    get cachedGestureCooldown() { return this._cachedGestureCooldown; }
+    get cachedGestureIgnoreButtons() { return this._cachedGestureIgnoreButtons; }
+    get cachedGestureIgnoreFullscreen() { return this._cachedGestureIgnoreFullscreen; }
+    get cachedGestureSound() { return this._cachedGestureSound; }
     get cachedDoNotActivateInGameMode() { return this._cachedDoNotActivateInGameMode; }
     get cachedRingWidth() { return this._cachedRingWidth; }
     get settings() { return this._settings; }

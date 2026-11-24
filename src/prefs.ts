@@ -11,6 +11,11 @@ import {
     gettext as _,
 } from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
 import { setLogLevel, LogLevel } from './utils.js';
+import { PracticeClient } from './practiceClient.js';
+
+function formatSetting(pattern: string, value: number): string {
+    return pattern.replace('%s', String(value));
+}
 
 /** Suffix widgets need their own name: the row title is not enough for a screen reader. */
 function setAccessibleLabel(widget: Gtk.Widget, label: string): void {
@@ -36,6 +41,29 @@ const LOCK_KEYS: number[] = [
     Gdk.KEY_Caps_Lock, Gdk.KEY_Num_Lock, Gdk.KEY_Scroll_Lock,
 ];
 
+/** Preset values map directly to the five numeric gesture threshold keys. */
+interface GesturePreset {
+    reversals: number;
+    sweep: number;
+    window: number;
+    settle: number;
+    cooldown: number;
+}
+
+const GESTURE_PRESETS: GesturePreset[] = [
+    { reversals: 2, sweep: 60, window: 1200, settle: 260, cooldown: 1000 },
+    { reversals: 3, sweep: 90, window: 900, settle: 180, cooldown: 1500 },
+    { reversals: 4, sweep: 140, window: 700, settle: 120, cooldown: 2000 },
+];
+const DEFAULT_GESTURE_PRESET = 1;
+const GESTURE_NUMERIC_KEYS = [
+    'gesture-reversals',
+    'gesture-sweep',
+    'gesture-window',
+    'gesture-settle',
+    'gesture-cooldown',
+] as const;
+
 export default class FindMyMousePreferences extends ExtensionPreferences {
     constructor(metadata: ExtensionMetadata) {
         super(metadata);
@@ -60,13 +88,14 @@ export default class FindMyMousePreferences extends ExtensionPreferences {
 
         const activationRow = new Adw.ComboRow({
             title: _('Activation Method'),
-            subtitle: _('Choose how to activate the spotlight'),
+            subtitle: _('Shortcut and mouse gesture both work in the first mode'),
             model: Gtk.StringList.new([
-                _('Mouse Shake'),
+                _('Shortcut + Mouse Gesture'),
                 _('Always Visible'),
             ]),
         });
 
+        // Visible labels changed, but the stored values remain shake/always.
         const activationMap: Record<string, number> = {
             shake: 0,
             always: 1,
@@ -107,7 +136,7 @@ export default class FindMyMousePreferences extends ExtensionPreferences {
             shortcutButton.sensitive = !alwaysVisible;
             shortcutRow.subtitle = alwaysVisible
                 ? _('Unavailable in Always Visible mode: the spotlight is already on screen')
-                : _('Toggle the spotlight from the keyboard');
+                : _('Shortcut and gesture both activate the spotlight; change the shortcut here');
         };
 
         activationRow.connect('notify::selected', () => {
@@ -373,74 +402,441 @@ export default class FindMyMousePreferences extends ExtensionPreferences {
         timingResetRow.add_suffix(timingResetButton);
         timingGroup.add(timingResetRow);
 
-        // Shake Detection page
-        const shakePage = new Adw.PreferencesPage({
-            title: _('Shake Detection'),
+        // Mouse Gesture page
+        const gesturePage = new Adw.PreferencesPage({
+            title: _('Mouse Gesture'),
             icon_name: 'input-mouse-symbolic',
         });
-        window.add(shakePage);
+        window.add(gesturePage);
 
-        const shakeGroup = new Adw.PreferencesGroup({
-            title: _('Shake Detection'),
-            description: _('Settings for mouse shake detection'),
-        });
-        shakePage.add(shakeGroup);
-
-        const intervalRow = new Adw.SpinRow({
-            title: _('Shake Detection Interval (ms)'),
-            subtitle: _(
-                'Time window to monitor mouse movement (default: 1000ms)',
+        const gestureGroup = new Adw.PreferencesGroup({
+            title: _('Mouse Gesture'),
+            description: _(
+                'Move the pointer sideways about a hand\'s width, then stop. The spotlight appears when you stop.',
             ),
+        });
+        gesturePage.add(gestureGroup);
+
+        const effortRow = new Adw.ComboRow({
+            title: _('Gesture effort'),
+            subtitle: _('Standard is the default'),
+            model: Gtk.StringList.new([
+                _('Light'),
+                _('Standard'),
+                _('Firm'),
+            ]),
+        });
+        gestureGroup.add(effortRow);
+
+        let applyingGesturePreset = false;
+
+        const applyGesturePreset = (index: number): void => {
+            const preset = GESTURE_PRESETS[index];
+            if (!preset) return;
+            applyingGesturePreset = true;
+            try {
+                settings.set_int('gesture-reversals', preset.reversals);
+                settings.set_int('gesture-sweep', preset.sweep);
+                settings.set_int('gesture-window', preset.window);
+                settings.set_int('gesture-settle', preset.settle);
+                settings.set_int('gesture-cooldown', preset.cooldown);
+                effortRow.selected = index;
+            } finally {
+                applyingGesturePreset = false;
+            }
+        };
+
+        const syncGesturePreset = (): void => {
+            const match = GESTURE_PRESETS.findIndex((preset) => (
+                preset.reversals === settings.get_int('gesture-reversals') &&
+                preset.sweep === settings.get_int('gesture-sweep') &&
+                preset.window === settings.get_int('gesture-window') &&
+                preset.settle === settings.get_int('gesture-settle') &&
+                preset.cooldown === settings.get_int('gesture-cooldown')
+            ));
+            applyingGesturePreset = true;
+            effortRow.selected = match; // -1 means a custom combination
+            applyingGesturePreset = false;
+        };
+
+        effortRow.connect('notify::selected', () => {
+            if (applyingGesturePreset) return;
+            const index = effortRow.selected;
+            if (index >= 0) applyGesturePreset(index);
+        });
+        for (const key of GESTURE_NUMERIC_KEYS) {
+            settings.connect(`changed::${key}`, () => {
+                if (!applyingGesturePreset) syncGesturePreset();
+            });
+        }
+        syncGesturePreset();
+
+        const fineTuneRow = new Adw.ExpanderRow({
+            title: _('Fine-tune gesture'),
+            subtitle: _('Adjust each threshold individually'),
+        });
+        gestureGroup.add(fineTuneRow);
+
+        const reversalsRow = new Adw.SpinRow({
+            title: _('Direction Changes'),
+            subtitle: _('Direction changes required'),
             adjustment: new Gtk.Adjustment({
-                lower: 100,
-                upper: 5000,
+                lower: 2,
+                upper: 6,
+                step_increment: 1,
+            }),
+        });
+        settings.bind(
+            'gesture-reversals',
+            reversalsRow,
+            'value',
+            Gio.SettingsBindFlags.DEFAULT,
+        );
+        fineTuneRow.add_row(reversalsRow);
+
+        const sweepRow = new Adw.SpinRow({
+            title: _('Sweep Distance (px)'),
+            subtitle: _('Minimum travel per sweep'),
+            adjustment: new Gtk.Adjustment({
+                lower: 40,
+                upper: 300,
+                step_increment: 10,
+            }),
+        });
+        settings.bind(
+            'gesture-sweep',
+            sweepRow,
+            'value',
+            Gio.SettingsBindFlags.DEFAULT,
+        );
+        fineTuneRow.add_row(sweepRow);
+
+        const windowRow = new Adw.SpinRow({
+            title: _('Gesture Window (ms)'),
+            subtitle: _('Time allowed for the whole gesture'),
+            adjustment: new Gtk.Adjustment({
+                lower: 400,
+                upper: 1500,
+                step_increment: 50,
+            }),
+        });
+        settings.bind(
+            'gesture-window',
+            windowRow,
+            'value',
+            Gio.SettingsBindFlags.DEFAULT,
+        );
+        fineTuneRow.add_row(windowRow);
+
+        const settleRow = new Adw.SpinRow({
+            title: _('Settle Time (ms)'),
+            subtitle: _('Time allowed to stop after the last change'),
+            adjustment: new Gtk.Adjustment({
+                lower: 80,
+                upper: 400,
+                step_increment: 20,
+            }),
+        });
+        settings.bind(
+            'gesture-settle',
+            settleRow,
+            'value',
+            Gio.SettingsBindFlags.DEFAULT,
+        );
+        fineTuneRow.add_row(settleRow);
+
+        const cooldownRow = new Adw.SpinRow({
+            title: _('Cooldown (ms)'),
+            subtitle: _('Ignore further gestures after activation'),
+            adjustment: new Gtk.Adjustment({
+                lower: 500,
+                upper: 4000,
                 step_increment: 100,
             }),
         });
         settings.bind(
-            'shake-interval',
-            intervalRow,
+            'gesture-cooldown',
+            cooldownRow,
             'value',
             Gio.SettingsBindFlags.DEFAULT,
         );
-        shakeGroup.add(intervalRow);
+        fineTuneRow.add_row(cooldownRow);
 
-        const sensitivityRow = new Adw.SpinRow({
-            title: _('Shake Sensitivity (%)'),
-            subtitle: _(
-                'Distance must be this % of movement diagonal (default: 400%)',
-            ),
-            adjustment: new Gtk.Adjustment({
-                lower: 100,
-                upper: 10000,
-                step_increment: 100,
-            }),
+        const ignoreButtonsRow = new Adw.SwitchRow({
+            title: _('Ignore Mouse Buttons'),
+            subtitle: _('Skip gestures while a mouse button is held down'),
         });
         settings.bind(
-            'shake-sensitivity',
-            sensitivityRow,
-            'value',
+            'gesture-ignore-buttons',
+            ignoreButtonsRow,
+            'active',
             Gio.SettingsBindFlags.DEFAULT,
         );
-        shakeGroup.add(sensitivityRow);
+        gestureGroup.add(ignoreButtonsRow);
+
+        const ignoreFullscreenRow = new Adw.SwitchRow({
+            title: _('Ignore Fullscreen Apps'),
+            subtitle: _('Skip gestures in fullscreen apps such as games'),
+        });
+        settings.bind(
+            'gesture-ignore-fullscreen',
+            ignoreFullscreenRow,
+            'active',
+            Gio.SettingsBindFlags.DEFAULT,
+        );
+        gestureGroup.add(ignoreFullscreenRow);
+
+        const soundRow = new Adw.SwitchRow({
+            title: _('Confirmation Sound'),
+            subtitle: _('Play a short sound when the spotlight appears'),
+        });
+        settings.bind(
+            'gesture-sound',
+            soundRow,
+            'active',
+            Gio.SettingsBindFlags.DEFAULT,
+        );
+        gestureGroup.add(soundRow);
+
+        const practiceInstructions = (): string => [
+            formatSetting(
+                _('Wave the pointer sideways with %s direction changes.'),
+                settings.get_int('gesture-reversals'),
+            ),
+            formatSetting(
+                _('Cover at least %s px on each sweep.'),
+                settings.get_int('gesture-sweep'),
+            ),
+            formatSetting(
+                _('Stop within %s ms after the last change.'),
+                settings.get_int('gesture-settle'),
+            ),
+            formatSetting(
+                _('Finish the whole gesture within %s ms.'),
+                settings.get_int('gesture-window'),
+            ),
+        ].join('\n');
+
+        const offlineStepsMessage = _(
+            'Live practice is not available right now, so nothing is being detected. Follow these steps at your own pace.',
+        );
+        const chosenStepsMessage = _(
+            'Live detection has stopped. Follow these steps at your own pace.',
+        );
+
+        const showTextOnlySteps = (reason: string): void => {
+            const instructions = new Gtk.Label({
+                label: practiceInstructions(),
+                wrap: true,
+                xalign: 0,
+                margin_top: 12,
+                margin_bottom: 12,
+            });
+            const dialog = new Adw.MessageDialog({
+                transient_for: window,
+                modal: true,
+                heading: _('Try the Gesture'),
+                body: reason,
+                extra_child: instructions,
+            });
+            dialog.add_response('close', _('Close'));
+            dialog.set_default_response('close');
+            dialog.set_close_response('close');
+            dialog.connect('response', () => dialog.destroy());
+            dialog.present();
+        };
+
+        const showPracticeDialog = (): void => {
+            const client = new PracticeClient();
+            let active = true;
+            let starting = false;
+
+            const status = new Gtk.Label({
+                label: _('Connecting to the shell extension…'),
+                wrap: true,
+                xalign: 0,
+                margin_top: 12,
+            });
+            const hints = new Gtk.Label({
+                label: practiceInstructions(),
+                wrap: true,
+                xalign: 0,
+                margin_bottom: 6,
+            });
+            const content = new Gtk.Box({
+                orientation: Gtk.Orientation.VERTICAL,
+                spacing: 6,
+            });
+            content.append(status);
+            content.append(hints);
+
+            const dialog = new Adw.MessageDialog({
+                transient_for: window,
+                modal: true,
+                heading: _('Try the Gesture'),
+                body: _(
+                    'Gesture detection is live. The spotlight itself will not appear during practice — watch the progress ring near the pointer. Text-only steps are available below if you prefer.',
+                ),
+                extra_child: content,
+            });
+            dialog.add_response('retry', _('Retry'));
+            dialog.add_response('text', _('Text-only steps'));
+            dialog.add_response('done', _('Done'));
+            dialog.set_default_response('done');
+            dialog.set_close_response('done');
+
+            const setStatus = (message: string, outcome: string | null = null): void => {
+                if (!active)
+                    return;
+                status.label = message;
+                for (const cssClass of ['success', 'warning']) {
+                    if (cssClass === outcome)
+                        status.add_css_class(cssClass);
+                    else
+                        status.remove_css_class(cssClass);
+                }
+                status.update_property(
+                    [Gtk.AccessibleProperty.LABEL],
+                    [message],
+                );
+                status.announce(message, Gtk.AccessibleAnnouncementPriority.MEDIUM);
+            };
+
+            const closeLive = (): void => {
+                if (!active)
+                    return;
+                active = false;
+                client.cancel();
+                client.destroy();
+                dialog.destroy();
+            };
+
+            const useTextOnly = (reason: string): void => {
+                if (!active)
+                    return;
+                closeLive();
+                showTextOnlySteps(reason);
+            };
+
+            const startAttempt = async (): Promise<void> => {
+                if (!active || starting)
+                    return;
+                starting = true;
+                setStatus(_('Starting practice…'));
+                try {
+                    const started = await client.start();
+                    if (!active)
+                        return;
+                    if (started) {
+                        setStatus(_('Waiting for the gesture…'));
+                    } else {
+                        useTextOnly(offlineStepsMessage);
+                    }
+                } catch (_error) {
+                    useTextOnly(offlineStepsMessage);
+                } finally {
+                    starting = false;
+                }
+            };
+
+            client.onProgress((progress) => {
+                if (!active)
+                    return;
+                if (progress.event === 'armed') {
+                    setStatus(_('Started — now wave'));
+                } else if (progress.event === 'progress') {
+                    setStatus(
+                        formatSetting(
+                            _('%s/%s direction changes'),
+                            progress.progress,
+                        ).replace('%s', String(progress.total)),
+                    );
+                } else if (progress.event === 'ready') {
+                    setStatus(_('Now stop'));
+                }
+            });
+            client.onResult((result) => {
+                if (!active)
+                    return;
+                if (result.success) {
+                    setStatus(
+                        _("That's the gesture — press <Super>f or wave to reveal the pointer."),
+                        'success',
+                    );
+                } else {
+                    setStatus(
+                        _('Stay horizontal, move faster, cover enough distance, then stop sharply.'),
+                        'warning',
+                    );
+                }
+            });
+
+            dialog.connect('response', (_source, response) => {
+                if (response === 'retry') {
+                    void startAttempt();
+                } else if (response === 'text') {
+                    useTextOnly(chosenStepsMessage);
+                } else {
+                    closeLive();
+                }
+            });
+            dialog.connect('destroy', closeLive);
+
+            dialog.present();
+
+            void (async () => {
+                try {
+                    // Fall back when the shell service is absent or reloading.
+                    if (!await client.setup() || !active) {
+                        useTextOnly(offlineStepsMessage);
+                        return;
+                    }
+                } catch (_error) {
+                    useTextOnly(offlineStepsMessage);
+                    return;
+                }
+                await startAttempt();
+            })();
+        };
+
+        const practiceRow = new Adw.ActionRow({
+            title: _('Practice'),
+            subtitle: _('Try the gesture with live feedback'),
+        });
+        const practiceButton = new Gtk.Button({
+            label: _('Practice'),
+            valign: Gtk.Align.CENTER,
+        });
+        setAccessibleLabel(practiceButton, _('Practice'));
+        practiceButton.connect('clicked', showPracticeDialog);
+        practiceRow.add_suffix(practiceButton);
+        gestureGroup.add(practiceRow);
 
         // Reset to defaults
-        const shakeResetRow = new Adw.ActionRow({
-            title: _('Reset Shake Detection Settings to Defaults'),
+        const gestureResetGroup = new Adw.PreferencesGroup();
+        gesturePage.add(gestureResetGroup);
+        const gestureResetRow = new Adw.ActionRow({
+            title: _('Reset Mouse Gesture Settings to Defaults'),
             subtitle: _('Restore default values'),
         });
-        const shakeResetButton = new Gtk.Button({
+        const gestureResetButton = new Gtk.Button({
             label: _('Reset'),
             valign: Gtk.Align.CENTER,
         });
-        shakeResetButton.add_css_class('destructive-action');
-        shakeResetButton.connect('clicked', () => {
-            settings.set_int('shake-interval', 1000);
-            settings.set_int('shake-sensitivity', 400);
+        gestureResetButton.add_css_class('destructive-action');
+        gestureResetButton.connect('clicked', () => {
+            applyGesturePreset(DEFAULT_GESTURE_PRESET);
+            settings.set_boolean('gesture-ignore-buttons', true);
+            settings.set_boolean('gesture-ignore-fullscreen', true);
+            settings.set_boolean('gesture-sound', false);
+            syncGesturePreset();
         });
-        setAccessibleLabel(shakeResetButton, _('Reset Shake Detection Settings to Defaults'));
-        shakeResetRow.add_suffix(shakeResetButton);
-        shakeGroup.add(shakeResetRow);
+        setAccessibleLabel(
+            gestureResetButton,
+            _('Reset Mouse Gesture Settings to Defaults'),
+        );
+        gestureResetRow.add_suffix(gestureResetButton);
+        gestureResetGroup.add(gestureResetRow);
 
         // About page
         const aboutPage = new Adw.PreferencesPage({
@@ -690,11 +1086,14 @@ export default class FindMyMousePreferences extends ExtensionPreferences {
                 'A GNOME Shell extension that helps you locate your mouse cursor by creating a spotlight effect around it. Inspired by Microsoft PowerToys Find My Mouse feature.',
             ),
             release_notes_version: String(this.metadata['version-name'] ?? '1.0.0'),
-            release_notes: `<p>Initial release with the following features:</p>
+            release_notes: `<p>${_('What is new:')}</p>
                 <ul>
-                    <li>Multiple activation methods (mouse shake, always visible)</li>
-                    <li>Customizable appearance and timing</li>
-                    <li>Multi-monitor support</li>
+                    <li>${_('Wave-and-stop mouse gesture: move the pointer sideways, then pause to reveal it.')}</li>
+                    <li>${_('The keyboard shortcut is always available alongside the gesture.')}</li>
+                    <li>${_('A small progress ring follows the pointer while a gesture is in progress.')}</li>
+                    <li>${_('Light, Standard, and Firm presets, plus fine-grained controls for each threshold.')}</li>
+                    <li>${_('Practice mode uses real gesture detection with live feedback in the preferences dialog.')}</li>
+                    <li>${_('A text-only fallback explains the gesture when live practice is unavailable.')}</li>
                 </ul>`,
         });
         dialog.present();

@@ -33,7 +33,6 @@ export class SpotlightManager {
     private _settingsManager: SettingsManager;
     private _spotlight: St.DrawingArea | null;
     private _spotlightVisible: boolean;
-    private _idleTimeoutId: number;
     private _zoomTimeline: Clutter.Timeline | null;
     private _currentZoom: number;
     private _lastRepaintTime: number = 0;
@@ -55,7 +54,6 @@ export class SpotlightManager {
         }
         this._spotlight = null;
         this._spotlightVisible = false;
-        this._idleTimeoutId = 0;
         this._zoomTimeline = null;
         this._currentZoom = 1;
     }
@@ -120,15 +118,14 @@ export class SpotlightManager {
         Main.uiGroup.add_child(this._spotlight);
         this._spotlight.show();
         this._spotlightVisible = true;
-        this._resetIdleTimeout();
 
         // Start zoom-in animation: large circle shrinks to final radius
         this._startZoomAnimation();
     }
 
     updateMousePosition(x: number, y: number): void {
-        // The pointer watcher fires every 16 ms even when the cursor is stationary.
-        // Skip full-screen repaints when nothing actually moved.
+        // The pointer watcher only fires on position changes. Keep this guard so
+        // duplicate coordinates never trigger a full-screen repaint.
         if (x === this._lastMouseX && y === this._lastMouseY) return;
         this._lastMouseX = x;
         this._lastMouseY = y;
@@ -155,7 +152,6 @@ export class SpotlightManager {
                 this._spotlightVisible = true;
             }
             this._spotlight.queue_repaint();
-            this._resetIdleTimeout();
         }
     }
 
@@ -217,11 +213,6 @@ export class SpotlightManager {
     }
 
     hide(): void {
-        if (this._idleTimeoutId) {
-            GLib.source_remove(this._idleTimeoutId);
-            this._idleTimeoutId = 0;
-        }
-
         // Cancel any in-progress zoom animation
         if (this._zoomTimeline) {
             this._zoomTimeline.stop();
@@ -256,10 +247,6 @@ export class SpotlightManager {
      * Used by disable() to avoid async races during extension shutdown.
      */
     destroyImmediately(): void {
-        if (this._idleTimeoutId) {
-            GLib.source_remove(this._idleTimeoutId);
-            this._idleTimeoutId = 0;
-        }
         if (this._zoomTimeline) {
             this._zoomTimeline.stop();
             this._zoomTimeline = null;
@@ -267,25 +254,6 @@ export class SpotlightManager {
         this._currentZoom = 1;
         this._spotlight?.remove_all_transitions();
         this._destroySpotlightActor();
-    }
-
-    _resetIdleTimeout() {
-        if (this._settingsManager.cachedActivationMethod === 'always') return;
-        if (this._idleTimeoutId) {
-            GLib.source_remove(this._idleTimeoutId);
-        }
-        const timeout = this._settingsManager.cachedIdleTimeout;
-        if (timeout > 0 && this._spotlightVisible) {
-            this._idleTimeoutId = GLib.timeout_add(
-                GLib.PRIORITY_DEFAULT,
-                timeout,
-                () => {
-                    this.hide();
-                    this._idleTimeoutId = 0;
-                    return GLib.SOURCE_REMOVE;
-                },
-            );
-        }
     }
 
     _onRepaint(area: St.DrawingArea): void {

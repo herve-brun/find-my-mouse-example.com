@@ -9,6 +9,7 @@
     "build:dist": "npm run build && cd dist && zip -qr ../find-my-mouse@herve-brun.github.io.zip .",
     "lint": "eslint src/",
     "check": "tsc --noEmit",
+    "test": "npm run build && node --test test/*.test.mjs",
     "prepare": "husky install"
   },
   "devDependencies": {

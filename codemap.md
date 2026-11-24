@@ -1,29 +1,33 @@
 # Repository Atlas — find-my-mouse-example.com
 
-> **Revision**: 1.1
+> **Revision**: 1.3
 > **Maintainer**: Hervé Brun
 > **License**: GPL-3.0-or-later
-> **Generated**: 2026-05-23
+> **Updated**: 2026-11-24
 
 ---
 
 ## 1. Project Responsibility
 
 ### 1.1 Mission Statement
-**Find My Mouse** is a GNOME Shell extension (GNOME 46–50, Wayland) that replicates the Microsoft PowerToys "Find My Mouse" spotlight feature. Its purpose is to help users who frequently lose their cursor on screen — especially on high-resolution, multi-monitor, or presentation setups — by rendering a highly customizable circular spotlight that highlights the mouse cursor position.
+**Find My Mouse** is a GNOME Shell extension (GNOME 46–50, Wayland) that replicates the Microsoft PowerToys "Find My Mouse" spotlight feature. Its purpose is to help users who frequently lose their cursor on screen — especially on high-resolution, multi-monitor, or presentation setups — by rendering a customizable circular spotlight that highlights the mouse cursor position.
 
 ### 1.2 What This Repository Owns
-- **Spotlight Rendering** — Cairo-based rendering of the spotlight overlay on top of the GNOME Shell desktop via `St.DrawingArea` with zoom animation via `Clutter.Timeline`.
-- **Mouse Tracking** — Real-time cursor position monitoring via GNOME Shell's `PointerWatcher` API, with shake-gesture detection for activation.
-- **Multi-modal Activation** — Two activation methods: mouse shake and always-visible mode.
-- **Preferences UI** — Full Adwaita/GTK4 settings dialog with per-page sections (General, Appearance, Timing, Shake Detection, About).
+- **Spotlight Rendering** — Cairo-based rendering of the spotlight overlay via `St.DrawingArea` with zoom animation via `Clutter.Timeline`.
+- **Mouse Tracking** — GNOME Shell `PointerWatcher` adapter that owns the authoritative last pointer position and feeds absolute positions and per-sample deltas into a gesture detector.
+- **Gesture Detection** — A pure, import-free "wave then stop" state machine with injected monotonic millisecond timestamps.
+- **Activation Policy** — Show-only activation from the keyboard shortcut or the gesture; idle timeout and Game Mode suppression live in `ActivationController`.
+- **Gesture Feedback** — A small pointer-local progress ring shown only during a gesture attempt, with an optional confirmation sound.
+- **Preferences UI** — Adwaita/GTK4 settings dialog with General, Appearance, Timing, Mouse Gesture, and About pages.
 - **Game Mode Integration** — D-Bus integration with `com.feralinteractive.GameMode` to suppress spotlight during gaming sessions.
-- **GSettings Persistence** — All user preferences are persisted through a GSettings schema (`org.gnome.shell.extensions.find-my-mouse`).
+- **Practice Mode** — A shell-side D-Bus service runs the real gesture pipeline in a time-limited session and reports progress/results to the preferences client without showing the real spotlight.
+- **GSettings Persistence** — All user preferences are persisted through `org.gnome.shell.extensions.find-my-mouse`.
 
 ### 1.3 What This Repository Does NOT Own
-- The `PointerWatcher` implementation — this is consumed from GNOME Shell's internal module `resource:///org/gnome/shell/ui/pointerWatcher.js`.
-- The actual desktop compositing or window management — the extension sits as a transparent overlay injected into `Main.uiGroup`.
-- Game Mode D-Bus service (`com.feralinteractive.GameMode`) — this is an external system daemon.
+- The `PointerWatcher` implementation — consumed from `resource:///org/gnome/shell/ui/pointerWatcher.js`.
+- Desktop compositing or window management — the extension injects transparent actors into `Main.uiGroup`.
+- The Game Mode D-Bus service (`com.feralinteractive.GameMode`) — an external system daemon.
+- The optional `canberra-gtk-play` sound helper — best-effort only; activation works when it is absent.
 
 ---
 
@@ -33,26 +37,38 @@
 ```
 src/extension.ts  →  dist/extension.js
 ```
-The class `FindMyMouseExtension` extends `Extension` from `resource:///org/gnome/shell/extensions/extension.js`.
+`FindMyMouseExtension` extends `Extension` from `resource:///org/gnome/shell/extensions/extension.js`.
 
-| Method       | Called When             | Key Actions                                                                |
-|-------------|-------------------------|---------------------------------------------------------------------------|
-| `enable()`  | Extension is activated  | Creates `SettingsManager`, `SpotlightManager`, `MouseTracker`, `GameModeClient`. Sets up signal handlers for settings changes and mouse events. Initializes Game Mode D-Bus connection. |
-| `disable()` | Extension is deactivated| Disconnects all signal handlers, destroys managers, removes keybinding, removes pointer watch, hides spotlight, disposes GameMode proxy. |
+| Method | Called When | Key Actions |
+|---|---|---|
+| `enable()` | Extension is activated | Creates `SettingsManager`, `SpotlightManager`, `GestureFeedback`, `ActivationController`, `MouseTracker`, `GameModeClient` and `PracticeService`; registers the `<Super>f` keybinding, settings signals and pointer watch. |
+| `disable()` | Extension is deactivated | Removes the keybinding and pointer watch, disconnects signals, destroys controller/feedback/spotlight/settings, disposes the GameMode proxy and ends any practice session. |
 
 ### 2.2 Preferences UI Entry
 ```
 src/prefs.ts  →  dist/prefs.js
 ```
-The class `FindMyMousePreferences` extends `ExtensionPreferences`. The method `fillPreferencesWindow(window: Adw.PreferencesWindow)` is the sole entry point and builds the entire multi-page settings dialog.
+`FindMyMousePreferences` extends `ExtensionPreferences`. `fillPreferencesWindow(window: Adw.PreferencesWindow)` builds the whole dialog, including the Mouse Gesture page with presets, fine-tuning, the live "Try the Gesture" practice session, and About release notes (updated for the 1.2.0 release by the designer lane). Practice instructions are derived from current GSettings values; the dialog has no auto-close timer and falls back to text-only instructions when the D-Bus service is unavailable.
 
 ### 2.3 Spotlight Rendering Entry
 ```
-src/spotlight.ts  →  dist/spotlight.js   (Cairo rendering)
+src/spotlight.ts  →  dist/spotlight.js
 ```
-- `SpotlightManager.show()` creates the `St.DrawingArea` and connects the `repaint` signal for Cairo rendering.
-- Rendering uses `Cairo.Operator.CLEAR` to punch a transparent hole and `Cairo.Operator.OVER` to draw the ring border.
-- A `Clutter.Timeline`-based zoom animation starts the spotlight large (`spotlight-zoom`) and shrinks it to the configured radius using `easeOutQuad` easing.
+- `SpotlightManager.show()` creates the `St.DrawingArea` and connects `repaint` for Cairo rendering.
+- `Cairo.Operator.CLEAR` punches the transparent hole; `Cairo.Operator.OVER` draws the ring border.
+- `Clutter.Timeline` shrinks the spotlight from `spotlight-zoom` to the configured radius with `easeOutQuad`.
+
+### 2.4 Gesture Entry
+```
+src/mouseTracking.ts + src/gestureDetector.ts → dist/*.js
+```
+`MouseTracker` receives absolute pointer positions from `pointerWatcher`, converts them to deltas with monotonic timestamps, applies guards, and feeds `GestureDetector`. Detector events are translated into `GestureEventInfo {event, progress, total}` for the extension to drive `GestureFeedback` and, outside practice, `ActivationController`.
+
+### 2.5 Practice Entry
+```
+src/practiceService.ts + src/practiceClient.ts → dist/*.js
+```
+`PracticeService` owns the session-bus name `org.gnome.shell.extensions.find_my_mouse.Practice` (object path `/org/gnome/shell/extensions/find_my_mouse/Practice`), handles `Start()`/`Cancel()`, emits `Progress(event: s, progress: i, total: i)` and `Result(success: b, detail: s)`, and runs a 10 s watchdog. `PracticeClient` is the preferences-side `Gio.DBusProxy`; it retries proxy creation, dispatches signals and never crashes if the extension reloads. Both are compiled from `src/` like the other modules.
 
 ---
 
@@ -63,33 +79,42 @@ src/spotlight.ts  →  dist/spotlight.js   (Cairo rendering)
 ```
 ┌─────────────────────────────────────────────────────────┐
 │                    GNOME Shell                            │
-│  ┌─────────────────────────────────────────────────────┐ │
-│  │              Main.uiGroup (overlay)                  │ │
-│  │  ┌─────────────────────────────────────────────────┐│ │
-│  │  │  St.DrawingArea (full-screen transparent)        ││ │
-│  │  │  - Cairo repaint signal (Cairo.Operator.CLEAR    ││ │
-│  │  │    for hole, Cairo.Operator.OVER for ring)       ││ │
-│  │  │  - Clutter.Timeline (zoom animation)             ││ │
-│  │  └─────────────────────────────────────────────────┘│ │
-│  └─────────────────────────────────────────────────────┘ │
+│  Main.uiGroup                                             │
+│   ├── St.DrawingArea (full-screen spotlight; Cairo)       │
+│   └── St.DrawingArea (~40x40 pointer-local progress ring) │
 └─────────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────────┐
 │             Extension Manager Layer                      │
-│  ┌────────────┐  ┌──────────────┐  ┌──────────────────┐ │
-│  │ Settings   │  │  Spotlight   │  │    MouseTracker   │ │
-│  │ Manager    │  │  Manager     │  │  (pointerWatcher) │ │
-│  └────────────┘  └──────────────┘  └──────────────────┘ │
-│  ┌──────────────┐  ┌──────────────────┐                  │
-│  │ Keybinding   │  │  GameModeClient   │                  │
-│  │ Manager      │  │  (D-Bus proxy)    │                  │
-│  └──────────────┘  └──────────────────┘                  │
+│  ┌──────────────┐ ┌──────────────────────┐               │
+│  │ Settings     │ │ ActivationController │               │
+│  │ Manager      │ │ (show-only policy,   │               │
+│  └──────────────┘ │  idle timeout)       │               │
+│                   └──────────────────────┘               │
+│  ┌──────────────┐ ┌──────────────┐ ┌──────────────────┐  │
+│  │ Spotlight    │ │ MouseTracker │ │ GameModeClient   │  │
+│  │ Manager      │ │ (adapter)    │ │ (D-Bus proxy)    │  │
+│  └──────────────┘ └──────┬───────┘ └──────────────────┘  │
+│                         │                                 │
+│             ┌───────────▼────────────┐                    │
+│             │ GestureDetector (pure) │                    │
+│             └────────────────────────┘                    │
+│  ┌──────────────────┐ ┌────────────────────────────────┐ │
+│  │ GestureFeedback  │ │ PracticeService (D-Bus owner,  │ │
+│  │ (progress ring)  │ │ 10 s watchdog; no real show)   │ │
+│  └──────────────────┘ └────────────────────────────────┘ │
 └─────────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────────┐
 │              GSettings Schema Layer                      │
-│  schemas/org.gnome.shell.extensions.find-my-mouse.xml   │
-│  14 keys: activation, shortcut, colors, timing         │
+│  schemas/org.gnome.shell.extensions.find-my-mouse.gschema.xml
+│  22 keys: activation, colors, timing, gesture tuning     │
+└─────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────┐
+│              Preferences Process                         │
+│  prefs.ts → PracticeClient (Gio.DBusProxy)               │
+│  Start/Cancel → PracticeService; Progress/Result → UI    │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -97,54 +122,101 @@ src/spotlight.ts  →  dist/spotlight.js   (Cairo rendering)
 
 ```
 extension.ts
-  ├── settings.ts         (SettingsManager — GSettings cache)
-  ├── spotlight.ts        (SpotlightManager — Cairo spotlight + zoom animation)
-  ├── mouseTracking.ts    (MouseTracker — pointer watch + shake)
-  ├── gamemodeClient.ts   (GameModeClient — D-Bus GameMode)
-  └── utils.ts            (debugLog, parseColor, LogLevel)
+  ├── settings.ts             (SettingsManager — GSettings cache)
+  ├── activationController.ts (ActivationController — activation policy + idle timeout)
+  ├── spotlight.ts            (SpotlightManager — Cairo spotlight + zoom animation)
+  ├── mouseTracking.ts        (MouseTracker — pointerWatcher adapter; GestureEventInfo)
+  │     └── gestureDetector.ts (GestureDetector — pure state machine, no imports)
+  ├── gestureFeedback.ts      (GestureFeedback — progress ring + optional sound)
+  ├── gamemodeClient.ts       (GameModeClient — D-Bus GameMode)
+  ├── practiceService.ts      (PracticeService — D-Bus session owner + watchdog)
+  └── utils.ts                (debugLog, parseColor, LogLevel)
+prefs.ts
+  ├── practiceClient.ts       (PracticeClient — D-Bus proxy + signal dispatch)
+  └── utils.ts
+settings.ts, spotlight.ts, mouseTracking.ts, gamemodeClient.ts, gestureFeedback.ts,
+practiceService.ts
+  └── utils.ts (via settings.ts where applicable)
 ```
+`gestureDetector.ts` has no imports at all: it is testable with `node:test` without GNOME Shell or GJS. `practiceClient.ts` and `practiceService.ts` communicate only over the session bus; neither imports the other.
 
 ### 3.3 Design Patterns
 
-| Pattern              | Implementation                                                      |
-|----------------------|----------------------------------------------------------------------|
-| **Singleton Manager** | Each manager is instantiated once in `extension.ts`'s `enable()`.  |
-| **Event-Driven**     | GSettings `changed::` signals, `pointerWatcher` callbacks. |
-| **Strategy**         | Activation methods (shake/always) act as strategies dispatching to `_toggleSpotlight()`. |
-| **Observer**         | `GameModeClient` emits state change to multiple handlers; `_onPropertiesChanged` dispatches. |
-| **Caching**          | `SettingsManager.cacheSettings()` normalizes and caches all GSettings values to avoid repeated GI calls. |
-| **Command**          | `_showSpotlight()` / `hide()` commands encapsulate visibility state. |
+| Pattern | Implementation |
+|---|---|
+| **Singleton Manager** | Each manager is instantiated once in `extension.ts`'s `enable()`. |
+| **Event-Driven** | GSettings `changed::` signals, `pointerWatcher` callbacks, gesture events, GameMode state changes. |
+| **State Machine** | `GestureDetector` moves through `idle → tracking → ready → cooldown` and emits `none`/`armed`/`progress`/`ready`/`activated`/`aborted`. |
+| **Adapter** | `MouseTracker` adapts GNOME's absolute, irregular pointer samples to `GestureSample {dx, dy, tMs}`. |
+| **Policy/rendering split** | `ActivationController` owns activation and idle timing; `SpotlightManager` only renders and animates. |
+| **Observer** | `GameModeClient` emits state changes; the extension suppresses or restores the spotlight. |
+| **Session over D-Bus** | `PracticeService` owns a session-bus name and emits `Progress`/`Result`; `PracticeClient` proxies it from prefs and survives extension reloads. |
+| **Caching** | `SettingsManager.cacheSettings()` normalizes and caches GSettings values to avoid repeated GI calls. |
 
-### 3.4 Data Flow: Activation → Rendering
+### 3.4 Data Flow: Pointer → Gesture → Activation → Rendering
 
 ```
-User Action (shake/always)
-       │
-       ▼
-extension.ts:_toggleSpotlight()
-       │
-       ├── GameMode check (if active + suppress enabled → abort)
-       │
-       ▼
-extension.ts:_showSpotlight()
-       │
-       ├── spotlightManager.show(showOnAllMonitors)
-       │       │
-       │       ├── Creates St.DrawingArea (geometry = monitor|all)
-       │       │
-       │       ├── Connect 'repaint' signal → _onRepaint()
-       │       │   └── Cairo: draw bg overlay + clear spotlight hole + ring
-       │       │
-       │       └── _startZoomAnimation()
-       │           └── Clutter.Timeline: easeOutQuad(initialZoom → 1)
-       │
-       ├── global.get_pointer() → updateMousePosition(x, y)
-       │
-       └── _resetIdleTimeout() → GLib.timeout_add(idleTimeout)
-                 │
-                 ▼ (if timeout fires)
-            spotlightManager.hide()
+pointerWatcher (16 ms requested, callbacks on change)
+        │
+        ▼
+MouseTracker._handleSample(x, y)
+        │
+        ├── authoritative last position (null sentinel until first sample)
+        ├── guards: buttons, Ctrl/Alt, fullscreen, GameMode, visible spotlight
+        ├── feed GestureDetector.feed({dx, dy, tMs}) using monotonic ms
+        │     └── idle → tracking → ready → cooldown
+        │           emits armed/progress/ready/activated/aborted
+        │     └── while tracking/ready: 16 ms clock feeds zero-delta ticks
+        │           so a stationary pointer can settle and activate
+        ▼
+extension._handleGestureEvent(info)
+        ├── armed/progress/ready → GestureFeedback (show, arcs, bright stop state)
+        ├── activated → feedback.hide()
+        │              ├── practice active? PracticeService.reportEvent(info) → Result(true, …)
+        │              └── else ActivationController.activate('gesture')
+        └── aborted → feedback.hide()
+                      └── practice active? PracticeService.reportEvent(info) → Result(false, …)
+    Practice mode never calls ActivationController.activate('gesture'); the real
+    progress ring stays visible until the session ends.
+
+shortcut (<Super>f) ────────────────► ActivationController.activate('shortcut')
+        │
+        ▼
+ActivationController.activate()
+        ├── 'always': show once if not visible; no idle timeout
+        ├── GameMode suppression check (cachedDoNotActivateInGameMode)
+        ├── if visible: reset idle timeout only (never toggle off)
+        └── SpotlightManager.show(showOnAllMonitors)
+                  ├── St.DrawingArea geometry (monitor or all)
+                  ├── 'repaint' → Cairo overlay + clear hole + ring
+                  └── Clutter.Timeline zoom (easeOutQuad)
+idle timeout (idle-timeout ms) ─────► ActivationController.hide()
 ```
+
+### 3.5 Data Flow: Practice Session (D-Bus)
+
+```
+prefs.ts "Try the Gesture"
+        │  (instructions derived from current GSettings; no auto-close timer)
+        ▼
+PracticeClient (Gio.DBusProxy, retry on failure)
+        │  Start() / Cancel()                    session bus
+        ▼
+PracticeService (shell side)
+        ├── on Start: hide any visible spotlight, reset MouseTracker, arm 10 s watchdog
+        ├── reportEvent(info) for every gesture event
+        │     ├── Progress(event, progress, total) → PracticeClient → live status UI
+        │     ├── activated → Result(true, 'gesture-completed') → session ends
+        │     └── aborted   → Result(false, 'gesture-aborted')  → session ends
+        └── on Result / Cancel / dialog destroy / prefs close / extension disable /
+            bus-name loss / watchdog → _finish(): clear watchdog, notify extension
+```
+
+A practice run uses the real detector, `MouseTracker` guards and `GestureFeedback`
+ring, but never `ActivationController.activate('gesture')` and never shows the real
+spotlight. A second prefs window or an extension reload cannot keep a stale session
+alive: the service owns the bus name and each terminal path ends the session. The
+prefs client degrades to a text-only fallback if the proxy cannot be created.
 
 ---
 
@@ -152,58 +224,49 @@ extension.ts:_showSpotlight()
 
 ### 4.1 Prerequisites
 
-| Requirement     | Minimum  | Notes                                    |
-|----------------|----------|------------------------------------------|
-| GNOME Shell    | 46       | Tested up to 50                          |
-| Node.js        | 22       | For TypeScript compilation & tooling     |
-| npm            | 10+      | Bundled with Node.js                     |
+| Requirement | Minimum | Notes |
+|---|---|---|
+| GNOME Shell | 46 | Tested up to 50 |
+| Node.js | 22 | TypeScript tooling and `node:test` |
+| npm | 10+ | Bundled with Node.js |
 | glib-compile-schemas | System | From `libglib2.0-bin` (Ubuntu) |
-| mutter-devkit | GNOME 49+ | Required by `gnome-shell --devkit` to draw the host window; Ubuntu: `sudo apt install mutter-dev-bin` (provides `/usr/libexec/mutter-devkit`). Without it the nested shell runs headless. |
+| mutter-devkit | GNOME 49+ | Needed by `gnome-shell --devkit` to draw the host window; Ubuntu: `sudo apt install mutter-dev-bin`. Without it, the nested shell runs headless. |
 
 ### 4.2 NPM Scripts Reference
 
-| Script              | Command                           | Description                                       |
-|---------------------|-----------------------------------|---------------------------------------------------|
-| `npm run check`     | `tsc --noEmit`                    | TypeScript type-check without emitting output     |
-| `npm run lint`      | `eslint src/`                     | Lint TypeScript source files                      |
-| `npm run build`     | `clean && tsc -p tsconfig.prod.json` | Clean dist/ and compile TypeScript to dist/   |
-| `npm run build:schemas` | `glib-compile-schemas schemas/` | Compile GSettings XML → binary `gschemas.compiled` |
-| `postbuild`         | `build:schemas && cp metadata.json && cp -r schemas` | Auto-runs after build |
-| `npm run build:dist`| `build && cd dist && zip -qr ../find-my-mouse@herve-brun.github.io.zip .` | Full distribution ZIP for EGO upload |
+| Script | Command | Description |
+|---|---|---|
+| `npm run check` | `tsc --noEmit` | Type-check without emitting output |
+| `npm run lint` | `eslint src/` | Lint TypeScript sources |
+| `npm test` | `npm run build && node --test test/*.test.mjs` | Build, then run unit tests with `node:test` |
+| `npm run build` | `clean && tsc -p tsconfig.prod.json` | Clean `dist/` and compile TypeScript |
+| `npm run build:schemas` | `glib-compile-schemas schemas/` | Compile GSettings XML |
+| `postbuild` | `build:schemas && cp metadata.json && cp -r schemas` | Auto-runs after build |
+| `npm run build:dist` | `build && cd dist && zip -qr ../find-my-mouse@herve-brun.github.io.zip .` | Distribution ZIP for EGO |
 
 ### 4.3 TypeScript Configurations
 
-| File                 | Purpose                        | Key Options                         |
-|----------------------|--------------------------------|-------------------------------------|
-| `tsconfig.json`      | Development (dev)              | `target: ES2023`, `module: NodeNext`, `sourceMap: true` |
-| `tsconfig.prod.json` | Production (build)             | Extends dev, `rootDir: ./src`, `outDir: ./dist`, `sourceMap: false` |
+| File | Purpose | Key Options |
+|---|---|---|
+| `tsconfig.json` | Development | `target: ES2023`, `module: NodeNext`, `sourceMap: true` |
+| `tsconfig.prod.json` | Production build | Extends dev, `rootDir: ./src`, `outDir: ./dist`, `sourceMap: false` |
 
 ### 4.4 Development Workflow
 
 ```bash
-# 1. Install
 npm install
 glib-compile-schemas schemas/
-
-# 2. Symlink for live testing
 ln -s $(pwd) ~/.local/share/gnome-shell/extensions/find-my-mouse@herve-brun.github.io
 
-# 3. Edit TypeScript in src/
+# edit src/*.ts, then:
+npm test          # build + unit tests
+npm run lint
 
-# 4. Compile
-npm run build
-
-# 5. Restart shell (Alt+F2, r) or test in nested session
-
-# 6. Test in nested session
-# GNOME 49+ needs mutter-devkit (Ubuntu: sudo apt install mutter-dev-bin)
-# Without it --devkit runs headless and no window appears.
-# GNOME 49+:
+# nested session (GNOME 49+ needs mutter-devkit)
 dbus-run-session gnome-shell --devkit --wayland
 # GNOME < 49:
 SHELL_DEBUG=backtrace-warnings dbus-run-session gnome-shell --nested --wayland
 
-# 7. View logs
 journalctl --user -f | grep "Find My Mouse"
 ```
 
@@ -215,28 +278,34 @@ journalctl --user -f | grep "Find My Mouse"
 find-my-mouse-example.com/
 │
 ├── src/                              # TypeScript source (edit here!)
-│   ├── extension.ts                  # EXTENSION ENTRY: lifecycle, managers, activation logic
-│   ├── prefs.ts                      # PREFERENCES ENTRY: Adwaita/GTK4 settings UI (≈499 lines)
+│   ├── extension.ts                  # Lifecycle, wiring, pointer/gesture handlers
+│   ├── prefs.ts                      # Adwaita/GTK4 preferences UI
 │   ├── settings.ts                   # GSettings wrapper + cached values
-│   ├── spotlight.ts                  # SpotlightManager: St.DrawingArea + Cairo repaint + zoom animation
-│   ├── mouseTracking.ts              # MouseTracker: pointerWatcher + shake detection
-│   ├── gamemodeClient.ts             # GameModeClient: D-Bus GameMode integration
-│   ├── utils.ts                      # Shared: debugLog, parseColor, LogLevel enum
+│   ├── activationController.ts       # Activation policy + idle timeout
+│   ├── gestureDetector.ts            # Pure "wave then stop" state machine
+│   ├── gestureFeedback.ts            # Pointer-local progress ring + optional sound
+│   ├── spotlight.ts                  # Cairo spotlight + zoom animation
+│   ├── mouseTracking.ts              # pointerWatcher → GestureSample adapter
+│   ├── gamemodeClient.ts             # GameMode D-Bus client
+│   ├── practiceService.ts            # Shell-side practice D-Bus service + watchdog
+│   ├── practiceClient.ts             # Preferences-side practice D-Bus proxy
+│   ├── utils.ts                      # debugLog, parseColor, LogLevel
 │   └── codemap.md                    # Source directory atlas
 │
 ├── schemas/                          # GSettings schema
-│   ├── org.gnome.shell.extensions.find-my-mouse.gschema.xml  # 13 keys
+│   ├── org.gnome.shell.extensions.find-my-mouse.gschema.xml  # 22 keys
 │   ├── gschemas.compiled            # Binary compiled schema (gitignored)
 │   └── codemap.md                    # Schema directory atlas
 │
+├── test/                             # node:test unit tests for the gesture detector
+│   └── gestureDetector.test.mjs
+│
 ├── dist/                             # Compiled JS output (gitignored, auto-generated)
-│   ├── extension.js
-│   ├── prefs.js
-│   ├── settings.js
-│   ├── spotlight.js
-│   ├── mouseTracking.js
-│   ├── gamemodeClient.js
-│   └── utils.js
+│   ├── extension.js, prefs.js, settings.js, spotlight.js
+│   ├── activationController.js, gestureDetector.js, gestureFeedback.js
+│   ├── mouseTracking.js, gamemodeClient.js, practiceService.js,
+│   │   practiceClient.js, utils.js
+│   └── schemas/                      # gschemas.compiled + XML
 │
 ├── .github/                          # CI/CD
 │   ├── workflows/
@@ -244,43 +313,28 @@ find-my-mouse-example.com/
 │   │   ├── release.yml               # Tag v*: build ZIP, validate contents, create release
 │   │   ├── lint-pr.yml               # PR title: conventional commits validation
 │   │   └── close-linear-issues.yml   # Push: parse "Fixes FIN-xxx" → Linear API (placeholder)
-│   └── scripts/
-│       └── validate_metadata.py      # CI helper: validate metadata.json structure
+│   └── scripts/validate_metadata.py  # CI helper: validate metadata.json
 │
-├── .husky/                           # Git hooks
-│   ├── commit-msg                    # commitlint hook: validates commit messages
-│   └── _/                            # husky internal
-│
-├── docs/codebase/                    # Codebase analysis docs (generated)
-│   ├── ARCHITECTURE.md
-│   ├── CONCERNS.md
-│   ├── CONVENTIONS.md
-│   ├── INTEGRATIONS.md
-│   ├── STACK.md
-│   ├── STRUCTURE.md
-│   ├── TESTING.md
+├── docs/codebase/                    # Codebase analysis docs
+│   ├── ARCHITECTURE.md, CONCERNS.md, CONVENTIONS.md
+│   ├── INTEGRATIONS.md, STACK.md, STRUCTURE.md, TESTING.md
 │   └── .codebase-scan.txt
 │
 ├── screenshots/                      # README screenshots
 ├── node_modules/                     # Dependencies (gitignored)
 │
-├── metadata.json                     # Extension metadata
-│   ├── uuid: find-my-mouse@herve-brun.github.io
-│   ├── shell-version: ["46", "47", "48", "49", "50"]
-│   └── version-name: 1.0.0
-│
-├── ambient.d.ts                      # GJS/GIR ambient type imports
-├── gnome-shell-extensions.d.ts       # Custom type declarations for Shell modules
-├── tsconfig.json                     # Dev TypeScript config
-├── tsconfig.prod.json                # Production TypeScript config
-├── eslint.config.js                  # ESLint flat config (typescript-eslint)
-├── commitlint.config.cjs             # Conventional commit enforcement config
-├── package.json                      # Dependencies + scripts
-├── package-lock.json
-├── AGENTS.md                         # AI agent instructions
-├── README.md                         # Project README
-├── LICENSE.md                        # GPL-3.0-or-later license
-└── codemap.md                        # THIS FILE — Repository Atlas
+├── metadata.json                     # version-name 1.2.0; shell 46–50
+├── ambient.d.ts
+├── gnome-shell-extensions.d.ts
+├── tsconfig.json
+├── tsconfig.prod.json
+├── eslint.config.js
+├── commitlint.config.cjs
+├── package.json                      # Scripts incl. `test`: build + node:test
+├── AGENTS.md
+├── README.md
+├── LICENSE.md
+└── codemap.md                        # THIS FILE
 ```
 
 ---
@@ -289,305 +343,244 @@ find-my-mouse-example.com/
 
 ### 6.1 Runtime Dependencies (GNOME Shell / GJS)
 
-| Module                     | Import Path                                   | Used In               | Purpose                                 |
-|----------------------------|-----------------------------------------------|------------------------|-----------------------------------------|
-| `Extension`                | `resource:///org/gnome/shell/extensions/extension.js` | extension.ts   | Base class for extension lifecycle      |
-| `ExtensionPreferences`     | `resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js` | prefs.ts | Base class for preferences UI           |
-| `*Main`                    | `resource:///org/gnome/shell/ui/main.js`       | spotlight.ts, extension.ts | `Main.uiGroup`, `Main.wm`       |
-| `getPointerWatcher`        | `resource:///org/gnome/shell/ui/pointerWatcher.js` | mouseTracking.ts | Cursor position tracking                |
-| `St.DrawingArea`           | `gi://St`                                     | spotlight.ts          | Clutter actor for Cairo rendering       |
-| `Shell.ActionMode` | `gi://Shell` | extension.ts | Keybinding modes |
-| `Meta.KeyBindingFlags` | `gi://Meta` | extension.ts | Keybinding flags |
-| `Clutter` / `Clutter.Timeline` / `Clutter.AnimationMode` | `gi://Clutter` | spotlight.ts, extension.ts | Zoom animation timeline, animation easing modes |
-| `Cairo`                    | `gi://cairo`                                  | spotlight.ts          | `Cairo.Operator.CLEAR`, `setSourceRGBA`, `arc`, etc. |
-| `Gio.Settings`             | `gi://Gio`                                    | settings.ts, gamemodeClient.ts, prefs.ts | GSettings + D-Bus proxy      |
-| `GLib`                     | `gi://GLib`                                   | spotlight.ts, mouseTracking.ts | `timeout_add`, `get_monotonic_time` |
-| `Gtk` / `Adw` / `Gdk`      | `gi://Gtk?version=4.0`, `gi://Adw`, `gi://Gdk?version=4.0` | prefs.ts | Preferences UI widgets |
+| Module | Import Path | Used In | Purpose |
+|---|---|---|---|
+| `Extension` | `resource:///org/gnome/shell/extensions/extension.js` | extension.ts | Extension lifecycle |
+| `ExtensionPreferences` | `resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js` | prefs.ts | Preferences base class |
+| `Main` | `resource:///org/gnome/shell/ui/main.js` | extension.ts, gestureFeedback.ts, spotlight.ts | `uiGroup`, keybindings |
+| `getPointerWatcher` | `resource:///org/gnome/shell/ui/pointerWatcher.js` | mouseTracking.ts | Absolute pointer samples |
+| `St.DrawingArea` | `gi://St` | spotlight.ts, gestureFeedback.ts | Cairo-rendered actors |
+| `Shell.ActionMode`, `Meta.KeyBindingFlags` | `gi://Shell`, `gi://Meta` | extension.ts | Keybinding registration |
+| `Clutter` / `Clutter.Timeline` | `gi://Clutter` | spotlight.ts, gestureFeedback.ts | Zoom animation, transition cleanup |
+| `Cairo` | `gi://cairo` | spotlight.ts, gestureFeedback.ts | Hole/ring and progress arcs |
+| `Gio.Settings` | `gi://Gio` | settings.ts, gamemodeClient.ts, prefs.ts | Settings + D-Bus proxy |
+| `GLib` | `gi://GLib` | activationController.ts, mouseTracking.ts, gestureFeedback.ts, spotlight.ts | Timers, monotonic time, optional sound spawn |
+| `Gtk` / `Adw` / `Gdk` | `gi://Gtk?version=4.0`, `gi://Adw`, `gi://Gdk?version=4.0` | prefs.ts | Preferences UI |
 
-### 6.2 NPM Dependencies
+### 6.2 NPM Dependencies and Built-ins
 
-| Package                        | Type   | Purpose                                       |
-|--------------------------------|--------|-----------------------------------------------|
-| `@girs/gjs`                   | runtime| TypeScript type definitions for GJS runtime   |
-| `@girs/gnome-shell`           | runtime| TypeScript type definitions for GNOME Shell   |
-| `@girs/cairo-1.0`             | runtime| TypeScript type definitions for Cairo         |
-| `typescript`                  | dev    | TypeScript compiler (≥5.7)                    |
-| `eslint`                      | dev    | Linter (≥10.3)                                |
-| `@eslint/js`                  | dev    | ESLint recommended config                     |
-| `typescript-eslint`           | dev    | TypeScript ESLint rules                       |
-| `@commitlint/cli`             | dev    | Conventional commit validation                |
-| `@commitlint/config-conventional` | dev | Conventional commit rules                   |
-| `husky`                       | dev    | Git hooks manager                             |
+| Package | Type | Purpose |
+|---|---|---|
+| `@girs/gjs`, `@girs/gnome-shell`, `@girs/cairo-1.0` | runtime | GJS/GNOME/Cairo type definitions |
+| `typescript` | dev | Compiler (≥5.7) |
+| `eslint`, `@eslint/js`, `typescript-eslint` | dev | Linting |
+| `@commitlint/cli`, `@commitlint/config-conventional`, `husky` | dev | Commit message enforcement |
+| `node:test` | Node.js built-in | Unit test runner used by `npm test` (no package dependency) |
 
 ---
 
 ## 7. CI/CD
 
-### 7.1 `test.yml` — Test Extension (every push + PR)
-
-| Job              | What it does                                                    |
-|------------------|----------------------------------------------------------------|
-| `validate`       | Compiles GSettings schema, validates `metadata.json` via Python script |
-| `lint`           | `npm run lint` (ESLint) + `npx tsc --noEmit` (type check)      |
-| `test-schema`    | `xmllint` validation of GSettings XML schema                   |
-| `check-commits`  | Checks last 5 commits follow Conventional Commits (basic regex) |
-
-### 7.2 `release.yml` — Release Extension (tag `v*`)
-
-| Step                            | Description                                                   |
-|---------------------------------|---------------------------------------------------------------|
-| ESLint                          | Lint sources                                                  |
-| TypeScript type check           | `npx tsc --noEmit`                                            |
-| Build extension ZIP             | `npm run build:dist` → `find-my-mouse@herve-brun.github.io.zip` |
-| Validate ZIP contents           | Checks for `metadata.json`, `schemas/gschemas.compiled`, `extension.js`, `prefs.js` |
-| Create GitHub Release           | Uses `softprops/action-gh-release@v2` with auto release notes |
-
-### 7.3 `lint-pr.yml` — Lint PR Title
-
-| Trigger                         | Action                                                       |
-|---------------------------------|--------------------------------------------------------------|
-| `pull_request_target` (opened/edited/synchronize/reopened) | Validates PR title matches Conventional Commits types using `amannn/action-semantic-pull-request@v6.1.1` |
-| Bypass label                    | `ignore-semantic-pull-request`                               |
-
-### 7.4 `close-linear-issues.yml` — Linear Integration
-
-| Trigger        | Action                                                       |
-|----------------|--------------------------------------------------------------|
-| Push to main   | Scans commits for `Fixes FIN-<digits>` pattern, logs placeholder for Linear API |
+| Workflow | Trigger | Jobs |
+|---|---|---|
+| `test.yml` | Every push + PR | Validate metadata/schema; lint + `tsc --noEmit`; `xmllint` schema validation; `npm test` (build + `node:test`); commit message check. |
+| `release.yml` | Tag `v*` | Type check, build ZIP, validate ZIP contents, create GitHub Release |
+| `lint-pr.yml` | PR events | PR title must follow Conventional Commits; bypass label `ignore-semantic-pull-request` |
+| `close-linear-issues.yml` | Push to main | Placeholder for `Fixes FIN-xxx` parsing |
 
 ---
 
 ## 8. Testing
 
-### 8.1 Current Testing Status
-
-| Type                  | Status        | Details                                                       |
-|-----------------------|---------------|---------------------------------------------------------------|
-| Unit tests            | ❌ None        | No test framework configured; no test files exist             |
-| Integration tests     | ❌ None        | No automated GNOME Shell testing                              |
-| Type checking         | ✅ `npm run check` | `tsc --noEmit` validates all TypeScript types              |
-| Linting               | ✅ `npm run lint`  | ESLint with TypeScript rules                                 |
-| Schema validation     | ✅ CI job      | `xmllint` validates XML; `glib-compile-schemas` validates compilation |
-| Metadata validation   | ✅ CI job      | Python script validates `metadata.json` structure             |
-| Manual testing        | ✅ Documented  | Nested Wayland/Xephyr sessions (see AGENTS.md)                |
-| Commit message validation | ✅ CI + Husky | commitlint in pre-commit hook; CI checks last 5 commits     |
-
-### 8.2 Manual Testing Commands
+| Type | Status | Details |
+|---|---|---|
+| Unit tests | ✅ `npm test` | `npm run build && node --test test/*.test.mjs`; synthesized pointer streams cover deliberate wave, jitter, circles, drags, warps, cooldown, pause/gap behavior, the retired 1500 ms/30 px tutorial cadence (no activation) and a normal 900 ms/180 ms gesture (activation) |
+| Type checking | ✅ `npm run check` | `tsc --noEmit` |
+| Linting | ✅ `npm run lint` | ESLint with TypeScript rules |
+| Schema validation | ✅ CI job | `xmllint` + `glib-compile-schemas` |
+| Metadata validation | ✅ CI job | Python script |
+| Manual testing | ✅ Documented | Nested Wayland/Xephyr; concrete gesture scenarios in `docs/codebase/TESTING.md` |
 
 ```bash
-# Nested Wayland (GNOME 49+) — requires mutter-devkit (Ubuntu: sudo apt install mutter-dev-bin)
-dbus-run-session gnome-shell --devkit --wayland
-
-# Nested Wayland (GNOME < 49)
-SHELL_DEBUG=backtrace-warnings dbus-run-session gnome-shell --nested --wayland
-
-# X11 via Xephyr
-Xephyr :1 -screen 1920x1080 &
-DISPLAY=:1 dbus-run-session gnome-shell
-
-# View logs
+npm test                                     # unit tests
+dbus-run-session gnome-shell --devkit --wayland  # GNOME 49+
+SHELL_DEBUG=backtrace-warnings dbus-run-session gnome-shell --nested --wayland  # older
 journalctl --user -f | grep "Find My Mouse"
-
-# List enabled extensions
-gnome-extensions list
 ```
 
-### 8.3 Log Level Reference
-
-| Level | Value | Console Prefix     | Usage                               |
-|-------|-------|--------------------|--------------------------------------|
-| ERROR | 0     | `[ERROR]`          | Critical failures, exceptions        |
-| WARN  | 1     | `[WARN]`           | Non-critical issues, fallback events |
-| INFO  | 2     | `[INFO]`           | Lifecycle events, activations (default) |
-| DEBUG | 3     | `[DEBUG]`          | Coordinates, settings, detailed trace |
+Log levels: ERROR (0), WARN (1), INFO (2, default), DEBUG (3).
 
 ---
 
 ## 9. Conventional Commits
 
-### 9.1 Commit Format
-```
-<type>(<scope>): <subject>
-```
-Allowed types are enforced by both `commitlint.config.cjs` (pre-commit hook) and `lint-pr.yml` (CI):
-```
-feat, fix, docs, style, refactor, perf, test, build, ci, chore, revert
-```
-
-### 9.2 Validation Points
-
-| Validation Point           | Tool                         | Trigger              |
-|----------------------------|------------------------------|----------------------|
-| Pre-commit hook            | `@commitlint/cli` via husky  | `git commit`         |
-| PR title (CI)              | `amannn/action-semantic-pull-request` | PR opened/edited |
-| Recent commits (CI)        | Custom regex in `test.yml`   | Push/PR              |
-
-### 9.3 Examples
-```
-feat: add custom ring width option
-fix: correct idle timeout reset on multi-monitor
-refactor: simplify rendering pipeline to Cairo-only
-ci: add schema validation to test workflow
-```
+Format: `<type>(<scope>): <subject>`. Allowed types: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`, `revert`. Enforced by `commitlint.config.cjs` (husky hook) and validated for PR titles / recent commits in CI.
 
 ---
 
-## 10. Default Values (PowerToys-Matched)
+## 10. Default Values
 
-The extension defaults are carefully chosen to match Microsoft PowerToys "Find My Mouse" behavior, with two GNOME-specific adjustments: the ring color is 80% opaque white for a 3:1 contrast ratio, and a keyboard shortcut (`<Super>f`) is available.
+The PowerToys-matched settings are the spotlight colors, radius, zoom, idle timeout and animation duration. GNOME-specific additions include the keyboard shortcut and the gesture tuning keys below.
 
 ### 10.1 General
 
-| Setting                    | Key                          | GSettings Type | Default          | PowerToys Match |
-|----------------------------|------------------------------|----------------|------------------|-----------------|
-| Activation Method          | `activation-method`          | string         | `"shake"`        | ✅ shake        |
-| Disable During Game Mode   | `do-not-activate-gamemode`   | boolean        | `true`           | ✅ yes          |
-| Show on All Monitors       | `show-on-all-monitors`       | boolean        | `false`          | N/A             |
-| Log Level                  | `log-level`                  | int            | `2` (INFO)       | N/A             |
+| Setting | Key | Type | Default |
+|---|---|---|---|
+| Activation Method | `activation-method` | string | `"shake"` (Shortcut + Mouse Gesture) |
+| Activation Shortcut | `find-my-mouse-activation` | string[] | `['<Super>f']` (always active in gesture mode) |
+| Disable During Game Mode | `do-not-activate-gamemode` | boolean | `true` |
+| Show on All Monitors | `show-on-all-monitors` | boolean | `false` |
+| Log Level | `log-level` | int | `2` (INFO) |
 
 ### 10.2 Appearance
 
-| Setting                    | Key                          | GSettings Type | Default          | PowerToys Match |
-|----------------------------|------------------------------|----------------|------------------|-----------------|
-| Background Color           | `background-color`           | string (hex)   | `#00000080`      | ✅ black 50%    |
-| Ring Color                 | `spotlight-color`            | string (hex)   | `#FFFFFFCC`      | Adjusted (white 80%, 3:1 contrast) |
-| Spotlight Radius           | `spotlight-radius`           | int            | `100` px         | ✅ 100px        |
-| Initial Zoom               | `spotlight-zoom`             | double         | `9.0`            | ✅ 9x           |
-| Ring Width                 | `spotlight-ring-width`       | int            | `2` px           | N/A (GNOME-specific) |
+| Setting | Key | Type | Default |
+|---|---|---|---|
+| Background Color | `background-color` | string (hex) | `#00000080` (black 50%) |
+| Ring Color | `spotlight-color` | string (hex) | `#FFFFFFCC` (white 80%, 3:1 contrast) |
+| Spotlight Radius | `spotlight-radius` | int | `100` px |
+| Initial Zoom | `spotlight-zoom` | double | `9.0` |
+| Ring Width | `spotlight-ring-width` | int | `2` px |
 
 ### 10.3 Timing
 
-| Setting                    | Key                          | GSettings Type | Default          | PowerToys Match |
-|----------------------------|------------------------------|----------------|------------------|-----------------|
-| Idle Timeout               | `idle-timeout`               | int            | `1000` ms        | ✅ 1000ms       |
-| Animation Duration         | `animation-duration`         | int            | `500` ms         | ✅ 500ms        |
+| Setting | Key | Type | Default |
+|---|---|---|---|
+| Idle Timeout | `idle-timeout` | int | `1000` ms |
+| Animation Duration | `animation-duration` | int | `500` ms |
 
-### 10.4 Shake Detection
+### 10.4 Mouse Gesture
 
-| Setting                    | Key                          | GSettings Type | Default          | PowerToys Match |
-|----------------------------|------------------------------|----------------|------------------|-----------------|
-| Shake Interval             | `shake-interval`             | int            | `1000` ms        | ✅ 1000ms       |
-| Shake Sensitivity          | `shake-sensitivity`          | int            | `400` %          | ✅ 400%         |
+| Setting | Key | Type | Default | Range |
+|---|---|---|---|---|
+| Reversals | `gesture-reversals` | int | `3` | 2–6 |
+| Sweep length | `gesture-sweep` | int | `90` px | 40–300 |
+| Attempt window | `gesture-window` | int | `900` ms | 400–1500 |
+| Settle window | `gesture-settle` | int | `180` ms | 80–400 |
+| Cooldown | `gesture-cooldown` | int | `1500` ms | 500–4000 |
+| Ignore buttons | `gesture-ignore-buttons` | boolean | `true` | — |
+| Ignore fullscreen | `gesture-ignore-fullscreen` | boolean | `true` | — |
+| Confirmation sound | `gesture-sound` | boolean | `false` | — |
 
-### 10.5 Additional Schema Keys
+Fixed detector thresholds: arm speed ≥400 px/s, horizontal dominance ≥2:1, reversal hysteresis <20% of sweep peak speed, settle speed <150 px/s, jump guard >250 px/sample, pause guard >400 ms. The amplitude floor is `max(120 px, sweep × reversals)`, so tiny jitter cannot qualify. There is no "minimum distance" setting.
 
-| Key                          | Type      | Default | Description                                     |
-|------------------------------|-----------|---------|-------------------------------------------------|
-| `spotlight-ring-width`       | int       | `2`     | Thickness of the spotlight border ring (0–20 px) |
+### 10.5 Deprecated Keys
+
+`shake-interval` (1000 ms) and `shake-sensitivity` (400 %) remain in the schema with their original defaults so existing user settings stay valid. They are hidden in Preferences and no longer read by the detector.
 
 ---
 
 ## 11. Critical Gotchas
 
 ### 11.1 Build & Schema
-- **Always compile schema** after modifying `schemas/*.xml`: `glib-compile-schemas schemas/` or `npm run build:schemas`. The binary `gschemas.compiled` must be present in the distribution ZIP.
-- **Always rebuild** after editing `src/*.ts`: The `dist/` directory is gitignored. Run `npm run build` before testing.
-- **ZIP validation** in CI checks for exactly: `metadata.json`, `schemas/gschemas.compiled`, `extension.js`, `prefs.js`. Missing any of these will fail the release.
+- Compile the schema after any `schemas/*.xml` edit: `glib-compile-schemas schemas/` or `npm run build:schemas`. ZIP validation expects `schemas/gschemas.compiled`.
+- The `dist/` directory is gitignored; run `npm run build` (or `npm test`, which builds first) before testing.
+- `npm test` builds and runs `node --test test/*.test.mjs`; keep `gestureDetector.ts` import-free so it remains unit-testable without GNOME Shell.
 
 ### 11.2 Rendering
-- **Cairo context** must be obtained via `area.get_context()` inside the `repaint` signal handler. The context must be manually disposed with `cr.$dispose()`.
-- **Use `queue_repaint()`** (not `queue_redraw()`) for `St.DrawingArea` — `queue_redraw()` may not trigger repaint on all GNOME Shell versions.
-- **Monitor geometry** must be recalculated when `showOnAllMonitors` changes. The SpotlightManager calculates combined geometry across all monitors.
-- **Zoom animation**: Uses `Clutter.Timeline` with manual `easeOutQuad` easing. The zoom starts large (`spotlight-zoom`) and shrinks to 1× over `animation-duration` ms. Cancel in-progress zooms before showing again to avoid stale callbacks.
-- **Immediate teardown**: Use `destroyImmediately()` (not `hide()`) during extension `disable()` to avoid async animation races during shutdown.
-- **Reduced motion**: When `org.gnome.desktop.interface enable-animations` is false, `SpotlightManager` skips the zoom and destroys the actor instead of fading it out.
+- Get the Cairo context inside the `repaint` handler with `area.get_context()` and dispose it with `cr.$dispose()`.
+- Use `queue_repaint()` (not `queue_redraw()`) for `St.DrawingArea`.
+- Recalculate monitor geometry when `show-on-all-monitors` changes.
+- `Clutter.Timeline` zoom uses manual `easeOutQuad`; cancel in-progress timelines before showing again.
+- Tear down actors immediately on `disable()` to avoid stale animation callbacks.
 
 ### 11.3 Wayland & Input
-- **Extension runs in Wayland** — modifier key (Ctrl) double-press is unreliable in Wayland. The custom keybinding (`<Super>f` default) is the recommended activation method.
-- **No shell restart** for testing — use a nested session via `dbus-run-session gnome-shell --devkit --wayland` (GNOME 49+) or `--nested` (older). GNOME 50 removed `--nested` entirely. On GNOME 49+, `--devkit` needs the external `mutter-devkit` binary to draw the host window (Ubuntu: `sudo apt install mutter-dev-bin`); without it the shell starts headless and nothing appears on screen.
-- **PointerWatcher** is imported dynamically (`await import(...)`) in `MouseTracker.setup()` because GNOME Shell < 48 may not expose it as a static resource.
+- Ctrl double-press is unreliable in Wayland. The `<Super>f` shortcut and the mouse gesture are the supported activation paths; the shortcut is active in the default gesture mode.
+- `pointerWatcher` provides absolute positions at irregular intervals; `MouseTracker` owns the single authoritative last position (starting at `null`, so negative monitor X works), computes deltas, and runs a 16 ms clock only while a gesture is in progress so a stationary pointer can settle.
+- Gesture detection is disabled while the spotlight is visible, while a mouse button or Ctrl/Alt is held, in fullscreen apps (configurable), on jumps >250 px per sample, on monitor/focus changes, and during Game Mode suppression.
+- No shell restart is needed for nested testing. GNOME 49+ `--devkit` requires `mutter-devkit` (`mutter-dev-bin` on Ubuntu); without it the shell starts headless.
 
 ### 11.4 GameMode Integration
-- **D-Bus race condition**: GameMode state change handler may fire before managers are initialized. The extension handles this by re-checking GameMode state right after manager creation (see `extension.ts:enable()` line ~143).
-- **Retry mechanism**: `GameModeClient.setup()` retries D-Bus proxy creation up to 3 times with exponential backoff (5s, 10s, 20s). If all retries fail, GameMode stays marked unavailable locally.
-- **`do-not-activate-gamemode`** caching: The `SettingsManager` connects to `changed::do-not-activate-gamemode` in its constructor to keep the cached value in sync.
+- GameMode state can change before managers are initialized; the extension re-checks state at the end of `enable()`.
+- `GameModeClient.setup()` retries the D-Bus proxy up to three times with exponential backoff (5s/10s/20s).
+- `SettingsManager` keeps `do-not-activate-gamemode` in sync via `changed::do-not-activate-gamemode`; suppression is enforced in `ActivationController.activate()`.
 
 ### 11.5 TypeScript & ES Modules
-- **All development is in TypeScript** (`src/*.ts`). Root `.js` files have been removed. Edit `.ts` files only; the `dist/` directory is auto-generated.
-- **Import `.js` extensions** in TypeScript even when importing local modules: `import { X } from './utils.js'` — this is required for NodeNext module resolution.
-- **GI imports** use the `gi://` prefix with optional version: `gi://Gtk?version=4.0`.
-- **Resource imports** use `resource:///org/gnome/shell/...` paths. Custom type declarations are in `gnome-shell-extensions.d.ts`.
-- **Ambient types** are imported in `ambient.d.ts` using `@girs/*` packages. These enable type checking for GNOME Shell/GJS APIs.
+- Edit `src/*.ts` only; root `.js` files have been removed.
+- Use `.js` extensions in TypeScript imports for NodeNext resolution.
+- GI imports use `gi://…`; GNOME Shell resource imports use `resource:///org/gnome/shell/...`; custom declarations live in `gnome-shell-extensions.d.ts` and `ambient.d.ts`.
 
 ### 11.6 Preferences UI
-- **Gtk.ShortcutLabel** displays the accelerator stored in `find-my-mouse-activation`; the binding itself is registered by `extension.ts` with `Main.wm.addKeybinding()`. GTK4 has no public shortcut entry widget, so `prefs.ts` captures a new accelerator with a modal `Gtk.Dialog` + `Gtk.EventControllerKey` (modifiers appear live in a `Gtk.ShortcutLabel`, the completed sequence is shown briefly, Escape cancels, BackSpace clears, modifier-only keys are rejected). The row is disabled with an explanatory subtitle when `activation-method` is `always`.
-- **Accessible names** are set explicitly on suffix buttons (`Gtk.ColorButton`, "Reset" buttons) with `Gtk.Widget.update_property([Gtk.AccessibleProperty.LABEL], …)`, since the row title alone is not announced as the button's name.
-- **Color format conversion**: `_rgbaToHex()` converts `Gdk.RGBA` to `#AARRGGBB` hex format. `_parseColor()` converts hex back. The alpha channel is critical for the spotlight rendering.
-- **Settings binding**: GSettings `bind()` is used for `spotlight-radius`, `spotlight-zoom`, `idle-timeout`, `animation-duration`, `shake-interval`, `show-on-all-monitors`, `do-not-activate-gamemode`, `spotlight-ring-width`, and `log-level`. Manual read/write is used for color pickers and activation method.
+- The page named **Mouse Gesture** provides Light/Standard/Firm presets, a "Fine-tune gesture" expander, a live "Try the Gesture" practice session, and the `gesture-sound` toggle. Instructions come from current GSettings values, and there is no auto-close timer.
+- The shortcut row is no longer disabled in gesture mode; GTK4 has no public shortcut entry, so Preferences captures accelerators with a modal dialog and live `Gtk.ShortcutLabel`.
+- Legacy `shake-interval` and `shake-sensitivity` rows are hidden; the keys stay in the schema for compatibility.
+- Accessible labels are set explicitly on suffix buttons; color conversion uses `#AARRGGBB` hex.
 
-### 11.7 Shake Detection
-- **Shake algorithm**: The `detectShake()` method computes `totalDistanceSquared / diagonalSquared > (sensitivity/100)²`. This detects rapid back-and-forth movement rather than straight-line movement.
-- **Movement history** is capped at 100 entries and slices old entries based on `shakeInterval`. The cut-off uses `GLib.get_monotonic_time()` in milliseconds.
-- **First movement**: `_lastX < 0` initial state means the first movement is always consumed without detection.
+### 11.7 Gesture Algorithm
+- The old squared-ratio shake metric (`Σ(dx²+dy²)/diagonal² > (sensitivity/100)²`) is gone. It rewarded one-pixel jitter and was not reliably triggerable by a deliberate shake.
+- Current algorithm: arm on ≥400 px/s with ≥2:1 horizontal dominance; count direction reversals with speed-dip hysteresis (<20% of peak) and ≥90 px per sweep; require 3 reversals within 900 ms; then require speed <150 px/s within 180 ms; cooldown 1500 ms.
+- This logic is isolated in `gestureDetector.ts` with injected timestamps and unit tests; `MouseTracker` supplies the ticks needed for a stationary pointer to commit.
 
 ### 11.8 Multi-Monitor
-- **Monitor geometry** for multi-monitor mode calculates the bounding box of all monitors via `global.display.get_n_monitors()` / `get_monitor_geometry()`. The current monitor is used when `show-on-all-monitors` is off.
+- Multi-monitor geometry is the bounding box of all monitors via `global.display.get_n_monitors()` / `get_monitor_geometry()`; otherwise the current monitor is used. Absolute pointer coordinates (including negative X) are preserved.
 
 ### 11.9 Debugging
-- **Log filtering**: Use `journalctl --user --no-pager | grep "Find My Mouse"` for full log history, or `journalctl --user -f | grep "Find My Mouse"` for live tail.
-- **Log level** can be changed at runtime via Preferences → About → Logging → Log Level. Changes take effect immediately without restart.
+- `journalctl --user --no-pager | grep "Find My Mouse"` for full history; add `-f` to tail.
+- Change log level at runtime in Preferences → About → Logging → Log Level.
+
+### 11.10 Practice Mode
+- Practice is live: it reuses `MouseTracker`, `GestureDetector` and `GestureFeedback`, but an `activated` event is reported through `PracticeService.Result(success=true, …)` and must never call `ActivationController.activate('gesture')`; no real spotlight is shown and the progress ring stays visible.
+- `Start()` hides any visible spotlight and resets `MouseTracker`; the service owns the bus name, so extension disable or a bus-name loss must end the session.
+- Every terminal path — Result, Cancel, dialog destroy, prefs close, extension disable, bus-name loss and the 10 s watchdog — must call `_finish()` exactly once to clear the watchdog and notify the extension.
+- The prefs client retries proxy creation, tolerates an extension reload, and never crashes; if D-Bus is unavailable it shows text-only instructions derived from GSettings. The dialog has no auto-close timer, its accessible name matches the visible `Practice` label, and status changes are live announcements.
+- Two prefs windows must not leave a stale session: the service is the single owner of the session state.
 
 ---
 
 ## Appendix A: GSettings Schema Key Map
 
 ```
-org.gnome.shell.extensions.find-my-mouse
+org.gnome.shell.extensions.find-my-mouse  (22 keys)
 ├── activation-method          (s)  → "shake" | "always"
 ├── find-my-mouse-activation   (as) → ['<Super>f']
-├── shake-interval             (i)  → 100–5000 ms
-├── shake-sensitivity          (i)  → 100–10000 %
-├── do-not-activate-gamemode   (b)  → true | false
+├── shake-interval             (i)  → deprecated/legacy, default 1000
+├── shake-sensitivity          (i)  → deprecated/legacy, default 400
+├── gesture-reversals          (i)  → 2–6 (default 3)
+├── gesture-sweep              (i)  → 40–300 px (default 90)
+├── gesture-window             (i)  → 400–1500 ms (default 900)
+├── gesture-settle             (i)  → 80–400 ms (default 180)
+├── gesture-cooldown           (i)  → 500–4000 ms (default 1500)
+├── gesture-ignore-buttons     (b)  → true | false (default true)
+├── gesture-ignore-fullscreen  (b)  → true | false (default true)
+├── gesture-sound              (b)  → true | false (default false)
+├── do-not-activate-gamemode   (b)  → true | false (default true)
 ├── background-color           (s)  → "#AARRGGBB" hex
 ├── spotlight-color            (s)  → "#AARRGGBB" hex
-├── spotlight-radius           (i)  → 50–500 px
-├── spotlight-zoom             (d)  → 1.0–20.0
-├── spotlight-ring-width       (i)  → 0–20 px
-├── idle-timeout               (i)  → 100–10000 ms
-├── animation-duration         (i)  → 100–5000 ms
-├── show-on-all-monitors       (b)  → true | false
-└── log-level                  (i)  → 0 (ERROR) | 1 (WARN) | 2 (INFO) | 3 (DEBUG)
+├── spotlight-radius           (i)  → px (default 100)
+├── spotlight-zoom             (d)  → default 9.0
+├── idle-timeout               (i)  → ms (default 1000)
+├── animation-duration         (i)  → ms (default 500)
+├── log-level                  (i)  → 0 ERROR | 1 WARN | 2 INFO | 3 DEBUG
+├── show-on-all-monitors       (b)  → true | false (default false)
+└── spotlight-ring-width       (i)  → 0–20 px (default 2)
 ```
-
-
-
----
 
 ## Appendix B: Class Hierarchy
 
 ```
 GObject.Object
-  └── Extension             (GNOME Shell base)
-       └── FindMyMouseExtension    (extension.ts)
-
-GObject.Object
-  └── ExtensionPreferences  (GNOME Shell base)
-       └── FindMyMousePreferences  (prefs.ts)
+  └── Extension → FindMyMouseExtension            (extension.ts)
+  └── ExtensionPreferences → FindMyMousePreferences (prefs.ts)
 
 Plain classes (no GObject inheritance):
-  ├── SettingsManager       (settings.ts)
-  ├── SpotlightManager      (spotlight.ts)
-  ├── MouseTracker          (mouseTracking.ts)
-  └── GameModeClient        (gamemodeClient.ts)
+  ├── SettingsManager        (settings.ts)
+  ├── SpotlightManager       (spotlight.ts)
+  ├── MouseTracker           (mouseTracking.ts)
+  ├── GestureDetector        (gestureDetector.ts — imports nothing)
+  ├── GestureFeedback        (gestureFeedback.ts)
+  ├── ActivationController   (activationController.ts)
+  ├── GameModeClient         (gamemodeClient.ts)
+  ├── PracticeService        (practiceService.ts — session-bus owner, watchdog)
+  └── PracticeClient         (practiceClient.ts — prefs-side D-Bus proxy)
 ```
 
+## Appendix C: Module Responsibility Reference
+
+| Module | Responsibility |
+|---|---|
+| `extension.ts` | Lifecycle, keybinding, wiring of pointer/gesture/settings/GameMode signals |
+| `prefs.ts` | Adwaita/GTK4 pages including Mouse Gesture and About |
+| `settings.ts` | GSettings read/cache/normalize; includes deprecated legacy getters |
+| `activationController.ts` | Show-only activation and idle timeout |
+| `gestureDetector.ts` | Pure "wave then stop" state machine |
+| `gestureFeedback.ts` | Pointer-local progress ring; best-effort sound via `canberra-gtk-play` |
+| `spotlight.ts` | Cairo rendering and Clutter zoom animation only |
+| `mouseTracking.ts` | pointerWatcher adapter, guards, 16 ms settle clock |
+| `gamemodeClient.ts` | GameMode D-Bus proxy with retry |
+| `practiceService.ts` | Practice session owner: D-Bus methods/signals, 10 s watchdog, gesture-event routing without real activation |
+| `practiceClient.ts` | Preferences-side D-Bus proxy: retry, signal dispatch, text-only fallback, no crash on extension reload |
+| `utils.ts` | Logging and color parsing |
+
 ---
 
-## Appendix C: File Size Reference
-
-| File              | Lines | Purpose                                    |
-|-------------------|-------|--------------------------------------------|
-| `src/prefs.ts`    | 499   | Largest file — the entire preferences UI   |
-| `src/extension.ts`| 246   | Core extension lifecycle + coordination    |
-| `src/spotlight.ts` | 260  | Spotlight rendering manager + zoom animation |
-| `src/mouseTracking.ts` | 127 | Pointer tracking + shake detection        |
-| `src/settings.ts` | 93    | GSettings wrapper                          |
-| `src/gamemodeClient.ts` | 99 | GameMode D-Bus client                     |
-| `src/utils.ts`    | 37    | Shared utilities                           |
-| `schema XML`      | 73    | GSettings schema definitions (13 keys)     |
-| `README.md`       | 288   | User-facing documentation                  |
-| **Total**         | **~1,727** | Source + config (excluding node_modules/dist) |
-
----
-
-*End of Repository Atlas — Keep this file updated as the codebase evolves.*
+*End of Repository Atlas — keep this file updated as the codebase evolves.*

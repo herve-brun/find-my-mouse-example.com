@@ -1,69 +1,77 @@
-# Find My Mouse - Architecture
+# Find My Mouse — Architecture
 
 ## Layers
 
-### 1. Extension Core (`extension.js`)
-- **Responsibility**: Lifecycle management and coordination.
-- **Key Functions**:
-  - `enable()`: Initializes all managers and sets up event listeners.
-  - `disable()`: Cleans up managers and event listeners.
-  - `_handleMouseMovement()`: Delegates mouse movement to `MouseTracker` and `SpotlightManager`.
-  - `_toggleSpotlight()`: Toggles spotlight visibility.
+### 1. Extension Core (`src/extension.ts` → `dist/extension.js`)
+- **Responsibility**: lifecycle, wiring, and translation of pointer/gesture events into feedback and activation.
+- **Key functions**:
+  - `enable()`: creates managers (including `PracticeService`), registers the `<Super>f` shortcut, connects settings/GameMode signals, starts the pointer watch.
+  - `disable()`: removes the shortcut and pointer watch, disconnects signals, destroys managers and ends any practice session.
+  - `_handleMouseMovement()`: forwards absolute position to the spotlight and feedback; notifies activity.
+  - `_handleGestureEvent()`: drives `GestureFeedback`; on `activated` calls `ActivationController.activate('gesture')` **unless** a practice session is active, in which case it reports success through `PracticeService`.
 
-### 2. Managers
+### 2. Managers and pure logic
 
-| Manager               | File               | Responsibility                                                                 |
-|-----------------------|---------------------|-------------------------------------------------------------------------------|
-| `SettingsManager`     | `settings.js`       | Caches and provides access to GSettings.                                      |
-| `SpotlightManager`    | `spotlight.js`      | Handles rendering, animations, and visibility of the spotlight.              |
-| `MouseTracker`        | `mouseTracking.js`  | Tracks mouse movement and detects shake gestures.                             |
-| `KeybindingManager`   | `keybindings.js`    | Manages keyboard shortcuts for activation.                                    |
+| Component | Source | Responsibility |
+|---|---|---|
+| `SettingsManager` | `settings.ts` | Caches and normalizes GSettings values (includes deprecated legacy getters). |
+| `SpotlightManager` | `spotlight.ts` | Rendering and zoom animation only; no idle timer. Exposes `isVisible`. |
+| `MouseTracker` | `mouseTracking.ts` | pointerWatcher adapter; authoritative last pointer position, guards, 16 ms settle clock. |
+| `GestureDetector` | `gestureDetector.ts` | Pure "wave then stop" state machine with injected ms timestamps; no imports. |
+| `ActivationController` | `activationController.ts` | Show-only activation policy, GameMode suppression, idle timeout. |
+| `GestureFeedback` | `gestureFeedback.ts` | ~40×40 pointer-local progress ring; optional confirmation sound. |
+| `GameModeClient` | `gamemodeClient.ts` | D-Bus client for `com.feralinteractive.GameMode`. |
+| `PracticeService` | `practiceService.ts` | Shell-side practice session: owns the D-Bus name, handles `Start()`/`Cancel()`, emits `Progress`/`Result`, 10 s watchdog. |
+| `PracticeClient` | `practiceClient.ts` | Prefs-side `Gio.DBusProxy` for practice; retries, dispatches signals, tolerates extension reload. |
 
-### 3. Preferences UI (`prefs.js`)
-- **Responsibility**: Provides a GTK4/Adwaita-based settings dialog.
-- **Key Components**:
-  - Multi-page layout (General, Appearance, Timing, Shake Detection).
-  - Dynamic UI elements (e.g., `Gtk.ColorButton` for color selection).
-  - Real-time log level adjustments.
+There is no separate keybindings module: `extension.ts` registers `find-my-mouse-activation` directly with `Main.wm.addKeybinding()`, and the shortcut is always active, including in the default gesture mode.
+
+### 3. Preferences UI (`src/prefs.ts`)
+GTK4/Adwaita pages: General, Appearance, Timing, **Mouse Gesture**, About. The Mouse Gesture page has Light/Standard/Firm presets, a "Fine-tune gesture" expander, a live "Try the Gesture" practice session, and the sound toggle. Practice uses `PracticeClient` to start/cancel a shell-side session and display progress/results; instructions come from current GSettings values, there is no auto-close timer, and a text-only fallback is shown when D-Bus is unavailable. Legacy shake rows are hidden; the shortcut row stays enabled in gesture mode.
 
 ## Patterns
 
-### Singleton Managers
-- Each manager is instantiated once in `extension.js` and reused.
-- Example: `this._settingsManager = new SettingsManager(settings);`
-
-### Event-Driven Architecture
-- Uses GNOME Shell signals for:
-  - Mouse movement (`pointerWatcher.js`).
-  - Keyboard shortcuts (`Main.wm.addKeybinding()`).
-  - Settings changes (`settings.connect('changed::...')`).
-
-### Caching
-- Settings are cached in `SettingsManager` for performance.
-- Example: `this._cachedBgColorNormalized` stores the normalized background color.
+- **State machine**: `GestureDetector` moves `idle → tracking → ready → cooldown`, emitting `none`, `armed`, `progress`, `ready`, `activated`, `aborted`.
+- **Adapter**: `MouseTracker` converts absolute pointer samples to deltas with monotonic timestamps; the detector never imports GNOME APIs.
+- **Policy/rendering split**: `ActivationController` owns activation and idle timing; `SpotlightManager` renders; `GestureFeedback` shows attempt progress.
+- **Singleton managers**: each manager is instantiated once in `extension.ts`'s `enable()`.
+- **Event-driven**: pointerWatcher callbacks, GSettings `changed` signals, GameMode state changes, keybinding callback.
+- **Caching**: `SettingsManager` caches normalized values; gesture keys are rebuilt into `GestureConfig` on change.
+- **Session over D-Bus**: `PracticeService` is the single owner of practice state; `PracticeClient` mirrors it in prefs. Both sides converge on `Result` / session teardown.
 
 ## Data Flow
 
 ### Activation Flow
-1. **User Action**: Shortcut/shake/click/always.
-2. **Event Handling**:
-   - Shortcut: `KeybindingManager` → `_toggleSpotlight()`.
-   - Shake: `MouseTracker.detectShake()` → `_toggleSpotlight()`.
-   - Click: `global.stage.connect('button-press-event')` → `_toggleSpotlight()`.
-3. **Spotlight Management**:
-   - `_toggleSpotlight()` calls `SpotlightManager.show()` or `hide()`.
-4. **Rendering**:
-   - `SpotlightManager` uses `St.DrawingArea` and Cairo to render the spotlight.
-   - Mouse movement updates the spotlight position via `queueRepaint()`.
+1. Trigger: `<Super>f` shortcut, gesture `activated`, or always-visible mode.
+2. Both shortcut and gesture call `ActivationController.activate(source)`; activation is show-only.
+3. GameMode suppression is checked; if the spotlight is already visible, only the idle timeout is reset.
+4. Otherwise `SpotlightManager.show(show-on-all-monitors)` renders via `St.DrawingArea` and Cairo, with a `Clutter.Timeline` zoom.
+5. The idle timeout lives in `ActivationController` and calls `hide()` after `idle-timeout` ms.
+
+### Gesture Flow
+1. `pointerWatcher` supplies absolute positions; `MouseTracker` keeps the authoritative last position and computes deltas.
+2. Guards reject attempts while a button/Ctrl/Alt is held, in fullscreen (configurable), on pointer jumps >250 px, on monitor/focus changes, while the spotlight is visible, and during GameMode suppression.
+3. `GestureDetector.feed()` arms on ≥400 px/s with ≥2:1 horizontal dominance, counts ≥90 px reversals with a speed-dip hysteresis (<20% of peak), requires 3 within 900 ms, then a settle <150 px/s within 180 ms. Cooldown is 1500 ms.
+4. The 16 ms clock in `MouseTracker` feeds zero-delta ticks while `tracking`/`ready` so a stationary pointer can settle.
 
 ### Settings Flow
-1. **User Changes Setting**: UI in `prefs.js` updates GSettings.
-2. **GSettings Signal**: Triggers `SettingsManager.cacheSettings()`.
-3. **Cached Values**: Managers use cached values (e.g., `cachedBgColorNormalized`).
+1. `prefs.ts` writes GSettings; `changed` signals refresh `SettingsManager`.
+2. `MouseTracker.updateConfig()` rebuilds detector config; `ActivationController.refreshIdleTimeout()` and `SpotlightManager.queueRepaint()` apply timing/visual changes.
+
+### Practice Flow
+1. The "Try the Gesture" dialog builds instructions from current gesture keys and calls `PracticeClient.Start()`; the client retries proxy creation and can fall back to text-only instructions.
+2. `PracticeService.start()` hides any visible spotlight, resets `MouseTracker` and arms a 10 s watchdog.
+3. Gesture events still drive the real detector and progress ring; while practice is active the extension calls `practiceService.reportEvent(info)` instead of `ActivationController.activate('gesture')`, so no spotlight appears.
+4. `Progress(event, progress, total)` updates the dialog's live status; `activated` produces `Result(true, 'gesture-completed')`.
+5. Every terminal path — Result, `Cancel()`, dialog destroy, prefs close, extension disable, bus-name loss, watchdog — ends the session and clears the watchdog; two prefs windows cannot keep a stale session alive.
 
 ## Evidence
-- `extension.js:enable()` (manager initialization and event setup)
-- `spotlight.js:_setupSpotlightCommon()` (rendering and Cairo usage)
-- `mouseTracking.js:detectShake()` (shake detection algorithm)
-- `prefs.js:fillPreferencesWindow()` (UI structure and dynamic elements)
-- `settings.js:cacheSettings()` (settings caching logic)
+- `src/extension.ts` (lifecycle, keybinding, event wiring)
+- `src/gestureDetector.ts` (pure state machine and thresholds)
+- `src/mouseTracking.ts` (adapter, guards, settle clock)
+- `src/activationController.ts` (show-only activation and idle timer)
+- `src/gestureFeedback.ts` (progress ring, optional sound)
+- `src/spotlight.ts` (Cairo rendering and zoom)
+- `src/practiceService.ts`, `src/practiceClient.ts` (practice session and D-Bus proxy)
+- `src/prefs.ts` (Mouse Gesture page and practice dialog)
+- `schemas/org.gnome.shell.extensions.find-my-mouse.gschema.xml` (22 keys)

@@ -1,284 +1,148 @@
-# 🖱️ Find My Mouse - GNOME Shell Extension
+# Find My Mouse — GNOME Shell Extension
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![GNOME Shell](https://img.shields.io/badge/GNOME-Shell-46+-blueviolet)](https://www.gnome.org/)
 [![CI](https://img.shields.io/github/actions/workflow/status/herve-brun/find-my-mouse-example.com/test.yml?branch=main&label=CI)](https://github.com/herve-brun/find-my-mouse-example.com/actions/workflows/test.yml)
 [![Release](https://img.shields.io/github/actions/workflow/status/herve-brun/find-my-mouse-example.com/release.yml?branch=main&label=Release)](https://github.com/herve-brun/find-my-mouse-example.com/actions/workflows/release.yml)
-[![GitHub Issues](https://img.shields.io/github/issues/herve-brun/find-my-mouse-example.com)](https://github.com/herve-brun/find-my-mouse-example.com/issues)
-[![GitHub Stars](https://img.shields.io/github/stars/herve-brun/find-my-mouse-example.com?style=social)](https://github.com/herve-brun/find-my-mouse-example.com/stargazers)
-[![Maintenance](https://img.shields.io/badge/Maintained%3F-Yes-green.svg)](https://github.com/herve-brun/find-my-mouse-example.com/commits/main)
-[![Open Source](https://img.shields.io/badge/Open%20Source-%E2%9D%A4-red)](https://opensource.org/)
 
-**Never lose your cursor again!** ⭐ A GNOME Shell extension that replicates Microsoft PowerToys' "Find My Mouse" feature, helping users locate their cursor with a customizable spotlight effect.
+A GNOME Shell extension (GNOME 46–50, Wayland) that highlights the pointer with a circular spotlight, similar to Microsoft PowerToys Find My Mouse.
 
-## 🌟 Features
+## Features
 
-- **🎯 Spotlight Effect**: Highlights the mouse cursor with customizable radius, color, and zoom.
-- **🤲 Shake Activation**: Activate the spotlight by quickly shaking the mouse (sensitivity configurable).
-- **⌨️ Keyboard Shortcut**: Toggle the spotlight with `<Super>F` (change it in **Preferences → General → Activation Shortcut**).
-- **📝 Dynamic Logging**: Real-time log level adjustments (ERROR, WARN, INFO, DEBUG) without restarting.
-- **🖥️ Multi-Monitor Support**: Works across multiple monitors with DPI awareness.
-- **⚙️ Shake Activation**: Configurable sensitivity and distance threshold.
+- **Spotlight**: Cairo-rendered overlay with configurable radius, colors, ring width, zoom and animation duration.
+- **Mouse Gesture**: wave the pointer horizontally and stop to show the spotlight. The detector is a pure state machine; a pointer-local progress ring shows attempt progress.
+- **Keyboard Shortcut**: `<Super>f` by default, active in the default gesture mode as well as in other modes.
+- **Always Visible**: opt-in mode that keeps the spotlight on screen.
+- **Show-only activation**: activating again refreshes the spotlight and resets the idle timeout; it does not hide it. The spotlight hides on idle or via extension shutdown.
+- **Game Mode suppression**: optional suppression while `com.feralinteractive.GameMode` reports an active game.
+- **Multi-monitor**: show on the current monitor or on the bounding box of all monitors.
+- **Practice mode**: "Try the Gesture" in Preferences runs a real gesture session through the extension, with live progress feedback and retry/cancel, without showing the spotlight.
+- **Dynamic logging**: log level adjustable at runtime in Preferences → About.
 
-## 🛠️ Installation
+## Installation
 
-### 📋 Prerequisites
+Prerequisites: GNOME Shell 46 or later, Git, Node.js 22+, npm, and `glib-compile-schemas` (from `libglib2.0-bin` on Ubuntu/Debian).
 
-- GNOME Shell 46 or later
-- Git
-- Node.js 22+ (for TypeScript compilation)
-- npm
+```bash
+git clone https://github.com/herve-brun/find-my-mouse-example.com.git
+cd find-my-mouse-example.com
+npm install
+npm run build
 
-### 🚀 Steps
+mkdir -p ~/.local/share/gnome-shell/extensions/find-my-mouse@herve-brun.github.io
+cp -r dist/* metadata.json ~/.local/share/gnome-shell/extensions/find-my-mouse@herve-brun.github.io/
+```
 
-1. **Clone the repository**:
-   ```bash
-   git clone https://github.com/herve-brun/find-my-mouse-example.com.git
-   cd find-my-mouse-example.com
-   ```
+`npm run build` compiles TypeScript from `src/` into `dist/`, compiles the GSettings schema, and copies the schema and `metadata.json` into `dist/`. Restart GNOME Shell (`Alt+F2`, `r`, `Enter`, or log out/in; Wayland sessions may require logout) and enable the extension with `gnome-extensions-app` or `gnome-extensions enable find-my-mouse@herve-brun.github.io`.
 
-2. **Install dependencies**:
-   ```bash
-   npm install
-   ```
+## Usage
 
-3. **Build the extension** (compiles TypeScript from `src/` to `dist/`):
-   ```bash
-   npm run build
-   ```
+### Activation
 
-4. **Compile schemas**:
-   ```bash
-   glib-compile-schemas schemas/
-   ```
+| Method | Description |
+|---|---|
+| Shortcut + Mouse Gesture (default) | Press `<Super>f`, or wave and stop. Internal `activation-method` value is `'shake'` for compatibility. |
+| Always Visible | Set `activation-method` to `'always'`; the spotlight is shown continuously. |
 
-5. **Create extension directory**:
-   ```bash
-   mkdir -p ~/.local/share/gnome-shell/extensions/find-my-mouse@herve-brun.github.io
-   ```
+### Mouse gesture
 
-6. **Copy built files**:
-   ```bash
-   cp -r dist/* schemas/ metadata.json ~/.local/share/gnome-shell/extensions/find-my-mouse@herve-brun.github.io/
-   ```
+1. Move horizontally at ≥400 px/s with at least 2:1 horizontal dominance to arm the detector.
+2. Reverse direction 3 times; each sweep must cover ≥90 px and the speed must dip below 20% of the sweep peak before a reversal counts. All reversals must happen within 900 ms.
+3. Stop: the pointer must slow below 150 px/s within 180 ms to activate. A 1500 ms cooldown follows activation.
 
-7. **Restart GNOME Shell**:
-   - Press `Alt+F2`, type `r`, then press `Enter`
-   - Or log out and log back in
+The gesture is ignored while a mouse button or Ctrl/Alt is held, in fullscreen apps (both configurable), on pointer jumps >250 px per sample, on monitor/focus changes, while the spotlight is already visible, and during Game Mode when suppression is enabled. There is no minimum-distance setting; the amplitude floor scales with sweep × reversals (minimum 120 px), so small jitter does not qualify.
 
-8. **Enable the extension**:
-   - Open **GNOME Extensions** app (`gnome-extensions-app`)
-   - Find **"Find My Mouse"** and enable it
+### Configuration
 
-## 🎮 Usage
+Open GNOME Extensions → Find My Mouse → settings. The **Mouse Gesture** page offers Light / Standard / Firm presets, a "Fine-tune gesture" expander with the individual keys below, a live "Try the Gesture" practice session, and an optional confirmation sound (off by default). The activation shortcut row remains available in gesture mode.
 
-### 🔑 Activation Methods
+#### Try the Gesture (practice)
 
-| Method          | Description                       |
-|-----------------|-----------------------------------|
-| **Mouse Shake** | Quickly move mouse back and forth |
-| **Keyboard Shortcut** | Press `Super+F` to toggle the spotlight |
+"Try the Gesture" starts a real, time-limited practice session (10 s watchdog) in the shell extension. The preferences dialog talks to a small D-Bus service (`org.gnome.shell.extensions.find_my_mouse.Practice` at `/org/gnome/shell/extensions/find_my_mouse/Practice`) through a client proxy; gesture events flow through the real detector and the progress ring, but a success is reported back to the dialog instead of calling the normal activation path. No spotlight is shown during practice. The dialog announces status changes, offers retry and cancel, and has no auto-close timer. If the D-Bus service is unavailable, a text-only fallback presents the same instructions derived from your current gesture settings.
 
-### ⚙️ Configuration
+| Key | Default | Range |
+|---|---|---|
+| `gesture-reversals` | 3 | 2–6 |
+| `gesture-sweep` | 90 px | 40–300 |
+| `gesture-window` | 900 ms | 400–1500 |
+| `gesture-settle` | 180 ms | 80–400 |
+| `gesture-cooldown` | 1500 ms | 500–4000 |
+| `gesture-ignore-buttons` | true | — |
+| `gesture-ignore-fullscreen` | true | — |
+| `gesture-sound` | false | — |
 
-1. Open **GNOME Extensions** app
-2. Click the **⚙️ gear icon** for "Find My Mouse" settings
-3. Customize:
-   - **Shake sensitivity and distance threshold**
-   - **Spotlight colors**, size, and zoom
-   - **Animation timing** and idle timeout
-   - **Multi-monitor behavior**
+`shake-interval` and `shake-sensitivity` remain in the schema so existing user settings stay valid; they are deprecated, hidden in Preferences, and no longer read by the detector.
 
-## 📸 Screenshots
+## Development
 
-| Feature            | Screenshot                                                                                     |
-|--------------------|-----------------------------------------------------------------------------------------------|
-| **Spotlight Effect** | ![Spotlight Effect](https://raw.githubusercontent.com/herve-brun/find-my-mouse-example.com/main/screenshots/spotlight.png) |
-| **Preferences**      | ![Preferences](https://raw.githubusercontent.com/herve-brun/find-my-mouse-example.com/main/screenshots/preferences.png) |
-
-## 💻 Development
-
-### 📋 Prerequisites
-
-- GNOME Shell 46+
-- GNOME Builder or VS Code with GJS support
-- Node.js 22+ and npm
-- Tools: `git`, `meson`, `sassc`, `gettext`
-
-### 🚀 Setting Up
-
-1. **Clone the repository**:
-   ```bash
-   git clone https://github.com/herve-brun/find-my-mouse-example.com.git
-   cd find-my-mouse-example.com
-   ```
-
-2. **Install dependencies**:
-   ```bash
-   npm install
-   ```
-
-3. **Create symlink**:
-   ```bash
-   ln -s $(pwd) ~/.local/share/gnome-shell/extensions/find-my-mouse@herve-brun.github.io
-   ```
-
-4. **Compile schemas**:
-   ```bash
-   glib-compile-schemas schemas/
-   ```
-
-5. **Build TypeScript sources** (compiles `src/*.ts` to `dist/*.js`):
-   ```bash
-   npm run build
-   ```
-
-### 📦 Available npm Scripts
-
-| Script             | Description                                                     |
-|--------------------|-----------------------------------------------------------------|
-| `npm run check`    | Type-check all TypeScript sources without emitting output       |
-| `npm run build`    | Clean the `dist/` directory and compile TypeScript to `dist/`  |
-| `npm run build:dist` | Full build + create a distributable ZIP for EGO upload        |
-| `npm run build:schemas` | Compile the GSettings XML schema to binary form            |
-
-### TypeScript Architecture
-
-Source files are written in TypeScript under `src/` and compiled to JavaScript in `dist/`:
+Source files are TypeScript under `src/` and compile to `dist/` (gitignored). Edit only `.ts` files.
 
 ```
 src/
-  extension.ts        →  dist/extension.js        (Core logic)
-  prefs.ts            →  dist/prefs.js            (Preferences UI)
-  settings.ts         →  dist/settings.js         (GSettings wrapper)
-  spotlight.ts        →  dist/spotlight.js        (Spotlight rendering)
-  mouseTracking.ts    →  dist/mouseTracking.js    (Mouse tracking)
-  gamemodeClient.ts   →  dist/gamemodeClient.js   (Game mode integration)
-  utils.ts            →  dist/utils.js            (Shared utilities)
+  extension.ts             →  dist/extension.js          (Lifecycle and wiring)
+  prefs.ts                 →  dist/prefs.js              (Preferences UI)
+  settings.ts              →  dist/settings.js           (GSettings wrapper)
+  activationController.ts  →  dist/activationController.js (Activation policy + idle timeout)
+  gestureDetector.ts       →  dist/gestureDetector.js    (Pure gesture state machine)
+  gestureFeedback.ts       →  dist/gestureFeedback.js    (Progress ring + sound)
+  spotlight.ts             →  dist/spotlight.js          (Cairo rendering + zoom)
+  mouseTracking.ts         →  dist/mouseTracking.js      (pointerWatcher adapter)
+  gamemodeClient.ts        →  dist/gamemodeClient.js     (Game Mode D-Bus client)
+  practiceService.ts       →  dist/practiceService.js    (Shell-side practice D-Bus service)
+  practiceClient.ts        →  dist/practiceClient.js     (Preferences-side D-Bus proxy)
+  utils.ts                 →  dist/utils.js              (Shared utilities)
 ```
 
-- Edit **only** the `.ts` files in `src/` — the `dist/` directory is auto-generated and gitignored.
-- Root `.js` files have been removed — all development is in TypeScript.
+| Script | Description |
+|---|---|
+| `npm run check` | TypeScript type-check without emitting output |
+| `npm run lint` | ESLint on `src/` |
+| `npm run build` | Clean `dist/`, compile TypeScript, compile schema, copy schema and metadata |
+| `npm run build:schemas` | Compile the GSettings XML schema |
+| `npm run build:dist` | Build and create a distributable ZIP for EGO upload |
+| `npm test` | Build, then run `node --test test/*.test.mjs` |
 
-### 🧪 Testing
+### Testing
 
-**Wayland Session** (recommended):
+Unit tests feed synthesized pointer streams to the detector with injected timestamps (deliberate wave activates; jitter, circles, drags and warps do not; cooldown and pause/gap behavior are covered). A regression test feeds the retired tutorial cadence — three ~30 px steps 1500 ms apart — and confirms it does not activate; a companion test checks that a normal 900 ms window with a 180 ms settle still does.
+
+For manual testing, use a nested Wayland session; GNOME 49+ needs `mutter-devkit` to draw the host window (Ubuntu: `sudo apt install mutter-dev-bin`), otherwise `--devkit` runs headless.
+
 ```bash
 if [ "$(gnome-shell --version | awk '{print int($3)}')" -ge 49 ]; then
-    dbus-run-session gnome-shell --devkit --wayland  # Best for debugging
+    dbus-run-session gnome-shell --devkit --wayland
 else
     SHELL_DEBUG=backtrace-warnings dbus-run-session gnome-shell --nested --wayland
 fi
 ```
 
-**X11 Session** (requires Xephyr):
-```bash
-Xephyr :1 -screen 1920x1080 &
-DISPLAY=:1 dbus-run-session gnome-shell
-```
+X11 testing requires Xephyr: `Xephyr :1 -screen 1920x1080 &` then `DISPLAY=:1 dbus-run-session gnome-shell`.
 
-**View logs**:
-```bash
-journalctl --user -f | grep "Find My Mouse"
-```
+View logs with `journalctl --user -f | grep "Find My Mouse"`. Concrete manual scenarios are listed in `docs/codebase/TESTING.md`.
 
-### 🐛 Debugging
+### Logging
 
-#### 📜 Log Levels
+| Level | Value | Description |
+|---|---|---|
+| ERROR | 0 | Critical errors |
+| WARN | 1 | Warnings and errors |
+| INFO | 2 | General information (default) |
+| DEBUG | 3 | Coordinates, settings and animation detail |
 
-| Level | Value | Description                          |
-|-------|-------|--------------------------------------|
-| ERROR | 0     | Critical errors only                |
-| WARN  | 1     | Warnings and errors                 |
-| INFO  | 2     | General information (default)       |
-| DEBUG | 3     | Detailed debugging info (coordinates, animations) |
+The level is changed in Preferences → About → Logging → Log Level and applies immediately.
 
-**Change log level**:
-1. Open **Preferences > General > Logging > Log Level**
-2. Select level (applies **immediately**)
+## Troubleshooting
 
-**Test logs**:
-- **DEBUG**: Shows mouse coordinates & animation details
-- **INFO**: Key events (activation, visibility)
-- **WARN/ERROR**: Critical issues only
+- **Spotlight does not appear**: verify the extension is enabled (`gnome-extensions list`), check the log, and try the `<Super>f` shortcut. Use "Try the Gesture" in Preferences for a live practice session: it reports progress and the result through the extension without showing a real spotlight, and offers retry or cancel. Ensure no mouse button or Ctrl/Alt is held, no fullscreen app is focused, and the spotlight is not already visible.
+- **Gesture does not activate**: the pointer must move horizontally, cover ≥90 px per sweep, and stop promptly. Large jumps, pauses, circular motion and small jitter are rejected by design.
+- **Multi-monitor**: enable "Show on All Monitors" to cover the bounding box of all monitors; otherwise the current monitor is used.
 
-## ❓ Troubleshooting
+## Contributing
 
-### ⚠️ Extension Not Loading
-1. Check if enabled:
-   ```bash
-   gnome-extensions list
-   ```
-2. Check logs:
-   ```bash
-   journalctl --user -f | grep -i "find my mouse"
-   ```
-3. Verify GNOME Shell version:
-   ```bash
-   gnome-shell --version
-   ```
+Fork the repository, create a branch, edit `src/*.ts`, run `npm test` and `npm run lint`, and commit using [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/). A local `commitlint` hook enforces the allowed types: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`, `revert`. PR titles are validated by CI (`.github/workflows/lint-pr.yml`).
 
-### 🖱️ Spotlight Not Showing
-1. Check shake sensitivity in settings
-2. Ensure sufficient mouse movement for shake detection
-3. Test with **"Always Visible"** mode
+## License
 
-### 🖥️ Multi-Monitor Issues
-1. Enable **"Show on All Monitors"**
-2. Default: Uses current monitor
-3. Wayland may have limitations
+[MIT License](LICENSE.md), including a non-endorsement clause: the name "Hervé Brun" cannot be used to promote or advertise derived works without prior written authorization.
 
-## 🤝 Contributing
-
-We **❤️ contributions**! Follow these steps:
-
-1. **Fork** the repository
-2. **Create a feature branch**:
-   ```bash
-   git checkout -b feature/your-feature
-   ```
-3. **Make your changes** — edit TypeScript files in `src/`, then build:
-   ```bash
-   npm run build
-   ```
-4. **Commit changes** using [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/):
-   ```bash
-   git commit -am 'feat: add amazing feature'
-   ```
-   > A local **commitlint** hook is configured via `commitlint.config.cjs` and enforces allowed types: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`, `revert`.
-
-5. **Push to branch**:
-   ```bash
-   git push origin feature/your-feature
-   ```
-6. **Open a Pull Request** — PR titles are validated by CI (`lint-pr.yml`) to follow Conventional Commits.
-
-### 📜 Code Style Guidelines
-
-- Follow existing patterns
-- Use **descriptive names** for variables/functions
-- **Comment complex logic**
-- Keep commits **atomic & focused**
-- **Conventional Commits**: All commits must follow the [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) specification
-
-## 📄 License
-
-🔗 [MIT License](LICENSE.md)
-
-> **Note**: This project uses a **custom MIT License** that includes an additional non-endorsement clause:
-> The name "Hervé Brun" cannot be used to promote or advertise derived works without prior written authorization.
-
-## 🙏 Acknowledgments
-
-- Inspired by [Microsoft PowerToys Find My Mouse](https://learn.microsoft.com/en-us/windows/powertoys/find-my-mouse)
-- Built with **GNOME Shell extension APIs**
-- Thanks to the **GNOME community** for their documentation
-
-## 🆘 Support
-
-- **🐛 Issues**: [GitHub Issues](https://github.com/herve-brun/find-my-mouse-example.com/issues)
-- **💬 Discussions**: [GitHub Discussions](https://github.com/herve-brun/find-my-mouse-example.com/discussions)
-
----
-
-> **⚠️ Note**: Designed for **GNOME Shell on Wayland**. X11 support may be limited.
+Project documentation and architecture notes are in `codemap.md` and `docs/codebase/`.

@@ -9,17 +9,63 @@
     <key name="find-my-mouse-activation" type="as">
       <default>['&lt;Super&gt;f']</default>
       <summary>Activation shortcut</summary>
-      <description>Keyboard shortcut that toggles the spotlight</description>
+      <description>Keyboard shortcut that activates the spotlight</description>
     </key>
+    <!-- Legacy PowerToys-ratio keys, kept for settings compatibility. No longer used by the detector. -->
     <key name="shake-interval" type="i">
       <default>1000</default>
-      <summary>Shake detection interval</summary>
-      <description>Time window in ms to monitor mouse movement for shake detection (PowerToys default: 1000)</description>
+      <summary>Legacy shake detection interval</summary>
+      <description>Deprecated: retained only so existing user settings remain valid</description>
     </key>
     <key name="shake-sensitivity" type="i">
       <default>400</default>
-      <summary>Shake sensitivity factor</summary>
-      <description>How much farther the pointer must travel than the diagonal of movement rectangle (PowerToys default: 400% = 4x)</description>
+      <summary>Legacy shake sensitivity factor</summary>
+      <description>Deprecated: retained only so existing user settings remain valid</description>
+    </key>
+    <key name="gesture-reversals" type="i">
+      <default>3</default>
+      <range min="2" max="6"/>
+      <summary>Direction changes required for the mouse gesture</summary>
+      <description>Number of horizontal direction changes before the gesture can be confirmed by stopping</description>
+    </key>
+    <key name="gesture-sweep" type="i">
+      <default>90</default>
+      <range min="40" max="300"/>
+      <summary>Minimum travel per sweep in pixels</summary>
+      <description>Each direction change must cover at least this distance to count</description>
+    </key>
+    <key name="gesture-window" type="i">
+      <default>900</default>
+      <range min="400" max="1500"/>
+      <summary>Mouse gesture time window in milliseconds</summary>
+      <description>Maximum time allowed to perform all direction changes</description>
+    </key>
+    <key name="gesture-settle" type="i">
+      <default>180</default>
+      <range min="80" max="400"/>
+      <summary>Settle time after the final direction change</summary>
+      <description>Milliseconds allowed for the pointer to slow down after the last direction change</description>
+    </key>
+    <key name="gesture-cooldown" type="i">
+      <default>1500</default>
+      <range min="500" max="4000"/>
+      <summary>Gesture cooldown in milliseconds</summary>
+      <description>Further gestures are ignored for this long after an activation</description>
+    </key>
+    <key name="gesture-ignore-buttons" type="b">
+      <default>true</default>
+      <summary>Ignore gestures while a mouse button is held</summary>
+      <description>Prevents drags and window moves from activating the spotlight</description>
+    </key>
+    <key name="gesture-ignore-fullscreen" type="b">
+      <default>true</default>
+      <summary>Ignore gestures in fullscreen applications</summary>
+      <description>Prevents gaming and presentations from activating the spotlight</description>
+    </key>
+    <key name="gesture-sound" type="b">
+      <default>false</default>
+      <summary>Play a sound on gesture activation</summary>
+      <description>Opt-in confirmation sound; silent by default</description>
     </key>
      <key name="do-not-activate-gamemode" type="b">
        <default>true</default>

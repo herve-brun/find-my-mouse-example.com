@@ -6,6 +6,8 @@
 - Uses St.DrawingArea with Cairo for spotlight rendering
 - TypeScript source in `src/*.ts`, compiled to `dist/*.js`
 - GSettings schema at `schemas/org.gnome.shell.extensions.find-my-mouse.gschema.xml`
+- Activation is show-only: the keyboard shortcut and the mouse gesture both call `activate()`; a repeat activation refreshes the spotlight instead of toggling it off
+- Default mode is "Shortcut + Mouse Gesture" (internal GSettings value `'shake'`); `<Super>f` remains active in this mode. `'always'` is opt-in.
 
 ## Developer Commands
 ```bash
@@ -14,6 +16,9 @@ npm run check
 
 # Lint TypeScript source files
 npm run lint
+
+# Build extension, then run unit tests (build + node:test)
+npm test
 
 # Build extension (clean + compile TypeScript to dist/)
 npm run build
@@ -67,12 +72,17 @@ A local commit message hook is configured via `commitlint.config.cjs`:
 ## Architecture
 ```
 src/*.ts               →  dist/*.js        (TypeScript → compiled output)
-  extension.ts         →  extension.js      (Core logic: spotlight rendering, mouse tracking, Cairo painting)
+  extension.ts         →  extension.js      (Lifecycle, wiring, pointer/gesture event handlers)
   prefs.ts             →  prefs.js          (Adwaita/GTK4 preferences UI)
   settings.ts          →  settings.js       (GSettings wrapper and schema access)
+  activationController.ts → activationController.js (Activation policy + idle timeout)
+  gestureDetector.ts   →  gestureDetector.js (Pure "wave then stop" state machine, no imports)
+  gestureFeedback.ts   →  gestureFeedback.js (Pointer-local progress ring + optional sound)
   spotlight.ts         →  spotlight.js      (Spotlight rendering with Cairo + zoom animation)
-  mouseTracking.ts     →  mouseTracking.js  (Mouse movement and shake detection)
+  mouseTracking.ts     →  mouseTracking.js  (pointerWatcher adapter feeding GestureDetector)
   gamemodeClient.ts    →  gamemodeClient.js (Game mode integration)
+  practiceService.ts   →  practiceService.js (Shell-side practice session; owns D-Bus name + 10 s watchdog)
+  practiceClient.ts    →  practiceClient.js (Preferences-side D-Bus proxy, signals and retry)
   utils.ts             →  utils.js          (Shared utilities)
 ```
 - `metadata.json` - Extension metadata (uuid, supported GNOME versions)
@@ -109,19 +119,22 @@ Runs on PR events (opened, edited, synchronize, reopened):
 - **Always compile schema** after modifying `schemas/*.xml`: `glib-compile-schemas schemas/` or `npm run build:schemas`
 - **Cairo context** obtained via `area.get_context()` in `repaint` signal handler
 - **Use `queue_repaint()`** not `queue_redraw()` for St.DrawingArea
-- **Extension runs in Wayland** - modifier key (Ctrl) double-press unreliable; use shake or always-visible activation
+- **Extension runs in Wayland** — Ctrl double-press is unreliable; use the `<Super>f` shortcut or the mouse gesture. The mouse gesture is a deliberate horizontal wave followed by stopping: it arms at ≥400 px/s with ≥2:1 horizontal dominance, counts 3 reversals of ≥90 px each within 900 ms (speed must dip below 20% of the sweep peak), then requires the pointer to settle below 150 px/s within 180 ms. Cooldown is 1500 ms. Tuning keys are `gesture-reversals` (3), `gesture-sweep` (90 px), `gesture-window` (900 ms), `gesture-settle` (180 ms), `gesture-cooldown` (1500 ms), `gesture-ignore-buttons` (true), `gesture-ignore-fullscreen` (true), `gesture-sound` (false). `shake-interval` and `shake-sensitivity` are deprecated compatibility keys and are not read by the detector.
 - **No shell restart** - user tests via nested session (GNOME 49+ requires `mutter-dev-bin` on Ubuntu; without it `--devkit` runs headless with no visible window)
 - **Debugging**: Use `journalctl --user --no-pager | grep "Find My Mouse"` for logs
-- **Spotlight visibility**: Tracked via `_spotlightVisible` boolean
+- **Spotlight visibility**: `SpotlightManager.isVisible`; the idle timeout lives in `ActivationController`, not in `SpotlightManager`
 - **Zoom animation**: Uses `Clutter.Timeline` with `easeOutQuad` easing. Start zoom and animation duration are configurable in preferences.
+- **Gesture detector isolation**: `gestureDetector.ts` has no imports and takes injected monotonic millisecond timestamps; keep it that way so `node:test` can exercise it without GNOME Shell. The 16 ms settling clock belongs to `MouseTracker` and only exists while an attempt is in progress. `npm test` also covers the retired tutorial cadence (three ~30 px steps 1500 ms apart) as a no-activation regression.
+- **Practice mode must never call the real activation path**: while a session is active, `activated` is reported as `Result(success=true, …)` through `PracticeService`; do not call `ActivationController.activate('gesture')` and do not hide the real progress ring. The service owns the bus name and a 10 s watchdog; every terminal path (Result, Cancel, dialog destroy, prefs close, extension disable, bus-name loss, watchdog) must end the session so a second prefs window or an extension reload cannot leave a stale dialog waiting. The dialog has no auto-close timer, its accessible name matches the visible `Practice` label, status announcements are live, and a text-only fallback is available when D-Bus is unavailable.
 - **TypeScript source**: Edit `src/*.ts`, compiled output goes to `dist/`. Root `.js` files have been removed — all development is in TypeScript.
 
-## Default Values (PowerToys-matched)
+## Default Values
 - Background: `#00000080` (black 50% opacity)
 - Spotlight: `#FFFFFFCC` (white 80% opacity; raised from PowerToys' 50% to keep a 3:1 contrast ratio)
 - Radius: 100px, Zoom: 9.0x, Animation: 500ms
 - Idle timeout: 1000ms (hide after mouse stops)
-- Shake: 1000px distance, 400% sensitivity, 1000ms interval
+- Mouse gesture: 3 reversals of ≥90 px within 900 ms, settle <150 px/s within 180 ms, cooldown 1500 ms; amplitude floor scales with sweep × reversals (minimum 120 px). Buttons/fullscreen ignored by default; confirmation sound off by default.
+- Activation: "Shortcut + Mouse Gesture" (`activation-method = 'shake'`, `<Super>f`); "Always Visible" (`'always'`) is opt-in.
 
 ## Repository Map
 
