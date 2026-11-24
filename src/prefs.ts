@@ -56,6 +56,7 @@ const GESTURE_PRESETS: GesturePreset[] = [
     { reversals: 3, sweep: 90, window: 900, settle: 180, cooldown: 1500 },
     { reversals: 4, sweep: 140, window: 700, settle: 120, cooldown: 2000 },
 ];
+const CUSTOM_GESTURE_PRESET = GESTURE_PRESETS.length;
 const DEFAULT_GESTURE_PRESET = 1;
 const GESTURE_NUMERIC_KEYS = [
     'gesture-reversals',
@@ -425,6 +426,7 @@ export default class FindMyMousePreferences extends ExtensionPreferences {
                 _('Light'),
                 _('Standard'),
                 _('Firm'),
+                _('Custom'),
             ]),
         });
         gestureGroup.add(effortRow);
@@ -456,13 +458,18 @@ export default class FindMyMousePreferences extends ExtensionPreferences {
                 preset.cooldown === settings.get_int('gesture-cooldown')
             ));
             applyingGesturePreset = true;
-            effortRow.selected = match; // -1 means a custom combination
+            effortRow.selected = match === -1 ? CUSTOM_GESTURE_PRESET : match;
             applyingGesturePreset = false;
         };
 
         effortRow.connect('notify::selected', () => {
             if (applyingGesturePreset) return;
             const index = effortRow.selected;
+            // Custom is a display-only state driven by the fine-tune rows.
+            if (index === CUSTOM_GESTURE_PRESET) {
+                syncGesturePreset();
+                return;
+            }
             if (index >= 0) applyGesturePreset(index);
         });
         for (const key of GESTURE_NUMERIC_KEYS) {
