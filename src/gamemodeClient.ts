@@ -1,4 +1,5 @@
 import Gio from 'gi://Gio';
+import GLib from 'gi://GLib';
 import { debugLog, LogLevel } from './utils.js';
 
 type StateChangeHandler = (active: boolean) => void;
@@ -46,49 +47,65 @@ export class GameModeClient {
             GAMEMODE_DBUS_IFACE,
             null,
             (o, res) => {
-         try {
-                      const proxy = Gio.DBusProxy.new_finish(res);
-                      if (this._destroyed) {
-                          proxy.run_dispose();
-                          return;
-                      }
-                      this._proxy = proxy;
-                      this._proxy.connect('g-properties-changed', this._onPropertiesChanged.bind(this));
-                      this._clientCount = this._proxy.ClientCount;
-                      debugLog(`GameMode initialized, ClientCount: ${this._clientCount}`, LogLevel.INFO);
-                      
-                      // Emit initial state
-                      this._emitStateChanged(this._clientCount > 0);
-                 } catch (e) {
-                      if (this._destroyed) return;
-                      this._retryCount++;
-                      debugLog(`Error initializing GameMode: ${e.message}`, LogLevel.ERROR);
-                      
-                      // Notify extension that GameMode is unavailable
-                      if (typeof globalThis !== 'undefined') {
-                          globalThis.FindMyMouseGameModeAvailable = false;
-                      }
-                      
-                      if (this._retryCount >= 3) {
-                          debugLog('Max retries reached for GameMode DBus initialization.', LogLevel.ERROR);
-                          return;
-                      }
-                      
-                      const delay = Math.min(5000 * Math.pow(2, this._retryCount - 1), 20000);
-                      debugLog(`GameMode service not available, retrying in ${delay/1000} seconds...`, LogLevel.WARN);
-                      this._retryTimerId = setTimeout(() => {
-                          this._retryTimerId = null;
-                          this.setup();
-                      }, delay);
-                 }
+                try {
+                    const proxy = Gio.DBusProxy.new_finish(res);
+                    if (this._destroyed)
+                        return;
+                    this._proxy = proxy;
+                    this._proxy.connect(
+                        'g-properties-changed',
+                        this._onPropertiesChanged.bind(this),
+                    );
+                    this._clientCount = this._proxy.ClientCount;
+                    debugLog(
+                        `GameMode initialized, ClientCount: ${this._clientCount}`,
+                        LogLevel.INFO,
+                    );
+
+                    // Emit initial state
+                    this._emitStateChanged(this._clientCount > 0);
+                } catch (e) {
+                    if (this._destroyed)
+                        return;
+                    this._retryCount++;
+                    debugLog(
+                        `Error initializing GameMode: ${(e as Error).message}`,
+                        LogLevel.ERROR,
+                    );
+
+                    if (this._retryCount >= 3) {
+                        debugLog(
+                            'Max retries reached for GameMode DBus initialization.',
+                            LogLevel.ERROR,
+                        );
+                        return;
+                    }
+
+                    const delay = Math.min(
+                        5000 * Math.pow(2, this._retryCount - 1),
+                        20000,
+                    );
+                    debugLog(
+                        `GameMode service not available, retrying in ${delay / 1000} seconds...`,
+                        LogLevel.WARN,
+                    );
+                    this._retryTimerId = setTimeout(() => {
+                        this._retryTimerId = null;
+                        this.setup();
+                    }, delay);
+                }
             }
         );
     }
 
-    _onPropertiesChanged(proxy: Gio.DBusProxy, changedProperties: any, _invalidatedProperties: string[]) {
+    _onPropertiesChanged(
+        _proxy: Gio.DBusProxy,
+        changedProperties: GLib.Variant,
+        _invalidatedProperties: string[],
+    ) {
         const clientCountVariant = changedProperties.lookup_value('ClientCount', null);
         if (clientCountVariant) {
-            this._clientCount = clientCountVariant.unpack();
+            this._clientCount = clientCountVariant.unpack() as number;
             const active = this._clientCount > 0;
             debugLog(`GameMode state changed: ${active}`, LogLevel.INFO);
             this._emitStateChanged(active);
@@ -119,10 +136,7 @@ export class GameModeClient {
             this._retryTimerId = null;
         }
         this.clearStateChangedHandlers();
-        if (this._proxy) {
-            this._proxy.run_dispose();
-            this._proxy = null;
-        }
+        this._proxy = null;
     }
 
     get isActive() {

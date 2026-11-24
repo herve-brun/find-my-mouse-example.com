@@ -53,11 +53,6 @@
       <summary>Animation duration</summary>
       <description>Duration of fade-out animation in ms (PowerToys default: 500)</description>
     </key>
-    <key name="excluded-apps" type="as">
-      <default>[]</default>
-      <summary>Excluded applications</summary>
-      <description>List of application names to exclude from activation</description>
-    </key>
     <key name="log-level" type="i">
       <default>2</default>
       <summary>Log level</summary>

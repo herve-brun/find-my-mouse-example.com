@@ -1,4 +1,7 @@
-import { Extension } from 'resource:///org/gnome/shell/extensions/extension.js';
+import {
+    Extension,
+    type ExtensionMetadata,
+} from 'resource:///org/gnome/shell/extensions/extension.js';
 import { SettingsManager } from './settings.js';
 import { SpotlightManager } from './spotlight.js';
 import { MouseTracker } from './mouseTracking.js';
@@ -19,8 +22,9 @@ export default class FindMyMouseExtension extends Extension {
     private _lastMoveY: number;
     private _gameModeAvailable: boolean;
     private _lastMoveTime: number;
+    private _enabled: boolean;
 
-    constructor(metadata: any) {
+    constructor(metadata: ExtensionMetadata) {
         super(metadata);
         this._settingsManager = null;
         this._spotlightManager = null;
@@ -32,13 +36,15 @@ export default class FindMyMouseExtension extends Extension {
         this._lastMoveX = -1;
         this._lastMoveY = -1;
         
-        // Flag to indicate GameMode service availability for preferences UI
+        // Flag to indicate GameMode service availability for activation checks
         this._gameModeAvailable = false;
 
-        this._lastMoveTime = 0; 
+        this._lastMoveTime = 0;
+        this._enabled = false;
     }
 
     async enable() {
+        this._enabled = true;
         const settings = this.getSettings();
         const logLevel = settings.get_int('log-level') || 2;
         setLogLevel(logLevel);
@@ -49,16 +55,15 @@ export default class FindMyMouseExtension extends Extension {
             debugLog(`Log level changed to ${newLogLevel}`, LogLevel.INFO);
         });
 
-        debugLog("I'm starting :)", LogLevel.INFO);
+        debugLog('Enabling Find My Mouse', LogLevel.DEBUG);
 
         this._gameModeClient = new GameModeClient();
         this._gameModeClient.setup();
         this._gameModeClient.onStateChanged((active) => {
-            debugLog(`GameMode state updated: ${active}`, LogLevel.INFO);
+            if (!this._enabled)
+                return;
+            debugLog(`GameMode state updated: ${active}`, LogLevel.DEBUG);
             this._gameModeAvailable = true;
-            if (typeof globalThis !== 'undefined') {
-                (globalThis as any).FindMyMouseGameModeAvailable = this._gameModeAvailable;
-            }
             if (this._settingsManager && this._spotlightManager) {
                 const doNotActivateInGameMode = this._settingsManager.cachedDoNotActivateInGameMode;
                 const currentMethod = this._settingsManager.cachedActivationMethod;
@@ -93,40 +98,46 @@ export default class FindMyMouseExtension extends Extension {
         });
 
         await this._mouseTracker.setup();
+        if (!this._enabled) {
+            // disable() ran while the pointer watcher module was loading.
+            this._mouseTracker?.remove();
+            return;
+        }
         this._setupAlwaysVisible();
-        debugLog('Extension enabled', LogLevel.INFO);
+        debugLog('Extension enabled', LogLevel.DEBUG);
     }
 
     disable() {
+        this._enabled = false;
         this._mouseTracker?.remove();
         this._removeAlwaysVisible();
 
-        if (this._settingsChangedId) {
+        if (this._settingsChangedId && this._settingsManager) {
             this._settingsManager.settings.disconnect(this._settingsChangedId);
             this._settingsChangedId = 0;
         }
-        if (this._logLevelChangedId) {
+        if (this._logLevelChangedId && this._settingsManager) {
             this._settingsManager.settings.disconnect(this._logLevelChangedId);
             this._logLevelChangedId = 0;
         }
 
-        this._spotlightManager.destroyImmediately();
+        this._spotlightManager?.destroyImmediately();
+        this._settingsManager?.destroy();
         this._settingsManager = null;
         this._spotlightManager = null;
         this._mouseTracker = null;
-        
-         // Clean up GameMode client
-         debugLog('Disabling GameMode client...', LogLevel.INFO);
-         if (this._gameModeClient) {
-             this._gameModeClient.destroy();
-             this._gameModeClient = null;
-             debugLog('GameMode client disabled.', LogLevel.INFO);
-         }
-        
-        debugLog('Extension disabled', LogLevel.INFO);
+
+        if (this._gameModeClient) {
+            this._gameModeClient.destroy();
+            this._gameModeClient = null;
+        }
+
+        debugLog('Extension disabled', LogLevel.DEBUG);
     }
 
     _setupAlwaysVisible() {
+        if (!this._enabled || !this._settingsManager)
+            return;
         const method = this._settingsManager.cachedActivationMethod;
         debugLog(`Activation method is: ${method}`, LogLevel.DEBUG);
         if (method === 'always') {
@@ -151,7 +162,7 @@ export default class FindMyMouseExtension extends Extension {
 
     _removeAlwaysVisible() {
         if (this._alwaysVisibleHandler) {
-            this._settingsManager.settings.disconnect(this._alwaysVisibleHandler);
+            this._settingsManager?.settings.disconnect(this._alwaysVisibleHandler);
             this._alwaysVisibleHandler = 0;
         }
     }
@@ -217,8 +228,10 @@ export default class FindMyMouseExtension extends Extension {
         // 1. The setting is enabled
         // 2. The GameMode service is available
         // 3. GameMode is currently active
-        debugLog(`GameMode check: doNotActivateInGameMode=${doNotActivateInGameMode}, _gameModeAvailable=${this._gameModeAvailable}, isActive=${this._gameModeClient?.isActive}`, LogLevel.INFO);
-        debugLog(`Current global GameMode available: ${globalThis.FindMyMouseGameModeAvailable}`, LogLevel.INFO);
+        debugLog(
+            `GameMode check: suppress=${doNotActivateInGameMode}, available=${this._gameModeAvailable}, active=${this._gameModeClient?.isActive}`,
+            LogLevel.DEBUG,
+        );
         if (doNotActivateInGameMode && this._gameModeAvailable && this._gameModeClient?.isActive) {
             debugLog('Spotlight not shown: GameMode is active and setting is enabled', LogLevel.INFO);
             this._spotlightManager.hide();

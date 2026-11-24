@@ -18,6 +18,16 @@ interface MonitorGeometry {
   height: number;
 }
 
+interface FadeParams {
+  opacity: number;
+  duration: number;
+  mode: Clutter.AnimationMode;
+  onComplete: () => void;
+}
+
+/** ease() exists on Clutter.Actor at runtime but is missing from the st-14 types. */
+type FadeableActor = Clutter.Actor & { ease(params: FadeParams): void };
+
 export class SpotlightManager {
   private _settingsManager: SettingsManager;
   private _spotlight: St.DrawingArea | null;
@@ -28,37 +38,16 @@ export class SpotlightManager {
   private _lastRepaintTime: number = 0;
   private _repaintCount: number = 0;
   private _fpsTimer: number = 0;
-  private _throttleWarningId: number = 0;
   private _lastMouseX: number = -1;
   private _lastMouseY: number = -1;
 
-  constructor(settingsManager: SettingsManager, _options?: any) {
+  constructor(settingsManager: SettingsManager) {
     this._settingsManager = settingsManager;
     this._spotlight = null;
     this._spotlightVisible = false;
     this._idleTimeoutId = 0;
     this._zoomTimeline = null;
     this._currentZoom = 1;
-
-    this._throttleWarningId = GLib.timeout_add(
-      GLib.PRIORITY_DEFAULT,
-      2000,
-      () => this._checkThrottling(),
-    );
-  }
-
-  private _checkThrottling(): boolean {
-    if (this._spotlightVisible && this._lastRepaintTime > 0) {
-      const now = GLib.get_monotonic_time();
-      const timeSinceLastRepaint = now - this._lastRepaintTime;
-      if (timeSinceLastRepaint > 500000) { // 0.5 second
-        debugLog(
-          `⚠️ THROTTLING: ${(timeSinceLastRepaint / 1000).toFixed(0)}ms without repaint`,
-          LogLevel.WARN,
-        );
-      }
-    }
-    return GLib.SOURCE_CONTINUE;
   }
 
   get isVisible() {
@@ -144,7 +133,7 @@ export class SpotlightManager {
 
     if (this._spotlight) {
       // If a fade-out ease is running, mouse activity should cancel it and re-show
-      const actor = this._spotlight as any;
+      const actor = this._spotlight as Clutter.Actor;
       if (actor.get_transition("opacity")) {
         actor.remove_all_transitions();
         actor.opacity = 255;
@@ -185,7 +174,7 @@ export class SpotlightManager {
       }
     });
 
-    this._zoomTimeline.connect("stopped", (_t: any, isFinished: boolean) => {
+    this._zoomTimeline.connect("stopped", (_timeline: Clutter.Timeline, isFinished: boolean) => {
       this._zoomTimeline = null;
       if (isFinished) {
         this._currentZoom = 1;
@@ -221,8 +210,7 @@ export class SpotlightManager {
 
     if (this._spotlight) {
       // Fade out via actor.ease(), then destroy on completion
-      // Cast: ease() exists on Clutter.Actor at runtime but isn't in st-14 types
-      const actor = this._spotlight as any;
+      const actor = this._spotlight as unknown as FadeableActor;
       actor.remove_all_transitions();
       actor.ease({
         opacity: 0,
@@ -245,10 +233,6 @@ export class SpotlightManager {
     if (this._idleTimeoutId) {
       GLib.source_remove(this._idleTimeoutId);
       this._idleTimeoutId = 0;
-    }
-    if (this._throttleWarningId) {
-      GLib.source_remove(this._throttleWarningId);
-      this._throttleWarningId = 0;
     }
     if (this._zoomTimeline) {
       this._zoomTimeline.stop();

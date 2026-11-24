@@ -15,6 +15,7 @@ export class SettingsManager {
     private _cachedRingWidth: number;
     private _cachedDoNotActivateInGameMode: boolean;
     private _cachedLogLevel: number;
+    private _gamemodeChangedId: number;
 
     constructor(settings: Gio.Settings) {
         this._settings = settings;
@@ -29,10 +30,11 @@ export class SettingsManager {
         this._cachedActivationMethod = 'shake';
         this._cachedRingWidth = 2;
         this._cachedDoNotActivateInGameMode = true;
+        this._gamemodeChangedId = 0;
         this.cacheSettings();
         
         // Update cache when GSettings key changes
-        this._settings.connect('changed::do-not-activate-gamemode', () => {
+        this._gamemodeChangedId = this._settings.connect('changed::do-not-activate-gamemode', () => {
             this._cachedDoNotActivateInGameMode = this._settings.get_boolean('do-not-activate-gamemode');
             debugLog(`Updated cachedDoNotActivateInGameMode: ${this._cachedDoNotActivateInGameMode}`, LogLevel.INFO);
         });
@@ -85,5 +87,14 @@ export class SettingsManager {
     get cachedDoNotActivateInGameMode() { return this._cachedDoNotActivateInGameMode; }
     get cachedRingWidth() { return this._cachedRingWidth; }
     get settings() { return this._settings; }
+
+    /** Disconnect the signal created in the constructor and release the settings. */
+    destroy(): void {
+        if (this._gamemodeChangedId) {
+            this._settings.disconnect(this._gamemodeChangedId);
+            this._gamemodeChangedId = 0;
+        }
+        this._settings = null;
+    }
 
 }

@@ -5,7 +5,7 @@
     "clean": "rm -rf dist",
     "build": "npm run clean && tsc -p tsconfig.prod.json",
     "build:schemas": "glib-compile-schemas schemas/",
-    "postbuild": "npm run build:schemas && cp metadata.json dist/ && cp -r schemas dist/",
+    "postbuild": "npm run build:schemas && cp metadata.json dist/ && mkdir -p dist/schemas && cp schemas/*.gschema.xml schemas/gschemas.compiled dist/schemas/",
     "build:dist": "npm run build && cd dist && zip -qr ../find-my-mouse@herve-brun.github.io.zip .",
     "lint": "eslint src/",
     "check": "tsc --noEmit",

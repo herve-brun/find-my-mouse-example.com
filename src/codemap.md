@@ -303,7 +303,7 @@ GameModeClient._onPropertiesChanged()
          │
          ▼
 FindMyMouseExtension GameMode handler (registered via onStateChanged)
-  ├── Set globalThis.FindMyMouseGameModeAvailable = true
+  ├── Mark GameMode as available for local state checks
   │
   ├── [if active && doNotActivateInGameMode && spotlight visible]
   │     → _spotlightManager.hide()    // Suppress spotlight
@@ -509,7 +509,6 @@ The extension defines 14 GSettings keys in `org.gnome.shell.extensions.find-my-m
 | `animation-duration` | int | `500` | Timing |
 | `shake-interval` | int | `1000` | Shake Detection |
 | `shake-sensitivity` | int | `400` | Shake Detection |
-| `excluded-apps` | string[] | `[]` | (unused in code) |
 
 ---
 

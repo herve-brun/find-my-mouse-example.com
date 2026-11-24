@@ -34,7 +34,18 @@ jobs:
       - name: Validate ZIP contents
         run: |
           zip_file="find-my-mouse@herve-brun.github.io.zip"
-          expected_files=("metadata.json" "schemas/gschemas.compiled" "extension.js" "prefs.js")
+          expected_files=(
+            "metadata.json"
+            "extension.js"
+            "prefs.js"
+            "settings.js"
+            "spotlight.js"
+            "mouseTracking.js"
+            "gamemodeClient.js"
+            "utils.js"
+            "schemas/gschemas.compiled"
+            "schemas/org.gnome.shell.extensions.find-my-mouse.gschema.xml"
+          )
           echo "--- ZIP contents ---"
           unzip -l "$zip_file"
           echo "---"
@@ -46,6 +57,11 @@ jobs:
               exit 1
             fi
           done
+          unexpected=$(unzip -Z1 "$zip_file" | grep -v '/$' | grep -vF -f <(printf '%s\n' "${expected_files[@]}") || true)
+          if [ -n "$unexpected" ]; then
+            echo "::error::Unexpected files in ZIP: $unexpected"
+            exit 1
+          fi
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2

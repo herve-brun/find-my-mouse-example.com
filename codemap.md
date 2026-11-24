@@ -2,7 +2,7 @@
 
 > **Revision**: 1.1
 > **Maintainer**: Hervé Brun
-> **License**: MIT (with non-endorsement clause)
+> **License**: GPL-3.0-or-later
 > **Generated**: 2026-05-23
 
 ---
@@ -89,7 +89,7 @@ src/spotlight.ts  →  dist/spotlight.js   (Cairo rendering)
 ┌─────────────────────────────────────────────────────────┐
 │              GSettings Schema Layer                      │
 │  schemas/org.gnome.shell.extensions.find-my-mouse.xml   │
-│  14 keys: activation, colors, timing                   │
+│  13 keys: activation, colors, timing                   │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -225,7 +225,7 @@ find-my-mouse-example.com/
 │   └── codemap.md                    # Source directory atlas
 │
 ├── schemas/                          # GSettings schema
-│   ├── org.gnome.shell.extensions.find-my-mouse.gschema.xml  # 30+ keys
+│   ├── org.gnome.shell.extensions.find-my-mouse.gschema.xml  # 13 keys
 │   ├── gschemas.compiled            # Binary compiled schema (gitignored)
 │   └── codemap.md                    # Schema directory atlas
 │
@@ -267,7 +267,7 @@ find-my-mouse-example.com/
 ├── metadata.json                     # Extension metadata
 │   ├── uuid: find-my-mouse@herve-brun.github.io
 │   ├── shell-version: ["46", "47", "48", "49", "50"]
-│   └── version: 1.0.0
+│   └── version-name: 1.0.0
 │
 ├── ambient.d.ts                      # GJS/GIR ambient type imports
 ├── gnome-shell-extensions.d.ts       # Custom type declarations for Shell modules
@@ -279,7 +279,7 @@ find-my-mouse-example.com/
 ├── package-lock.json
 ├── AGENTS.md                         # AI agent instructions
 ├── README.md                         # Project README
-├── LICENSE.md                        # MIT license with non-endorsement
+├── LICENSE.md                        # GPL-3.0-or-later license
 └── codemap.md                        # THIS FILE — Repository Atlas
 ```
 
@@ -473,7 +473,6 @@ The extension defaults are carefully chosen to match Microsoft PowerToys "Find M
 
 | Key                          | Type      | Default | Description                                     |
 |------------------------------|-----------|---------|-------------------------------------------------|
-| `excluded-apps`              | string[]  | `[]`    | Placeholder — not fully implemented in logic     |
 | `spotlight-ring-width`       | int       | `2`     | Thickness of the spotlight border ring (0–20 px) |
 
 ---
@@ -499,7 +498,7 @@ The extension defaults are carefully chosen to match Microsoft PowerToys "Find M
 
 ### 11.4 GameMode Integration
 - **D-Bus race condition**: GameMode state change handler may fire before managers are initialized. The extension handles this by re-checking GameMode state right after manager creation (see `extension.ts:enable()` line ~143).
-- **Retry mechanism**: `GameModeClient.setup()` retries D-Bus proxy creation up to 3 times with exponential backoff (5s, 10s, 20s). If all retries fail, `globalThis.FindMyMouseGameModeAvailable` is set to `false`.
+- **Retry mechanism**: `GameModeClient.setup()` retries D-Bus proxy creation up to 3 times with exponential backoff (5s, 10s, 20s). If all retries fail, GameMode stays marked unavailable locally.
 - **`do-not-activate-gamemode`** caching: The `SettingsManager` connects to `changed::do-not-activate-gamemode` in its constructor to keep the cached value in sync.
 
 ### 11.5 TypeScript & ES Modules
@@ -526,7 +525,6 @@ The extension defaults are carefully chosen to match Microsoft PowerToys "Find M
 ### 11.9 Debugging
 - **Log filtering**: Use `journalctl --user --no-pager | grep "Find My Mouse"` for full log history, or `journalctl --user -f | grep "Find My Mouse"` for live tail.
 - **Log level** can be changed at runtime via Preferences → About → Logging → Log Level. Changes take effect immediately without restart.
-- **`globalThis.FindMyMouseGameModeAvailable`**: This global flag is set on the `globalThis` object to communicate GameMode availability from the extension process to the preferences UI process.
 
 ---
 
@@ -546,7 +544,6 @@ org.gnome.shell.extensions.find-my-mouse
 ├── idle-timeout               (i)  → 100–10000 ms
 ├── animation-duration         (i)  → 100–5000 ms
 ├── show-on-all-monitors       (b)  → true | false
-├── excluded-apps              (as) → string list (placeholder)
 └── log-level                  (i)  → 0 (ERROR) | 1 (WARN) | 2 (INFO) | 3 (DEBUG)
 ```
 
@@ -585,7 +582,7 @@ Plain classes (no GObject inheritance):
 | `src/settings.ts` | 93    | GSettings wrapper                          |
 | `src/gamemodeClient.ts` | 99 | GameMode D-Bus client                     |
 | `src/utils.ts`    | 37    | Shared utilities                           |
-| `schema XML`      | 78    | GSettings schema definitions (14 keys)     |
+| `schema XML`      | 73    | GSettings schema definitions (13 keys)     |
 | `README.md`       | 288   | User-facing documentation                  |
 | **Total**         | **~1,727** | Source + config (excluding node_modules/dist) |
 

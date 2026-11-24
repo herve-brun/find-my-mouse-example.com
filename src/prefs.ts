@@ -1,3 +1,5 @@
+import type { ExtensionMetadata } from "resource:///org/gnome/shell/extensions/extension.js";
+
 import Gtk from "gi://Gtk?version=4.0";
 import Adw from "gi://Adw";
 import Gdk from "gi://Gdk?version=4.0";
@@ -10,7 +12,7 @@ import {
 import { setLogLevel, LogLevel } from "./utils.js";
 
 export default class FindMyMousePreferences extends ExtensionPreferences {
-  constructor(metadata: any) {
+  constructor(metadata: ExtensionMetadata) {
     super(metadata);
   }
 
@@ -352,7 +354,7 @@ export default class FindMyMousePreferences extends ExtensionPreferences {
 
     const versionRow = new Adw.ActionRow({
       title: _("Version"),
-      subtitle: String(this.metadata.version),
+      subtitle: String(this.metadata['version-name'] ?? '1.0.0'),
       icon_name: "software-update-available-symbolic",
       activatable: false,
     });
@@ -444,10 +446,10 @@ export default class FindMyMousePreferences extends ExtensionPreferences {
       modal: true,
       application_name: _("Find My Mouse"),
       application_icon: "input-mouse-symbolic",
-      version: String(this.metadata.version),
+      version: String(this.metadata['version-name'] ?? '1.0.0'),
       developer_name: "Hervé Brun",
       copyright: "© 2026 Hervé Brun",
-      license_type: 7, // Gtk.License.GTK_LICENSE_MIT_X11,
+      license_type: 3, // Gtk.License.GTK_LICENSE_GPL_3_0,
       website: "https://github.com/herve-brun/find-my-mouse-example.com",
       developers: ["Hervé Brun"],
       designers: ["Microsoft PowerToys Team (inspiration)"],
@@ -455,7 +457,7 @@ export default class FindMyMousePreferences extends ExtensionPreferences {
       comments: _(
         "A GNOME Shell extension that helps you locate your mouse cursor by creating a spotlight effect around it. Inspired by Microsoft PowerToys Find My Mouse feature.",
       ),
-         release_notes_version: String(this.metadata.version),
+         release_notes_version: String(this.metadata['version-name'] ?? '1.0.0'),
           release_notes: `<p>Initial release with the following features:</p>
             <ul>
               <li>Multiple activation methods (mouse shake, always visible)</li>
