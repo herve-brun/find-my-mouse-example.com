@@ -11,17 +11,6 @@
       <summary>Activation shortcut</summary>
       <description>Keyboard shortcut that activates the spotlight</description>
     </key>
-    <!-- Legacy PowerToys-ratio keys, kept for settings compatibility. No longer used by the detector. -->
-    <key name="shake-interval" type="i">
-      <default>1000</default>
-      <summary>Legacy shake detection interval</summary>
-      <description>Deprecated: retained only so existing user settings remain valid</description>
-    </key>
-    <key name="shake-sensitivity" type="i">
-      <default>400</default>
-      <summary>Legacy shake sensitivity factor</summary>
-      <description>Deprecated: retained only so existing user settings remain valid</description>
-    </key>
     <key name="gesture-reversals" type="i">
       <default>3</default>
       <range min="2" max="6"/>

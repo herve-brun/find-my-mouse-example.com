@@ -1,7 +1,7 @@
 {
   "metadata": {
     "version": "1.0.0",
-    "last_run": "2026-11-26T10:12:23.969Z",
+    "last_run": "2026-11-26T11:00:58.317Z",
     "root": "/home/herve/dev/projets/find-my-mouse-example.com",
     "include_patterns": [
       "src/**/*.ts",
@@ -25,7 +25,7 @@
     "metadata.json": "458b5266c368699edbc58705274a4ff1",
     "package-lock.json": "16a30798c6b343bd1f3f57c82f3fb089",
     "package.json": "4a10e9a4635ccea6165e11d059da9184",
-    "schemas/org.gnome.shell.extensions.find-my-mouse.gschema.xml": "3a461a66ea9e9054a6d6e690757491f3",
+    "schemas/org.gnome.shell.extensions.find-my-mouse.gschema.xml": "81729a08153e090187e2fa732e54c40e",
     "src/activationController.ts": "590aa582b9a8d35763d13e66ccfa3e4d",
     "src/extension.ts": "599a6d3c68470eabcb4165792e23d514",
     "src/gamemodeClient.ts": "b837026bd3b450c93808a5046b2551eb",
@@ -35,7 +35,7 @@
     "src/practiceClient.ts": "cf562dc8ac39cd060f37510cca071296",
     "src/practiceService.ts": "b6af8e5601232a4296981aa4ee29e063",
     "src/prefs.ts": "91cfef7344458dc2484e4a1e2f0f35fc",
-    "src/settings.ts": "6e91bee3627ac1606a915a78a449dd4c",
+    "src/settings.ts": "fecb92044db7b4c5ae868d5b582f5f85",
     "src/spotlight.ts": "cb8b46e61f0c797c51fe65260ebd918a",
     "src/spotlightLayout.ts": "25bac5065c9b77bb1eb4e32cdd17f517",
     "src/utils.ts": "8de733d3cf2583e7465c1cb62e0e2e03",
@@ -44,7 +44,7 @@
   },
   "folder_hashes": {
     ".": "c853239bcb5fde47f8ee0d75c5915826",
-    "schemas": "b315588010b3a4968b3c4f0a245a3ad8",
-    "src": "259772013f59e8dfddc7b5b2572c4372"
+    "schemas": "5a891470cb4cf9d2f02593b4e6d3df94",
+    "src": "88d190d2430da2a5a47097b985083c27"
   }
 }

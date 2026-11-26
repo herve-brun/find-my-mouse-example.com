@@ -40,8 +40,8 @@ function feedAll(detector, samples) {
     return Array.from(samples, sample => detector.feed(sample));
 }
 
-// The retired "Try the Gesture" tutorial: three ~30 px steps, 1500 ms apart.
-function oldTutorialSamples() {
+// Slow, small pointer steps: three ~30 px steps, 1500 ms apart.
+function slowSmallStepSamples() {
     const samples = [];
     for (let step = 0; step < 3; step++) {
         const direction = step % 2 === 0 ? 1 : -1;
@@ -178,9 +178,9 @@ test('setConfig resets progress and phase', () => {
     assert.equal(detector.phase, 'idle');
 });
 
-test('the old 1500 ms/30 px tutorial cadence never activates', () => {
+test('slow, small pointer steps never activate', () => {
     const detector = new GestureDetector(defaultConfig);
-    const events = feedAll(detector, oldTutorialSamples());
+    const events = feedAll(detector, slowSmallStepSamples());
     events.push(...feedAll(detector, stationaryTicks(3048, 12)));
 
     // Too little travel for the 300 px amplitude floor, and 1500 ms gaps

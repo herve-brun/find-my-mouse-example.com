@@ -14,7 +14,7 @@
 
 | Component | Source | Responsibility |
 |---|---|---|
-| `SettingsManager` | `settings.ts` | Caches and normalizes GSettings values (includes deprecated compatibility getters). |
+| `SettingsManager` | `settings.ts` | Caches and normalizes GSettings values. |
 | `SpotlightManager` | `spotlight.ts` | Rendering and zoom animation only; no idle timer. Exposes `isVisible` and delegates rectangle math to the import-free `spotlightLayout.ts`. |
 | `spotlightLayout.ts` | `spotlightLayout.ts` | Pure mask/dim rectangle computation, unit-tested without GNOME Shell. |
 | `MouseTracker` | `mouseTracking.ts` | pointerWatcher adapter; authoritative last pointer position, guards, 16 ms settle clock. |
@@ -28,7 +28,7 @@
 The extension core registers `find-my-mouse-activation` in `extension.ts` with `Main.wm.addKeybinding()` in every activation mode; the callback calls `activate('shortcut')`. Preferences disables the shortcut row in **Always visible** mode.
 
 ### 3. Preferences UI (`src/prefs.ts`)
-GTK4/Adwaita pages: General, Appearance, Timing, **Mouse Gesture**, About. The Mouse Gesture page has Light/Standard/Firm presets, a "Fine-tune gesture" expander, a live **Practice** row (**Try the Gesture** dialog), and the sound toggle. Practice uses `PracticeClient` to start/cancel a shell-side session and display progress/results; instructions come from current GSettings values, there is no auto-close timer, and a text-only fallback is shown when D-Bus is unavailable. Compatibility shake rows are hidden; the shortcut row is available in **Shortcut and gesture** mode.
+GTK4/Adwaita pages: General, Appearance, Timing, **Mouse Gesture**, About. The Mouse Gesture page has Light/Standard/Firm presets, a "Fine-tune gesture" expander, a live **Practice** row (**Try the Gesture** dialog), and the sound toggle. Practice uses `PracticeClient` to start/cancel a shell-side session and display progress/results; instructions come from current GSettings values, there is no auto-close timer, and a text-only fallback is shown when D-Bus is unavailable. The shortcut row is available in **Shortcut and gesture** mode.
 
 ## Patterns
 
@@ -75,4 +75,4 @@ GTK4/Adwaita pages: General, Appearance, Timing, **Mouse Gesture**, About. The M
 - `src/spotlight.ts`, `src/spotlightLayout.ts`, `test/spotlightLayout.test.mjs` (rendering, pure layout math, tiling tests)
 - `src/practiceService.ts`, `src/practiceClient.ts` (practice session and D-Bus proxy)
 - `src/prefs.ts` (Mouse Gesture page and practice dialog)
-- `schemas/org.gnome.shell.extensions.find-my-mouse.gschema.xml` (22 keys)
+- `schemas/org.gnome.shell.extensions.find-my-mouse.gschema.xml` (20 keys)

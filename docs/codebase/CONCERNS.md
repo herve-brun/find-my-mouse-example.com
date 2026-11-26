@@ -6,7 +6,6 @@
 |---|---|---|
 | **Wayland pointer sampling** | `pointerWatcher` reports absolute positions at irregular intervals, and callbacks arrive only on change. `MouseTracker` converts them to deltas with monotonic millisecond timestamps; the detector gates on arming speed, horizontal dominance, direction reversals with speed-dip hysteresis, and an amplitude floor scaled by sweep × reversals. | `src/mouseTracking.ts`, `src/gestureDetector.ts` |
 | **Gesture detector isolation** | All gesture logic is in an import-free class so `node:test` can exercise it without GNOME Shell. `MouseTracker` owns the GNOME-specific guards and the short-lived 16 ms settle clock; adding GI dependencies to the detector would break unit tests. | `src/gestureDetector.ts`, `test/gestureDetector.test.mjs` |
-| **Compatibility keys** | `shake-interval` and `shake-sensitivity` remain in the schema with their documented defaults and are cached as deprecated getters. They are compatibility-only: hidden in Preferences and not read by the detector. Keeping them avoids invalidating existing user settings. | `schemas/...gschema.xml`, `src/settings.ts`, `src/prefs.ts` |
 | **Modifier keys on Wayland** | Ctrl (and Alt) acts as a guard: while either is held, `MouseTracker` suspends and aborts gesture attempts. The supported activation paths are the `<Super>f` shortcut and the deliberate mouse wave. | `src/mouseTracking.ts`, `src/extension.ts` |
 | **X11 support** | X11 runs via Xephyr for testing only; primary target is Wayland. | `AGENTS.md` |
 | **Optional sound helper** | `canberra-gtk-play` is invoked best-effort when `gesture-sound` is enabled; a missing helper is silently ignored. | `src/gestureFeedback.ts` |
@@ -52,5 +51,5 @@
 - `src/gestureDetector.ts` (state machine and thresholds)
 - `src/practiceService.ts`, `src/practiceClient.ts` (practice lifecycle and D-Bus contract)
 - `test/gestureDetector.test.mjs` (gesture scenarios), `test/spotlightLayout.test.mjs` (layout tiling)
-- `schemas/org.gnome.shell.extensions.find-my-mouse.gschema.xml` (compatibility keys)
+- `schemas/org.gnome.shell.extensions.find-my-mouse.gschema.xml`
 - `.github/workflows/test.yml` (CI jobs)

@@ -57,13 +57,13 @@
 - General has activation radio rows ("Shortcut and gesture" / "Always visible"), an "Activation Shortcut" row with a live `Gtk.ShortcutLabel` and `Change…` button, Game Mode and multi-monitor switches. The shortcut row is active in the default shortcut + gesture mode and becomes insensitive with an explanatory subtitle only in "Always visible" mode.
 - GTK4 has no public shortcut entry, so a modal `Adw.AlertDialog` captures accelerators through `Gtk.EventControllerKey`: modifiers preview live, lock keys are ignored, at least one modifier is required, Escape cancels, BackSpace clears, and Set writes `find-my-mouse-activation` as a single-element string array (or an empty array when cleared).
 - Each settings page has a reset action: typed GVariant values are snapshotted, defaults applied, and an `Adw.Toast` offers Undo; libadwaita without `add_toast()` gets an `Adw.AlertDialog` confirmation instead. Mouse Gesture also resets to the Standard preset.
-- The Mouse Gesture page has Light (`2/60/1200/260/1000`), Standard (`3/90/900/180/1500`), Firm (`4/140/700/120/2000`) presets for reversals/sweep/window/settle/cooldown plus a display-only "Custom" state derived from the five keys, a "Fine-tune gesture" expander, button/fullscreen/sound switches, and a live "Practice" row. The compatibility `shake-interval` and `shake-sensitivity` keys are not exposed in the UI.
+- The Mouse Gesture page has Light (`2/60/1200/260/1000`), Standard (`3/90/900/180/1500`), Firm (`4/140/700/120/2000`) presets for reversals/sweep/window/settle/cooldown plus a display-only "Custom" state derived from the five keys, a "Fine-tune gesture" expander, button/fullscreen/sound switches, and a live "Practice" row.
 - User-facing strings use `gettext` (`_()`) and are catalogued in `po/`; English is the source language with identity `en.po`, plus French and Spanish catalogs.
 - Practice instructions are generated from current GSettings values; the dialog has no auto-close timer, announces status changes with `Gtk.AccessibleAnnouncementPriority.MEDIUM`, gives suffix buttons explicit accessible labels ("Change Activation Shortcut" for "Change…"; "Practice gesture…" matching its visible label on the row titled "Practice"), and offers text-only steps when D-Bus is unavailable or the session stops.
 - About shows the metadata `version-name` (1.0.0), website, and a credits/license dialog whose icon comes from `assets/find-my-mouse.svg` via `this.dir`; release notes use the same `version-name` and cover the wave-and-stop gesture, always-available shortcut, progress ring, presets, practice and text-only fallback.
 
 ### 1.8 Settings Caching & Normalization
-`settings.ts` wraps `Gio.Settings`, caches gesture, activation, timing and appearance values, and normalizes hex colors to `[0,1]` floats via `utils.parseColor()`. It connects `changed::do-not-activate-gamemode` to refresh its own cached flag. Compatibility getters `cachedShakeInterval`/`cachedShakeSensitivity` mirror the schema's `shake-*` keys; gesture configuration is built only from `cachedGesture*` values.
+`settings.ts` wraps `Gio.Settings`, caches gesture, activation, timing and appearance values, and normalizes hex colors to `[0,1]` floats via `utils.parseColor()`. It connects `changed::do-not-activate-gamemode` to refresh its own cached flag. Gesture configuration is built from `cachedGesture*` values.
 
 ### 1.9 Logging & Diagnostics
 `utils.ts`: module-level `currentLogLevel` defaulting to `LogLevel.INFO` (2), filtered `console.log` with `[ERROR]`/`[WARN]`/`[INFO]`/`[DEBUG]` prefix, `isLogLevelEnabled()` guard for hot paths, runtime configuration via `log-level`, and hex color parsing with `defaultAlpha = 255`.
@@ -389,7 +389,7 @@ type NormalizedColor = [number, number, number, number]; // 0–1 floats for Cai
 
 ## 7. Settings Schema Overview
 
-22 keys in `org.gnome.shell.extensions.find-my-mouse`:
+20 keys in `org.gnome.shell.extensions.find-my-mouse`:
 
 | Key | Type | Default | Page / status |
 |---|---|---|---|
@@ -403,8 +403,6 @@ type NormalizedColor = [number, number, number, number]; // 0–1 floats for Cai
 | `gesture-ignore-buttons` | bool | `true` | Mouse Gesture |
 | `gesture-ignore-fullscreen` | bool | `true` | Mouse Gesture |
 | `gesture-sound` | bool | `false` | Mouse Gesture |
-| `shake-interval` | int | `1000` | Compatibility-only key, not shown in Preferences |
-| `shake-sensitivity` | int | `400` | Compatibility-only key, not shown in Preferences |
 | `do-not-activate-gamemode` | bool | `true` | General |
 | `show-on-all-monitors` | bool | `false` | General |
 | `background-color` | string | `'#00000080'` | Appearance |

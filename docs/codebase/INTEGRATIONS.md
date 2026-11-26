@@ -44,7 +44,7 @@ const cr = area.get_context();
 
 - **Schema ID**: `org.gnome.shell.extensions.find-my-mouse`
 - **Path**: `/org/gnome/shell/extensions/find-my-mouse/`
-- **Keys**: 22 total, including the gesture tuning keys and two deprecated compatibility keys.
+- **Keys**: 20 total, covering activation, appearance, timing, GameMode suppression and gesture tuning.
 
 | Key | Type | Default | Description |
 |---|---|---|---|
@@ -58,8 +58,6 @@ const cr = area.get_context();
 | `gesture-ignore-buttons` | Bool | `true` | Ignore gestures while a mouse button is held |
 | `gesture-ignore-fullscreen` | Bool | `true` | Ignore gestures in fullscreen apps |
 | `gesture-sound` | Bool | `false` | Optional confirmation sound |
-| `shake-interval` | Int | `1000` | Deprecated compatibility key; the detector uses the `gesture-*` keys |
-| `shake-sensitivity` | Int | `400` | Deprecated compatibility key; the detector uses the `gesture-*` keys |
 | `do-not-activate-gamemode` | Bool | `true` | Suppress spotlight during GameMode |
 | `show-on-all-monitors` | Bool | `false` | Cover the bounding box of all monitors |
 | `background-color` | String | `'#00000080'` | Backdrop with alpha |
@@ -106,4 +104,4 @@ Both sides converge on session teardown for `Result`, `Cancel()`, dialog destroy
 - `src/gestureFeedback.ts` (optional sound helper)
 - `src/practiceService.ts`, `src/practiceClient.ts` (practice D-Bus contract)
 - `src/settings.ts` (GSettings cache)
-- `schemas/org.gnome.shell.extensions.find-my-mouse.gschema.xml` (22 keys)
+- `schemas/org.gnome.shell.extensions.find-my-mouse.gschema.xml` (20 keys)

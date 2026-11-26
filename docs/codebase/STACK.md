@@ -48,7 +48,7 @@ src/
   gestureDetector.ts, gestureFeedback.ts, spotlight.ts, spotlightLayout.ts,
   mouseTracking.ts, gamemodeClient.ts, practiceService.ts,
   practiceClient.ts, utils.ts
-schemas/            GSettings XML (22 keys) + compiled schema
+schemas/            GSettings XML (20 keys) + compiled schema
 test/               gestureDetector.test.mjs, spotlightLayout.test.mjs (node:test)
 dist/               generated JavaScript (gitignored)
 docs/codebase/      these documents
@@ -96,7 +96,7 @@ During practice, detector events → `PracticeService` → `Progress`/`Result` �
 
 - GNOME Shell APIs: extension/prefs base classes, `Main.uiGroup`, keybindings, pointerWatcher.
 - GJS: St, Cairo, Clutter, GLib, Gio, Gtk/Adw/Gdk, Meta/Shell.
-- GSettings schema `org.gnome.shell.extensions.find-my-mouse` (22 keys); the `gesture-*` keys drive the detector, while `shake-interval`/`shake-sensitivity` are retained as deprecated compatibility keys.
+- GSettings schema `org.gnome.shell.extensions.find-my-mouse` (20 keys); the `gesture-*` keys drive the detector.
 - GameMode D-Bus service; practice D-Bus service `org.gnome.shell.extensions.find_my_mouse.Practice` (`Start`/`Cancel`, `Progress`/`Result`, 10 s watchdog) implemented by `practiceService.ts`/`practiceClient.ts` on the session bus; `canberra-gtk-play` is an optional best-effort sound helper (no-op if absent).
 - `node:test` for unit tests.
 
@@ -119,7 +119,6 @@ During practice, detector events → `PracticeService` → `Progress`/`Result` �
 ## CONCERNS.md
 
 - Wayland pointerWatcher sampling is absolute and irregular; the isolated, unit-tested detector consumes injected deltas and monotonic millisecond timestamps, with speed, reversal hysteresis and an amplitude floor.
-- Deprecated `shake-*` keys are compatibility-only, hidden in Preferences and not read by the detector.
 - Practice lifecycle: every terminal path (Result, Cancel, dialog destroy, prefs close, extension disable, bus-name loss, watchdog) must end the session; practice must never call the real activation path.
 - CI runs lint, type-check, schema/metadata validation and `npm test` (build + `node:test`).
 
@@ -135,5 +134,5 @@ During practice, detector events → `PracticeService` → `Progress`/`Result` �
 - GameMode detection is implemented through D-Bus and can suppress activation when configured.
 
 ### Evidence
-- `schemas/org.gnome.shell.extensions.find-my-mouse.gschema.xml` (22 keys)
+- `schemas/org.gnome.shell.extensions.find-my-mouse.gschema.xml` (20 keys)
 - `src/activationController.ts`, `src/gamemodeClient.ts`, `src/gestureDetector.ts`

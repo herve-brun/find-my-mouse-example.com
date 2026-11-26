@@ -109,7 +109,7 @@ src/practiceService.ts + src/practiceClient.ts → dist/*.js
 ┌─────────────────────────────────────────────────────────┐
 │              GSettings Schema Layer                      │
 │  schemas/org.gnome.shell.extensions.find-my-mouse.gschema.xml
-│  22 keys: activation, colors, timing, gesture tuning     │
+│  20 keys: activation, colors, timing, gesture tuning     │
 └─────────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────────┐
@@ -306,7 +306,7 @@ find-my-mouse-example.com/
 │   └── codemap.md                    # Source directory atlas
 │
 ├── schemas/                          # GSettings schema
-│   ├── org.gnome.shell.extensions.find-my-mouse.gschema.xml  # 22 keys
+│   ├── org.gnome.shell.extensions.find-my-mouse.gschema.xml  # 20 keys
 │   ├── gschemas.compiled            # Binary compiled schema (gitignored)
 │   └── codemap.md                    # Schema directory atlas
 │
@@ -364,7 +364,7 @@ find-my-mouse-example.com/
 | Directory | Responsibility summary | Detailed map |
 |---|---|---|
 | `src/` | Lifecycle, settings, activation policy, gesture detector/adapter/feedback, spotlight rendering, Game Mode and practice D-Bus endpoints | [src/codemap.md](src/codemap.md) |
-| `schemas/` | Authoritative 22-key GSettings schema and compiled binary | [schemas/codemap.md](schemas/codemap.md) |
+| `schemas/` | Authoritative 20-key GSettings schema and compiled binary | [schemas/codemap.md](schemas/codemap.md) |
 | `docs/codebase/` | Seven verifiable developer guides: stack, structure, architecture, conventions, integrations, testing and concerns | [docs/codebase/STACK.md](docs/codebase/STACK.md), [ARCHITECTURE.md](docs/codebase/ARCHITECTURE.md), [TESTING.md](docs/codebase/TESTING.md) |
 
 ---
@@ -493,10 +493,6 @@ Fixed detector thresholds: arm speed ≥400 px/s, horizontal dominance ≥2:1, r
 
 Custom is a display-only state shown when the fine-tune values do not match a preset.
 
-### 10.5 Deprecated Keys
-
-`shake-interval` (1000 ms) and `shake-sensitivity` (400 %) are compatibility-only schema keys. They are hidden in Preferences and are not read by the detector.
-
 ---
 
 ## 11. Critical Gotchas
@@ -534,7 +530,7 @@ Custom is a display-only state shown when the fine-tune values do not match a pr
 ### 11.6 Preferences UI
 - The **Mouse Gesture** page provides Light/Standard/Firm presets plus a display-only Custom state, a "Fine-tune gesture" expander with five numeric thresholds, a live **Practice** row (**Try the Gesture** dialog), and the `gesture-sound`, button and fullscreen toggles. Instructions come from current GSettings values, and there is no auto-close timer.
 - The shortcut row is available in **Shortcut and gesture** mode and disabled in **Always visible** mode. GTK4 has no public shortcut entry, so Preferences captures accelerators in a **Set Activation Shortcut** modal with a live `Gtk.ShortcutLabel`: at least one modifier is required, Escape cancels and BackSpace clears.
-- Every page has a reset-to-defaults control with an Undo toast. The compatibility-only `shake-interval` and `shake-sensitivity` rows are hidden.
+- Every page has a reset-to-defaults control with an Undo toast.
 - Accessible labels are set explicitly on suffix buttons; colors use `#RRGGBBAA` hex.
 
 ### 11.7 Gesture Algorithm
@@ -560,11 +556,9 @@ Custom is a display-only state shown when the fine-tune values do not match a pr
 ## Appendix A: GSettings Schema Key Map
 
 ```
-org.gnome.shell.extensions.find-my-mouse  (22 keys)
+org.gnome.shell.extensions.find-my-mouse  (20 keys)
 ├── activation-method          (s)  → "shake" | "always"
 ├── find-my-mouse-activation   (as) → ['<Super>f']
-├── shake-interval             (i)  → compatibility-only, default 1000
-├── shake-sensitivity          (i)  → compatibility-only, default 400
 ├── gesture-reversals          (i)  → 2–6 (default 3)
 ├── gesture-sweep              (i)  → 40–300 px (default 90)
 ├── gesture-window             (i)  → 400–1500 ms (default 900)
@@ -610,7 +604,7 @@ Plain classes (no GObject inheritance):
 |---|---|
 | `extension.ts` | Lifecycle, keybinding, wiring of pointer/gesture/settings/GameMode signals |
 | `prefs.ts` | Adwaita/GTK4 pages including Mouse Gesture and About |
-| `settings.ts` | GSettings read/cache/normalize; includes deprecated legacy getters |
+| `settings.ts` | GSettings read/cache/normalize |
 | `activationController.ts` | Show-only activation and idle timeout |
 | `gestureDetector.ts` | Pure "wave then stop" state machine |
 | `gestureFeedback.ts` | Pointer-local progress ring; best-effort sound via `canberra-gtk-play` |

@@ -57,9 +57,9 @@ A squared-distance ratio alone cannot tell one-pixel jitter from a deliberate wa
 4. Then require the pointer to settle below **150 px/s within 180 ms**.
 5. After a success, take a **1500 ms cooldown** so one wave does not become five activations.
 
-There is also an amplitude floor of `max(120 px, sweep × reversals)`, a jump guard, and guards for buttons, Ctrl/Alt, fullscreen, Game Mode, monitor changes and focus changes. It is not a math contest. It is a recipe for "the human really meant to do this".
+There is also an amplitude floor of `max(120 px, sweep × reversals)`, a jump guard, and guards for buttons, Ctrl/Alt and fullscreen. Game Mode suppresses activation separately. It is not a math contest. It is a recipe for "the human really meant to do this".
 
-`shake-interval` and `shake-sensitivity` are deprecated compatibility keys kept in the schema. They are hidden in Preferences and are not read by the detector; keeping them means existing user settings stay valid.
+The gesture is configured entirely by the `gesture-*` keys read from GSettings.
 
 ---
 
@@ -99,7 +99,7 @@ The result is simple to look at: dark screen, bright circle, soft zoom. Under th
 
 ## 6. Settings: one place for the memory
 
-All user choices are stored in GSettings under `org.gnome.shell.extensions.find-my-mouse`. There are 22 keys. `SettingsManager` reads, normalises and caches them, so we are not calling GSettings for every pointer sample.
+All user choices are stored in GSettings under `org.gnome.shell.extensions.find-my-mouse`. There are 20 keys. `SettingsManager` reads, normalises and caches them, so we are not calling GSettings for every pointer sample.
 
 Preferences writes to GSettings, and `changed::` signals refresh the running extension. That is the GNOME way, and it works across processes without us inventing a config file format.
 
@@ -152,8 +152,8 @@ User-facing strings are marked with `_()`. After changing them, we regenerate th
 
 Two small details:
 
-- GTK4 has no public shortcut entry widget, so the shortcut row uses a small modal capture dialog with a live `Gtk.ShortcutLabel`. The row stays enabled in gesture mode, because `<Super>f` is useful there too.
-- Compatibility rows for the deprecated shake keys are hidden in Preferences, matching the keys kept in the schema.
+- GTK4 has no public shortcut entry widget, so the shortcut row uses a small modal capture dialog with a live `Gtk.ShortcutLabel`. The row is available in **Shortcut and gesture** mode and disabled in **Always visible** mode.
+- Every preferences page has a reset-to-defaults control with an Undo toast.
 
 The About dialog carries release notes and the year. When a new version is made, the notes must be updated; if the year changed, fix that too. Otherwise it looks like we forgot about the extension in a drawer.
 

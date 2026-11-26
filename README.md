@@ -79,8 +79,6 @@ Each of General, Appearance, Timing, Mouse Gesture and About → Logging has a R
 | `gesture-ignore-fullscreen` | true | — |
 | `gesture-sound` | false | — |
 
-`shake-interval` (1000 ms) and `shake-sensitivity` (400 %) are compatibility-only schema keys hidden in Preferences; the detector does not read them.
-
 ## Translations
 
 User-facing strings are marked with `gettext` (`_()`) in `src/prefs.ts`. The `gettext-domain` in `metadata.json` makes GNOME Shell initialize the catalogs automatically; the compiled `.mo` files are installed under `dist/locale/<lang>/LC_MESSAGES/`.

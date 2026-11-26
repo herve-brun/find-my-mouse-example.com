@@ -9,8 +9,6 @@ export class SettingsManager {
     private _cachedZoom: number;
     private _cachedAnimationDuration: number;
     private _cachedIdleTimeout: number;
-    private _cachedShakeInterval: number;
-    private _cachedShakeSensitivity: number;
     private _cachedGestureReversals: number;
     private _cachedGestureSweep: number;
     private _cachedGestureWindow: number;
@@ -33,8 +31,6 @@ export class SettingsManager {
         this._cachedZoom = 9.0;
         this._cachedAnimationDuration = 500;
         this._cachedIdleTimeout = 1000;
-        this._cachedShakeInterval = 1000;
-        this._cachedShakeSensitivity = 400;
         this._cachedGestureReversals = 3;
         this._cachedGestureSweep = 90;
         this._cachedGestureWindow = 900;
@@ -82,8 +78,6 @@ export class SettingsManager {
         this._cachedZoom = this._settings.get_double('spotlight-zoom') || 9.0;
         this._cachedAnimationDuration = this._settings.get_int('animation-duration') || 500;
         this._cachedIdleTimeout = this._settings.get_int('idle-timeout') || 1000;
-        this._cachedShakeInterval = this._settings.get_int('shake-interval') || 1000;
-        this._cachedShakeSensitivity = this._settings.get_int('shake-sensitivity') || 400;
         this._cachedGestureReversals = this._settings.get_int('gesture-reversals') || 3;
         this._cachedGestureSweep = this._settings.get_int('gesture-sweep') || 90;
         this._cachedGestureWindow = this._settings.get_int('gesture-window') || 900;
@@ -106,10 +100,6 @@ export class SettingsManager {
     get cachedZoom() { return this._cachedZoom; }
     get cachedAnimationDuration() { return this._cachedAnimationDuration; }
     get cachedIdleTimeout() { return this._cachedIdleTimeout; }
-    /** @deprecated The ratio-based detector is no longer used. */
-    get cachedShakeInterval() { return this._cachedShakeInterval; }
-    /** @deprecated The ratio-based detector is no longer used. */
-    get cachedShakeSensitivity() { return this._cachedShakeSensitivity; }
     get cachedGestureReversals() { return this._cachedGestureReversals; }
     get cachedGestureSweep() { return this._cachedGestureSweep; }
     get cachedGestureWindow() { return this._cachedGestureWindow; }

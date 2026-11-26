@@ -20,7 +20,7 @@
 │   ├── utils.ts                  # Logging and color parsing
 │   └── codemap.md                # Source directory atlas
 ├── schemas/
-│   ├── org.gnome.shell.extensions.find-my-mouse.gschema.xml  # 22 keys
+│   ├── org.gnome.shell.extensions.find-my-mouse.gschema.xml  # 20 keys
 │   ├── gschemas.compiled        # Generated binary schema
 │   └── codemap.md                # Schema directory atlas
 ├── test/
@@ -67,10 +67,10 @@ Development is in `src/*.ts`; the Shell loads the compiled `dist/*.js`. The acti
 - `SpotlightManager`: `show()`, `hide()`, `isVisible`, geometry, Cairo mask rendering, `Clutter.Timeline` zoom. Uses the import-free `spotlightLayout.ts` to place the mask and four dim actors; rendering/animation only — no idle timer.
 
 ### `src/settings.ts`
-- `SettingsManager`: caches and normalizes the schema values used by the shell (including compatibility getters for the deprecated `shake-*` keys); the keybinding API handles `find-my-mouse-activation` and `ActivationController` reads `show-on-all-monitors` when showing the spotlight. The detector uses only the `gesture-*` values.
+- `SettingsManager`: caches and normalizes the schema values used by the shell; the keybinding API handles `find-my-mouse-activation` and `ActivationController` reads `show-on-all-monitors` when showing the spotlight. The detector uses only the `gesture-*` values.
 
 ### `src/prefs.ts`
-- Pages: General, Appearance, Timing, Mouse Gesture, About. Presets, fine-tuning expander, live "Try the Gesture" practice with text-only fallback, hidden compatibility rows.
+- Pages: General, Appearance, Timing, Mouse Gesture, About. Presets, fine-tuning expander, live "Try the Gesture" practice with text-only fallback, reset-to-defaults controls.
 
 ### `src/practiceService.ts` and `src/practiceClient.ts`
 - Shell-side session over the session bus: `Start()`/`Cancel()`, `Progress`/`Result` signals, 10 s watchdog; practice never calls the real activation path.
