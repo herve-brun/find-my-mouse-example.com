@@ -1,9 +1,9 @@
 # Find My Mouse — GNOME Shell Extension
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
-[![GNOME Shell](https://img.shields.io/badge/GNOME-Shell-46+-blueviolet)](https://www.gnome.org/)
-[![CI](https://img.shields.io/github/actions/workflow/status/herve-brun/find-my-mouse-example.com/test.yml?branch=main&label=CI)](https://github.com/herve-brun/find-my-mouse-example.com/actions/workflows/test.yml)
-[![Release](https://img.shields.io/github/actions/workflow/status/herve-brun/find-my-mouse-example.com/release.yml?branch=main&label=Release)](https://github.com/herve-brun/find-my-mouse-example.com/actions/workflows/release.yml)
+[![GNOME Shell 46–50](https://img.shields.io/badge/GNOME%20Shell-46%E2%80%9350-blueviolet)](https://www.gnome.org/)
+[![CI](https://img.shields.io/github/actions/workflow/status/herve-brun/find-my-mouse-example.com/test.yml?branch=master&label=CI)](https://github.com/herve-brun/find-my-mouse-example.com/actions/workflows/test.yml)
+[![Release](https://img.shields.io/github/actions/workflow/status/herve-brun/find-my-mouse-example.com/release.yml?branch=master&label=Release)](https://github.com/herve-brun/find-my-mouse-example.com/actions/workflows/release.yml)
 
 A GNOME Shell extension (GNOME 46–50, Wayland) that highlights the pointer with a circular spotlight, inspired by Microsoft PowerToys Find My Mouse. This README documents the 1.0.0 release.
 
