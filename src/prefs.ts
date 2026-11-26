@@ -4,7 +4,6 @@ import Gtk from 'gi://Gtk?version=4.0';
 import Adw from 'gi://Adw';
 import Gdk from 'gi://Gdk?version=4.0';
 import Gio from 'gi://Gio';
-import GLib from 'gi://GLib';
 
 import {
     ExtensionPreferences,
@@ -67,6 +66,8 @@ const GESTURE_NUMERIC_KEYS = [
 ] as const;
 
 export default class FindMyMousePreferences extends ExtensionPreferences {
+    private _undoToast: Adw.Toast | null = null;
+
     constructor(metadata: ExtensionMetadata) {
         super(metadata);
     }
@@ -88,28 +89,31 @@ export default class FindMyMousePreferences extends ExtensionPreferences {
         });
         generalPage.add(activationGroup);
 
-        const activationRow = new Adw.ComboRow({
-            title: _('Activation Method'),
-            subtitle: _('Shortcut and mouse gesture both work in the first mode'),
-            model: Gtk.StringList.new([
-                _('Shortcut + Mouse Gesture'),
-                _('Always Visible'),
-            ]),
+        // GTK4 radio buttons are CheckButtons with an explicit group.
+        const shortcutMethodRow = new Adw.ActionRow({
+            title: _('Shortcut and gesture'),
+            subtitle: _('Show the spotlight from the keyboard or with a gesture'),
         });
+        const shortcutMethodCheck = new Gtk.CheckButton({
+            valign: Gtk.Align.CENTER,
+        });
+        shortcutMethodRow.add_prefix(shortcutMethodCheck);
+        activationGroup.add(shortcutMethodRow);
 
-        // Visible labels changed, but the stored values remain shake/always.
-        const activationMap: Record<string, number> = {
-            shake: 0,
-            always: 1,
-        };
-
-        const currentMethod = settings.get_string('activation-method') || 'shake';
-        activationRow.selected = activationMap[currentMethod] ?? 0;
-        activationGroup.add(activationRow);
+        const alwaysVisibleRow = new Adw.ActionRow({
+            title: _('Always visible'),
+            subtitle: _('Keep the spotlight on screen'),
+        });
+        const alwaysVisibleCheck = new Gtk.CheckButton({
+            valign: Gtk.Align.CENTER,
+        });
+        alwaysVisibleCheck.set_group(shortcutMethodCheck);
+        alwaysVisibleRow.add_prefix(alwaysVisibleCheck);
+        activationGroup.add(alwaysVisibleRow);
 
         const shortcutRow = new Adw.ActionRow({
             title: _('Activation Shortcut'),
-            subtitle: _('Toggle the spotlight from the keyboard'),
+            subtitle: _('Show the spotlight from the keyboard'),
             activatable: true,
         });
         const shortcutLabel = new Gtk.ShortcutLabel({
@@ -117,7 +121,7 @@ export default class FindMyMousePreferences extends ExtensionPreferences {
             valign: Gtk.Align.CENTER,
         });
         const shortcutButton = new Gtk.Button({
-            label: _('Change'),
+            label: _('Change…'),
             valign: Gtk.Align.CENTER,
         });
         setAccessibleLabel(shortcutButton, _('Change Activation Shortcut'));
@@ -137,15 +141,30 @@ export default class FindMyMousePreferences extends ExtensionPreferences {
             shortcutRow.activatable = !alwaysVisible;
             shortcutButton.sensitive = !alwaysVisible;
             shortcutRow.subtitle = alwaysVisible
-                ? _('Unavailable in Always Visible mode: the spotlight is already on screen')
+                ? _('Unavailable in always visible mode: the spotlight is already on screen')
                 : _('Shortcut and gesture both activate the spotlight; change the shortcut here');
         };
 
-        activationRow.connect('notify::selected', () => {
-            const methods = ['shake', 'always'];
-            settings.set_string('activation-method', methods[activationRow.selected]);
+        // Only set the key when a radio becomes active: setting it from the
+        // other radio's toggled handler would loop on the changed signal.
+        const syncActivationMethod = (): void => {
+            const method = settings.get_string('activation-method') || 'shake';
+            shortcutMethodCheck.set_active(method !== 'always');
+            alwaysVisibleCheck.set_active(method === 'always');
+        };
+        shortcutMethodCheck.connect('toggled', () => {
+            if (shortcutMethodCheck.get_active())
+                settings.set_string('activation-method', 'shake');
         });
-        settings.connect('changed::activation-method', updateShortcutRow);
+        alwaysVisibleCheck.connect('toggled', () => {
+            if (alwaysVisibleCheck.get_active())
+                settings.set_string('activation-method', 'always');
+        });
+        settings.connect('changed::activation-method', () => {
+            syncActivationMethod();
+            updateShortcutRow();
+        });
+        syncActivationMethod();
         updateShortcutRow();
         settings.connect('changed::find-my-mouse-activation', () => {
             shortcutLabel.set_accelerator(this._shortcutAccelerator(settings));
@@ -185,21 +204,33 @@ export default class FindMyMousePreferences extends ExtensionPreferences {
         // Reset to defaults
         const generalDefaultsGroup = new Adw.PreferencesGroup();
         generalPage.add(generalDefaultsGroup);
+        const generalResetLabel = _('Reset general settings');
         const generalResetRow = new Adw.ActionRow({
-            title: _('Reset General Settings to Defaults'),
+            title: generalResetLabel,
             subtitle: _('Restore default values'),
         });
         const generalResetButton = new Gtk.Button({
             label: _('Reset'),
             valign: Gtk.Align.CENTER,
         });
-        generalResetButton.add_css_class('destructive-action');
         generalResetButton.connect('clicked', () => {
-            settings.set_boolean('show-on-all-monitors', false);
-            settings.set_boolean('do-not-activate-gamemode', true);
-            activationRow.selected = 0;
+            this._resetWithUndo(
+                settings,
+                window,
+                [
+                    'activation-method',
+                    'do-not-activate-gamemode',
+                    'show-on-all-monitors',
+                ],
+                () => {
+                    settings.set_string('activation-method', 'shake');
+                    settings.set_boolean('do-not-activate-gamemode', true);
+                    settings.set_boolean('show-on-all-monitors', false);
+                },
+                generalResetLabel,
+            );
         });
-        setAccessibleLabel(generalResetButton, _('Reset General Settings to Defaults'));
+        setAccessibleLabel(generalResetButton, generalResetLabel);
         generalResetRow.add_suffix(generalResetButton);
         generalDefaultsGroup.add(generalResetRow);
 
@@ -217,7 +248,7 @@ export default class FindMyMousePreferences extends ExtensionPreferences {
         appearancePage.add(appearanceGroup);
 
         const bgColorRow = new Adw.ActionRow({
-            title: _('Background Color'),
+            title: _('Background color'),
             subtitle: _('Color of the spotlight backdrop'),
         });
         const bgColorButton = new Gtk.ColorButton({
@@ -226,18 +257,23 @@ export default class FindMyMousePreferences extends ExtensionPreferences {
             ),
             use_alpha: true,
         });
-        setAccessibleLabel(bgColorButton, _('Background Color'));
+        setAccessibleLabel(bgColorButton, _('Background color'));
         bgColorButton.connect('color-set', () => {
             const rgba = bgColorButton.get_rgba();
             const color = this._rgbaToHex(rgba);
             settings.set_string('background-color', color);
         });
+        settings.connect('changed::background-color', () => {
+            bgColorButton.set_rgba(
+                this._parseColor(settings.get_string('background-color')),
+            );
+        });
         bgColorRow.add_suffix(bgColorButton);
         appearanceGroup.add(bgColorRow);
 
         const radiusRow = new Adw.SpinRow({
-            title: _('Spotlight Radius (px)'),
-            subtitle: _('Radius of the circle (default: 100)'),
+            title: _('Spotlight radius'),
+            subtitle: _('Radius of the circle'),
             adjustment: new Gtk.Adjustment({
                 lower: 50,
                 upper: 500,
@@ -253,8 +289,8 @@ export default class FindMyMousePreferences extends ExtensionPreferences {
         appearanceGroup.add(radiusRow);
 
         const zoomRow = new Adw.SpinRow({
-            title: _('Spotlight Initial Zoom'),
-            subtitle: _('Starts big and shrinks (default: 9x)'),
+            title: _('Initial zoom'),
+            subtitle: _('Starts big and shrinks'),
             adjustment: new Gtk.Adjustment({
                 lower: 1,
                 upper: 20,
@@ -277,7 +313,7 @@ export default class FindMyMousePreferences extends ExtensionPreferences {
         appearancePage.add(ringGroup);
 
         const spotColorRow = new Adw.ActionRow({
-            title: _('Ring Color'),
+            title: _('Ring color'),
             subtitle: _('Color of the ring that outlines the spotlight circle'),
         });
         const spotColorButton = new Gtk.ColorButton({
@@ -286,17 +322,22 @@ export default class FindMyMousePreferences extends ExtensionPreferences {
             ),
             use_alpha: true,
         });
-        setAccessibleLabel(spotColorButton, _('Ring Color'));
+        setAccessibleLabel(spotColorButton, _('Ring color'));
         spotColorButton.connect('color-set', () => {
             const rgba = spotColorButton.get_rgba();
             const color = this._rgbaToHex(rgba);
             settings.set_string('spotlight-color', color);
         });
+        settings.connect('changed::spotlight-color', () => {
+            spotColorButton.set_rgba(
+                this._parseColor(settings.get_string('spotlight-color')),
+            );
+        });
         spotColorRow.add_suffix(spotColorButton);
         ringGroup.add(spotColorRow);
 
         const ringWidthRow = new Adw.SpinRow({
-            title: _('Ring Width (px)'),
+            title: _('Ring width'),
             subtitle: _('Thickness of the spotlight border circle'),
             adjustment: new Gtk.Adjustment({
                 lower: 0,
@@ -315,25 +356,37 @@ export default class FindMyMousePreferences extends ExtensionPreferences {
         // Reset to defaults
         const appearanceDefaultsGroup = new Adw.PreferencesGroup();
         appearancePage.add(appearanceDefaultsGroup);
+        const appearanceResetLabel = _('Reset appearance settings');
         const appearanceResetRow = new Adw.ActionRow({
-            title: _('Reset Appearance Settings to Defaults'),
+            title: appearanceResetLabel,
             subtitle: _('Restore default values'),
         });
         const appearanceResetButton = new Gtk.Button({
             label: _('Reset'),
             valign: Gtk.Align.CENTER,
         });
-        appearanceResetButton.add_css_class('destructive-action');
         appearanceResetButton.connect('clicked', () => {
-            settings.set_string('background-color', '#00000080');
-            settings.set_string('spotlight-color', '#FFFFFFCC');
-            settings.set_int('spotlight-radius', 100);
-            settings.set_double('spotlight-zoom', 9.0);
-            settings.set_int('spotlight-ring-width', 2);
-            bgColorButton.set_rgba(this._parseColor('#00000080'));
-            spotColorButton.set_rgba(this._parseColor('#FFFFFFCC'));
+            this._resetWithUndo(
+                settings,
+                window,
+                [
+                    'background-color',
+                    'spotlight-color',
+                    'spotlight-radius',
+                    'spotlight-zoom',
+                    'spotlight-ring-width',
+                ],
+                () => {
+                    settings.set_string('background-color', '#00000080');
+                    settings.set_string('spotlight-color', '#FFFFFFCC');
+                    settings.set_int('spotlight-radius', 100);
+                    settings.set_double('spotlight-zoom', 9.0);
+                    settings.set_int('spotlight-ring-width', 2);
+                },
+                appearanceResetLabel,
+            );
         });
-        setAccessibleLabel(appearanceResetButton, _('Reset Appearance Settings to Defaults'));
+        setAccessibleLabel(appearanceResetButton, appearanceResetLabel);
         appearanceResetRow.add_suffix(appearanceResetButton);
         appearanceDefaultsGroup.add(appearanceResetRow);
 
@@ -351,10 +404,8 @@ export default class FindMyMousePreferences extends ExtensionPreferences {
         timingPage.add(timingGroup);
 
         const idleRow = new Adw.SpinRow({
-            title: _('Idle Timeout (ms)'),
-            subtitle: _(
-                'Wait time after mouse stops before hiding (default: 1000ms)',
-            ),
+            title: _('Idle timeout'),
+            subtitle: _('Wait time after the pointer stops before hiding'),
             adjustment: new Gtk.Adjustment({
                 lower: 100,
                 upper: 10000,
@@ -370,8 +421,8 @@ export default class FindMyMousePreferences extends ExtensionPreferences {
         timingGroup.add(idleRow);
 
         const durationRow = new Adw.SpinRow({
-            title: _('Animation Duration (ms)'),
-            subtitle: _('Fade-out animation time (default: 500ms)'),
+            title: _('Animation duration'),
+            subtitle: _('Fade-out animation time'),
             adjustment: new Gtk.Adjustment({
                 lower: 100,
                 upper: 5000,
@@ -387,20 +438,28 @@ export default class FindMyMousePreferences extends ExtensionPreferences {
         timingGroup.add(durationRow);
 
         // Reset to defaults
+        const timingResetLabel = _('Reset timing settings');
         const timingResetRow = new Adw.ActionRow({
-            title: _('Reset Timing Settings to Defaults'),
+            title: timingResetLabel,
             subtitle: _('Restore default values'),
         });
         const timingResetButton = new Gtk.Button({
             label: _('Reset'),
             valign: Gtk.Align.CENTER,
         });
-        timingResetButton.add_css_class('destructive-action');
         timingResetButton.connect('clicked', () => {
-            settings.set_int('idle-timeout', 1000);
-            settings.set_int('animation-duration', 500);
+            this._resetWithUndo(
+                settings,
+                window,
+                ['idle-timeout', 'animation-duration'],
+                () => {
+                    settings.set_int('idle-timeout', 1000);
+                    settings.set_int('animation-duration', 500);
+                },
+                timingResetLabel,
+            );
         });
-        setAccessibleLabel(timingResetButton, _('Reset Timing Settings to Defaults'));
+        setAccessibleLabel(timingResetButton, timingResetLabel);
         timingResetRow.add_suffix(timingResetButton);
         timingGroup.add(timingResetRow);
 
@@ -486,7 +545,7 @@ export default class FindMyMousePreferences extends ExtensionPreferences {
         gestureGroup.add(fineTuneRow);
 
         const reversalsRow = new Adw.SpinRow({
-            title: _('Direction Changes'),
+            title: _('Direction changes'),
             subtitle: _('Direction changes required'),
             adjustment: new Gtk.Adjustment({
                 lower: 2,
@@ -503,7 +562,7 @@ export default class FindMyMousePreferences extends ExtensionPreferences {
         fineTuneRow.add_row(reversalsRow);
 
         const sweepRow = new Adw.SpinRow({
-            title: _('Sweep Distance (px)'),
+            title: _('Sweep distance'),
             subtitle: _('Minimum travel per sweep'),
             adjustment: new Gtk.Adjustment({
                 lower: 40,
@@ -520,7 +579,7 @@ export default class FindMyMousePreferences extends ExtensionPreferences {
         fineTuneRow.add_row(sweepRow);
 
         const windowRow = new Adw.SpinRow({
-            title: _('Gesture Window (ms)'),
+            title: _('Gesture window'),
             subtitle: _('Time allowed for the whole gesture'),
             adjustment: new Gtk.Adjustment({
                 lower: 400,
@@ -537,7 +596,7 @@ export default class FindMyMousePreferences extends ExtensionPreferences {
         fineTuneRow.add_row(windowRow);
 
         const settleRow = new Adw.SpinRow({
-            title: _('Settle Time (ms)'),
+            title: _('Settle time'),
             subtitle: _('Time allowed to stop after the last change'),
             adjustment: new Gtk.Adjustment({
                 lower: 80,
@@ -554,7 +613,7 @@ export default class FindMyMousePreferences extends ExtensionPreferences {
         fineTuneRow.add_row(settleRow);
 
         const cooldownRow = new Adw.SpinRow({
-            title: _('Cooldown (ms)'),
+            title: _('Cooldown'),
             subtitle: _('Ignore further gestures after activation'),
             adjustment: new Gtk.Adjustment({
                 lower: 500,
@@ -640,18 +699,17 @@ export default class FindMyMousePreferences extends ExtensionPreferences {
                 margin_top: 12,
                 margin_bottom: 12,
             });
-            const dialog = new Adw.MessageDialog({
-                transient_for: window,
-                modal: true,
+            const dialog = new Adw.AlertDialog({
                 heading: _('Try the Gesture'),
                 body: reason,
                 extra_child: instructions,
             });
-            dialog.add_response('close', _('Close'));
+            dialog.add_response('close', _('_Close'));
             dialog.set_default_response('close');
             dialog.set_close_response('close');
-            dialog.connect('response', () => dialog.destroy());
-            dialog.present();
+            dialog.connect('response', () => dialog.close());
+            dialog.present(window);
+            dialog.grab_focus();
         };
 
         const showPracticeDialog = (): void => {
@@ -678,20 +736,18 @@ export default class FindMyMousePreferences extends ExtensionPreferences {
             content.append(status);
             content.append(hints);
 
-            const dialog = new Adw.MessageDialog({
-                transient_for: window,
-                modal: true,
+            const dialog = new Adw.AlertDialog({
                 heading: _('Try the Gesture'),
                 body: _(
-                    'Gesture detection is live. The spotlight itself will not appear during practice — watch the progress ring near the pointer. Text-only steps are available below if you prefer.',
+                    'Gesture detection is live. The spotlight itself will not appear during practice — watch the progress ring near the pointer. Text-only steps are available below.',
                 ),
                 extra_child: content,
             });
-            dialog.add_response('retry', _('Retry'));
-            dialog.add_response('text', _('Text-only steps'));
-            dialog.add_response('done', _('Done'));
-            dialog.set_default_response('done');
-            dialog.set_close_response('done');
+            dialog.add_response('cancel', _('_Cancel'));
+            dialog.add_response('retry', _('_Retry'));
+            dialog.add_response('text', _('_Show text-only steps…'));
+            dialog.set_default_response('cancel');
+            dialog.set_close_response('cancel');
 
             const setStatus = (message: string, outcome: string | null = null): void => {
                 if (!active)
@@ -716,7 +772,7 @@ export default class FindMyMousePreferences extends ExtensionPreferences {
                 active = false;
                 client.cancel();
                 client.destroy();
-                dialog.destroy();
+                dialog.close();
             };
 
             const useTextOnly = (reason: string): void => {
@@ -768,7 +824,7 @@ export default class FindMyMousePreferences extends ExtensionPreferences {
                     return;
                 if (result.success) {
                     setStatus(
-                        _("That's the gesture — press <Super>f or wave to reveal the pointer."),
+                        _("That's the gesture — press Super+F or wave to reveal the pointer."),
                         'success',
                     );
                 } else {
@@ -781,7 +837,9 @@ export default class FindMyMousePreferences extends ExtensionPreferences {
 
             dialog.connect('response', (_source, response) => {
                 if (response === 'retry') {
-                    void startAttempt();
+                    // AlertDialog closes on any response; reopen a fresh session.
+                    closeLive();
+                    showPracticeDialog();
                 } else if (response === 'text') {
                     useTextOnly(chosenStepsMessage);
                 } else {
@@ -790,7 +848,8 @@ export default class FindMyMousePreferences extends ExtensionPreferences {
             });
             dialog.connect('destroy', closeLive);
 
-            dialog.present();
+            dialog.present(window);
+            dialog.grab_focus();
 
             void (async () => {
                 try {
@@ -812,10 +871,10 @@ export default class FindMyMousePreferences extends ExtensionPreferences {
             subtitle: _('Try the gesture with live feedback'),
         });
         const practiceButton = new Gtk.Button({
-            label: _('Practice'),
+            label: _('Practice gesture…'),
             valign: Gtk.Align.CENTER,
         });
-        setAccessibleLabel(practiceButton, _('Practice'));
+        setAccessibleLabel(practiceButton, _('Practice gesture…'));
         practiceButton.connect('clicked', showPracticeDialog);
         practiceRow.add_suffix(practiceButton);
         gestureGroup.add(practiceRow);
@@ -823,26 +882,36 @@ export default class FindMyMousePreferences extends ExtensionPreferences {
         // Reset to defaults
         const gestureResetGroup = new Adw.PreferencesGroup();
         gesturePage.add(gestureResetGroup);
+        const gestureResetLabel = _('Reset mouse gesture settings');
         const gestureResetRow = new Adw.ActionRow({
-            title: _('Reset Mouse Gesture Settings to Defaults'),
+            title: gestureResetLabel,
             subtitle: _('Restore default values'),
         });
         const gestureResetButton = new Gtk.Button({
             label: _('Reset'),
             valign: Gtk.Align.CENTER,
         });
-        gestureResetButton.add_css_class('destructive-action');
         gestureResetButton.connect('clicked', () => {
-            applyGesturePreset(DEFAULT_GESTURE_PRESET);
-            settings.set_boolean('gesture-ignore-buttons', true);
-            settings.set_boolean('gesture-ignore-fullscreen', true);
-            settings.set_boolean('gesture-sound', false);
-            syncGesturePreset();
+            this._resetWithUndo(
+                settings,
+                window,
+                [
+                    ...GESTURE_NUMERIC_KEYS,
+                    'gesture-ignore-buttons',
+                    'gesture-ignore-fullscreen',
+                    'gesture-sound',
+                ],
+                () => {
+                    applyGesturePreset(DEFAULT_GESTURE_PRESET);
+                    settings.set_boolean('gesture-ignore-buttons', true);
+                    settings.set_boolean('gesture-ignore-fullscreen', true);
+                    settings.set_boolean('gesture-sound', false);
+                    syncGesturePreset();
+                },
+                gestureResetLabel,
+            );
         });
-        setAccessibleLabel(
-            gestureResetButton,
-            _('Reset Mouse Gesture Settings to Defaults'),
-        );
+        setAccessibleLabel(gestureResetButton, gestureResetLabel);
         gestureResetRow.add_suffix(gestureResetButton);
         gestureResetGroup.add(gestureResetRow);
 
@@ -861,14 +930,13 @@ export default class FindMyMousePreferences extends ExtensionPreferences {
         const versionRow = new Adw.ActionRow({
             title: _('Version'),
             subtitle: String(this.metadata['version-name'] ?? '1.0.0'),
-            icon_name: 'software-update-available-symbolic',
             activatable: false,
         });
         aboutGroup.add(versionRow);
 
         const websiteRow = new Adw.ActionRow({
             title: _('Website'),
-            subtitle: 'github.com/herve-brun/find-my-mouse-example.com',
+            subtitle: _('GitHub project'),
             icon_name: 'web-browser-symbolic',
             activatable: true,
         });
@@ -897,13 +965,13 @@ export default class FindMyMousePreferences extends ExtensionPreferences {
         aboutPage.add(logGroup);
 
         const logLevelRow = new Adw.ComboRow({
-            title: _('Log Level'),
+            title: _('Log level'),
             subtitle: _('Set the maximum log level to display'),
             model: Gtk.StringList.new([
-                _('Errors Only'),
-                _('Warnings and Errors'),
-                _('Info and Above'),
-                _('Debug (Verbose)'),
+                _('Errors only'),
+                _('Warnings and errors'),
+                _('Info and above'),
+                _('Debug (verbose)'),
             ]),
         });
 
@@ -929,26 +997,92 @@ export default class FindMyMousePreferences extends ExtensionPreferences {
         logLevelRow.connect('notify::selected', () => {
             setLogLevel(levels[logLevelRow.selected]);
         });
+        settings.connect('changed::log-level', () => {
+            setLogLevel(settings.get_int('log-level'));
+        });
 
         logGroup.add(logLevelRow);
 
         // Inline reset for logging settings
+        const logResetLabel = _('Reset logging');
         const logResetRow = new Adw.ActionRow({
-            title: _('Reset Logging to Defaults'),
+            title: logResetLabel,
             subtitle: _('Restore the default log level'),
         });
         const logResetButton = new Gtk.Button({
             label: _('Reset'),
             valign: Gtk.Align.CENTER,
         });
-        logResetButton.add_css_class('destructive-action');
         logResetButton.connect('clicked', () => {
-            settings.set_int('log-level', 2);
-            setLogLevel(LogLevel.INFO);
+            this._resetWithUndo(
+                settings,
+                window,
+                ['log-level'],
+                () => {
+                    settings.set_int('log-level', 2);
+                    setLogLevel(LogLevel.INFO);
+                },
+                logResetLabel,
+            );
         });
-        setAccessibleLabel(logResetButton, _('Reset Logging to Defaults'));
+        setAccessibleLabel(logResetButton, logResetLabel);
         logResetRow.add_suffix(logResetButton);
         logGroup.add(logResetRow);
+    }
+
+    /**
+     * Reset keys with an Undo toast. Older libadwaita releases do not expose
+     * add_toast() on PreferencesWindow, so fall back to a confirmation dialog.
+     */
+    private _resetWithUndo(
+        settings: Gio.Settings,
+        window: Adw.PreferencesWindow,
+        snapshotKeys: readonly string[],
+        applyDefaults: () => void,
+        label: string,
+    ): void {
+        // GVariant preserves the type of every key, including string arrays.
+        const snapshot = snapshotKeys.map(
+            (key) => [key, settings.get_value(key)] as const,
+        );
+        const restore = (): void => {
+            for (const [key, value] of snapshot)
+                settings.set_value(key, value);
+        };
+
+        if (typeof window.add_toast !== 'function') {
+            const dialog = new Adw.AlertDialog({
+                heading: label,
+                body: _('Your current values will be replaced with the defaults.'),
+            });
+            dialog.add_response('cancel', _('_Cancel'));
+            dialog.add_response('reset', _('_Reset'));
+            dialog.set_default_response('cancel');
+            dialog.set_close_response('cancel');
+            dialog.connect('response', (_source, response) => {
+                if (response === 'reset')
+                    applyDefaults();
+            });
+            dialog.present(window);
+            return;
+        }
+
+        applyDefaults();
+        this._undoToast?.dismiss();
+        const toast = new Adw.Toast({
+            title: label,
+            button_label: _('_Undo'),
+        });
+        toast.connect('button-clicked', () => {
+            restore();
+            this._undoToast = null;
+        });
+        toast.connect('dismissed', () => {
+            if (this._undoToast === toast)
+                this._undoToast = null;
+        });
+        window.add_toast(toast);
+        this._undoToast = toast;
     }
 
     private _shortcutAccelerator(settings: Gio.Settings): string {
@@ -960,18 +1094,11 @@ export default class FindMyMousePreferences extends ExtensionPreferences {
         parent: Gtk.Window,
         settings: Gio.Settings,
     ): void {
-        const dialog = new Gtk.Dialog({
-            title: _('Set Activation Shortcut'),
-            transient_for: parent,
-            modal: true,
-        });
         const box = new Gtk.Box({
             orientation: Gtk.Orientation.VERTICAL,
             spacing: 12,
-            margin_top: 24,
-            margin_bottom: 24,
-            margin_start: 24,
-            margin_end: 24,
+            margin_top: 12,
+            margin_bottom: 12,
         });
         box.append(new Gtk.Label({
             label: _('Press the new shortcut — modifiers appear as you type'),
@@ -985,19 +1112,23 @@ export default class FindMyMousePreferences extends ExtensionPreferences {
         const status = new Gtk.Label({ label: '', wrap: true });
         box.append(status);
         box.append(new Gtk.Label({
-            label: _('Escape to cancel, BackSpace to clear'),
+            label: _('Escape cancels, BackSpace clears the pending shortcut'),
             wrap: true,
         }));
-        dialog.get_content_area().append(box);
+
+        const dialog = new Adw.AlertDialog({
+            heading: _('Set Activation Shortcut'),
+            extra_child: box,
+        });
+        dialog.add_response('cancel', _('_Cancel'));
+        dialog.add_response('set', _('_Set'));
+        dialog.set_default_response('set');
+        dialog.set_close_response('cancel');
+        dialog.set_response_enabled('set', false);
 
         const pressedModifiers = new Set<Gdk.ModifierType>();
-        let closeId = 0;
-        dialog.connect('destroy', () => {
-            if (closeId) {
-                GLib.source_remove(closeId);
-                closeId = 0;
-            }
-        });
+        // null means no valid pending value; '' means "clear the shortcut".
+        let pending: string | null = null;
         const updatePreview = (keyval: number, mask: Gdk.ModifierType): void => {
             preview.set_accelerator(
                 Gtk.accelerator_name(
@@ -1015,12 +1146,17 @@ export default class FindMyMousePreferences extends ExtensionPreferences {
             state: Gdk.ModifierType,
         ) => {
             if (keyval === Gdk.KEY_Escape) {
-                dialog.destroy();
+                dialog.close();
                 return true;
             }
+            if (keyval === Gdk.KEY_Return || keyval === Gdk.KEY_KP_Enter)
+                return false; // Adw.AlertDialog activates its default response.
             if (keyval === Gdk.KEY_BackSpace) {
-                settings.set_strv('find-my-mouse-activation', []);
-                dialog.destroy();
+                pressedModifiers.clear();
+                pending = '';
+                preview.set_accelerator('');
+                status.label = _('Shortcut cleared — press Set to apply');
+                dialog.set_response_enabled('set', true);
                 return true;
             }
             const modifier = MODIFIER_KEY_MAP.find(([key]) => key === keyval);
@@ -1030,7 +1166,9 @@ export default class FindMyMousePreferences extends ExtensionPreferences {
                     0,
                     [...pressedModifiers].reduce((mask, flag) => mask | flag, 0),
                 );
+                pending = null;
                 status.label = '';
+                dialog.set_response_enabled('set', false);
                 return true;
             }
             if (LOCK_KEYS.includes(keyval))
@@ -1038,22 +1176,21 @@ export default class FindMyMousePreferences extends ExtensionPreferences {
             const mask = state & Gtk.accelerator_get_default_mod_mask();
             if (mask === 0) {
                 status.label = _('Include at least one modifier key');
+                pending = null;
+                dialog.set_response_enabled('set', false);
                 return true;
             }
             const accelerator = Gtk.accelerator_name(keyval, mask);
             if (!accelerator) {
                 status.label = _('That key cannot be used as a shortcut');
+                pending = null;
+                dialog.set_response_enabled('set', false);
                 return true;
             }
             updatePreview(keyval, mask);
+            pending = accelerator;
             status.label = '';
-            settings.set_strv('find-my-mouse-activation', [accelerator]);
-            // Keep the completed sequence visible for a moment before closing.
-            closeId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 600, () => {
-                closeId = 0;
-                dialog.destroy();
-                return GLib.SOURCE_REMOVE;
-            });
+            dialog.set_response_enabled('set', true);
             return true;
         });
         controller.connect('key-released', (
@@ -1063,25 +1200,39 @@ export default class FindMyMousePreferences extends ExtensionPreferences {
             _state: Gdk.ModifierType,
         ) => {
             const modifier = MODIFIER_KEY_MAP.find(([key]) => key === keyval);
-            if (!modifier || closeId)
+            if (!modifier)
                 return true;
             pressedModifiers.delete(modifier[1]);
-            updatePreview(
-                0,
-                [...pressedModifiers].reduce((mask, flag) => mask | flag, 0),
-            );
+            if (pending === null) {
+                updatePreview(
+                    0,
+                    [...pressedModifiers].reduce((mask, flag) => mask | flag, 0),
+                );
+            }
             return true;
         });
         dialog.add_controller(controller);
-        dialog.show();
+        dialog.connect('response', (_source, response) => {
+            if (response === 'set' && pending !== null)
+                settings.set_strv(
+                    'find-my-mouse-activation',
+                    pending ? [pending] : [],
+                );
+        });
+        dialog.present(parent);
+        dialog.grab_focus();
     }
 
     _showAboutDialog(parent: Gtk.Window): void {
+        const iconPath = this.dir
+            .get_child('assets')
+            .get_child('find-my-mouse.svg')
+            .get_path();
         const dialog = new Adw.AboutWindow({
             transient_for: parent,
             modal: true,
             application_name: _('Find My Mouse'),
-            application_icon: 'input-mouse-symbolic',
+            application_icon: iconPath ?? 'input-mouse-symbolic',
             version: String(this.metadata['version-name'] ?? '1.0.0'),
             developer_name: 'Hervé Brun',
             copyright: '© 2026 Hervé Brun',
