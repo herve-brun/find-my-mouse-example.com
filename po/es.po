@@ -8,8 +8,8 @@ msgstr ""
 "Project-Id-Version: Find My Mouse 1.0.0\n"
 "Report-Msgid-Bugs-To: https://github.com/herve-brun/find-my-mouse-"
 "example.com/issues\n"
-"POT-Creation-Date: 2026-11-24 17:53+0100\n"
-"PO-Revision-Date: 2026-11-24 14:53+0100\n"
+"POT-Creation-Date: 2026-11-26 10:42+0100\n"
+"PO-Revision-Date: 2026-11-26 00:00+0100\n"
 "Last-Translator: Find My Mouse contributors\n"
 "Language-Team: Spanish\n"
 "Language: es\n"
@@ -30,179 +30,177 @@ msgstr "Activación"
 msgid "Configure how Find My Mouse is activated"
 msgstr "Configura cómo se activa Find My Mouse"
 
-#: dist/prefs.js:68
-msgid "Activation Method"
-msgstr "Método de activación"
-
 #: dist/prefs.js:69
-msgid "Shortcut and mouse gesture both work in the first mode"
-msgstr "En el primer modo funcionan tanto el atajo como el gesto del ratón"
+msgid "Shortcut and gesture"
+msgstr "Atajo y gesto"
 
-#: dist/prefs.js:71
-msgid "Shortcut + Mouse Gesture"
-msgstr "Atajo + gesto del ratón"
+#: dist/prefs.js:70
+msgid "Show the spotlight from the keyboard or with a gesture"
+msgstr "Mostrar el foco desde el teclado o con un gesto"
 
-#: dist/prefs.js:72
-msgid "Always Visible"
+#: dist/prefs.js:78
+msgid "Always visible"
 msgstr "Siempre visible"
 
-#: dist/prefs.js:84
+#: dist/prefs.js:79
+msgid "Keep the spotlight on screen"
+msgstr "Mantener el foco en pantalla"
+
+#: dist/prefs.js:88
 msgid "Activation Shortcut"
 msgstr "Atajo de activación"
 
-#: dist/prefs.js:85
-msgid "Toggle the spotlight from the keyboard"
-msgstr "Alternar el foco desde el teclado"
+#: dist/prefs.js:89
+msgid "Show the spotlight from the keyboard"
+msgstr "Mostrar el foco desde el teclado"
 
-#: dist/prefs.js:93
-msgid "Change"
-msgstr "Cambiar"
+#: dist/prefs.js:97
+msgid "Change…"
+msgstr "Cambiar…"
 
-#: dist/prefs.js:96
+#: dist/prefs.js:100
 msgid "Change Activation Shortcut"
 msgstr "Cambiar el atajo de activación"
 
-#: dist/prefs.js:112
-msgid "Unavailable in Always Visible mode: the spotlight is already on screen"
-msgstr "No disponible en el modo Siempre visible: el foco ya está en pantalla"
+#: dist/prefs.js:116
+msgid "Unavailable in always visible mode: the spotlight is already on screen"
+msgstr "No disponible en el modo siempre visible: el foco ya está en pantalla"
 
-#: dist/prefs.js:113
+#: dist/prefs.js:117
 msgid ""
 "Shortcut and gesture both activate the spotlight; change the shortcut here"
 msgstr "El atajo y el gesto activan el foco; cambia el atajo aquí"
 
-#: dist/prefs.js:126
+#: dist/prefs.js:145
 msgid "Disable During Game Mode"
 msgstr "Desactivar durante el modo juego"
 
-#: dist/prefs.js:127
+#: dist/prefs.js:146
 msgid "Keep spotlight off while Game Mode is active"
 msgstr "Mantener el foco desactivado mientras el modo juego está activo"
 
-#: dist/prefs.js:132
+#: dist/prefs.js:151
 msgid "Multi-Monitor"
 msgstr "Multimonitor"
 
-#: dist/prefs.js:133
+#: dist/prefs.js:152
 msgid "Settings for multi-monitor setups"
 msgstr "Ajustes para configuraciones multimonitor"
 
-#: dist/prefs.js:137
+#: dist/prefs.js:156
 msgid "Show on All Monitors"
 msgstr "Mostrar en todos los monitores"
 
-#: dist/prefs.js:138
+#: dist/prefs.js:157
 msgid "When enabled, spotlight covers all connected monitors"
 msgstr "Si se activa, el foco cubre todos los monitores conectados"
 
-#: dist/prefs.js:146 dist/prefs.js:159
-msgid "Reset General Settings to Defaults"
-msgstr "Restablecer los ajustes generales a los valores predeterminados"
+#: dist/prefs.js:164
+msgid "Reset general settings"
+msgstr "Restablecer los ajustes generales"
 
-#: dist/prefs.js:147 dist/prefs.js:249 dist/prefs.js:304 dist/prefs.js:646
+#: dist/prefs.js:167 dist/prefs.js:281 dist/prefs.js:342 dist/prefs.js:686
 msgid "Restore default values"
 msgstr "Restablecer los valores predeterminados"
 
-#: dist/prefs.js:150 dist/prefs.js:252 dist/prefs.js:307 dist/prefs.js:649
-#: dist/prefs.js:735
+#: dist/prefs.js:170 dist/prefs.js:284 dist/prefs.js:345 dist/prefs.js:689
+#: dist/prefs.js:784
 msgid "Reset"
 msgstr "Restablecer"
 
-#: dist/prefs.js:164
+#: dist/prefs.js:189
 msgid "Appearance"
 msgstr "Apariencia"
 
-#: dist/prefs.js:170
+#: dist/prefs.js:195
 msgid "Customize the spotlight appearance"
 msgstr "Personaliza la apariencia del foco"
 
-#: dist/prefs.js:174 dist/prefs.js:181
-msgid "Background Color"
+#: dist/prefs.js:199 dist/prefs.js:206
+msgid "Background color"
 msgstr "Color de fondo"
 
-#: dist/prefs.js:175
+#: dist/prefs.js:200
 msgid "Color of the spotlight backdrop"
 msgstr "Color del fondo del foco"
 
-#: dist/prefs.js:190
-msgid "Spotlight Radius (px)"
-msgstr "Radio del foco (px)"
+#: dist/prefs.js:218
+msgid "Spotlight radius"
+msgstr "Radio del foco"
 
-#: dist/prefs.js:191
-msgid "Radius of the circle (default: 100)"
-msgstr "Radio del círculo (predeterminado: 100)"
+#: dist/prefs.js:219
+msgid "Radius of the circle"
+msgstr "Radio del círculo"
 
-#: dist/prefs.js:201
-msgid "Spotlight Initial Zoom"
-msgstr "Zoom inicial del foco"
+#: dist/prefs.js:229
+msgid "Initial zoom"
+msgstr "Zoom inicial"
 
-#: dist/prefs.js:202
-msgid "Starts big and shrinks (default: 9x)"
-msgstr "Empieza grande y se reduce (predeterminado: 9×)"
+#: dist/prefs.js:230
+msgid "Starts big and shrinks"
+msgstr "Empieza grande y se reduce"
 
-#: dist/prefs.js:213
+#: dist/prefs.js:241
 msgid "Ring"
 msgstr "Anillo"
 
-#: dist/prefs.js:214
+#: dist/prefs.js:242
 msgid "Configure the spotlight ring border"
 msgstr "Configura el borde del anillo del foco"
 
-#: dist/prefs.js:218 dist/prefs.js:225
-msgid "Ring Color"
+#: dist/prefs.js:246 dist/prefs.js:253
+msgid "Ring color"
 msgstr "Color del anillo"
 
-#: dist/prefs.js:219
+#: dist/prefs.js:247
 msgid "Color of the ring that outlines the spotlight circle"
 msgstr "Color del anillo que delimita el círculo del foco"
 
-#: dist/prefs.js:234
-msgid "Ring Width (px)"
-msgstr "Grosor del anillo (px)"
+#: dist/prefs.js:265
+msgid "Ring width"
+msgstr "Grosor del anillo"
 
-#: dist/prefs.js:235
+#: dist/prefs.js:266
 msgid "Thickness of the spotlight border circle"
 msgstr "Grosor del círculo que bordea el foco"
 
-#: dist/prefs.js:248 dist/prefs.js:265
-msgid "Reset Appearance Settings to Defaults"
-msgstr "Restablecer los ajustes de apariencia a los valores predeterminados"
+#: dist/prefs.js:278
+msgid "Reset appearance settings"
+msgstr "Restablecer los ajustes de apariencia"
 
-#: dist/prefs.js:270 dist/prefs.js:275
+#: dist/prefs.js:307 dist/prefs.js:312
 msgid "Timing"
 msgstr "Temporización"
 
-#: dist/prefs.js:276
+#: dist/prefs.js:313
 msgid "Configure timeouts and delays"
 msgstr "Configura los tiempos de espera y los retrasos"
 
-#: dist/prefs.js:280
-msgid "Idle Timeout (ms)"
-msgstr "Tiempo de inactividad (ms)"
+#: dist/prefs.js:317
+msgid "Idle timeout"
+msgstr "Tiempo de inactividad"
 
-#: dist/prefs.js:281
-msgid "Wait time after mouse stops before hiding (default: 1000ms)"
-msgstr ""
-"Tiempo de espera tras detener el ratón antes de ocultar (predeterminado: "
-"1000 ms)"
+#: dist/prefs.js:318
+msgid "Wait time after the pointer stops before hiding"
+msgstr "Tiempo de espera tras detener el puntero antes de ocultar"
 
-#: dist/prefs.js:291
-msgid "Animation Duration (ms)"
-msgstr "Duración de la animación (ms)"
+#: dist/prefs.js:328
+msgid "Animation duration"
+msgstr "Duración de la animación"
 
-#: dist/prefs.js:292
-msgid "Fade-out animation time (default: 500ms)"
-msgstr "Duración de la animación de desvanecimiento (predeterminado: 500 ms)"
+#: dist/prefs.js:329
+msgid "Fade-out animation time"
+msgstr "Duración de la animación de desvanecimiento"
 
-#: dist/prefs.js:303 dist/prefs.js:315
-msgid "Reset Timing Settings to Defaults"
-msgstr "Restablecer los ajustes de temporización a los valores predeterminados"
+#: dist/prefs.js:339
+msgid "Reset timing settings"
+msgstr "Restablecer los ajustes de temporización"
 
-#: dist/prefs.js:320 dist/prefs.js:325
+#: dist/prefs.js:359 dist/prefs.js:364
 msgid "Mouse Gesture"
 msgstr "Gesto del ratón"
 
-#: dist/prefs.js:326
+#: dist/prefs.js:365
 msgid ""
 "Move the pointer sideways about a hand's width, then stop. The spotlight "
 "appears when you stop."
@@ -210,123 +208,123 @@ msgstr ""
 "Mueve el puntero lateralmente aproximadamente el ancho de una mano y luego "
 "deténlo. El foco aparece al detenerte."
 
-#: dist/prefs.js:330
+#: dist/prefs.js:369
 msgid "Gesture effort"
 msgstr "Intensidad del gesto"
 
-#: dist/prefs.js:331
+#: dist/prefs.js:370
 msgid "Standard is the default"
 msgstr "« Estándar » es el valor predeterminado"
 
-#: dist/prefs.js:333
+#: dist/prefs.js:372
 msgid "Light"
 msgstr "Ligero"
 
-#: dist/prefs.js:334
+#: dist/prefs.js:373
 msgid "Standard"
 msgstr "Estándar"
 
-#: dist/prefs.js:335
+#: dist/prefs.js:374
 msgid "Firm"
 msgstr "Firme"
 
-#: dist/prefs.js:336
+#: dist/prefs.js:375
 msgid "Custom"
 msgstr "Personalizado"
 
-#: dist/prefs.js:388
+#: dist/prefs.js:427
 msgid "Fine-tune gesture"
 msgstr "Ajustar finamente el gesto"
 
-#: dist/prefs.js:389
+#: dist/prefs.js:428
 msgid "Adjust each threshold individually"
 msgstr "Ajusta cada umbral individualmente"
 
-#: dist/prefs.js:393
-msgid "Direction Changes"
+#: dist/prefs.js:432
+msgid "Direction changes"
 msgstr "Cambios de dirección"
 
-#: dist/prefs.js:394
+#: dist/prefs.js:433
 msgid "Direction changes required"
 msgstr "Cambios de dirección requeridos"
 
-#: dist/prefs.js:404
-msgid "Sweep Distance (px)"
-msgstr "Distancia de barrido (px)"
+#: dist/prefs.js:443
+msgid "Sweep distance"
+msgstr "Distancia de barrido"
 
-#: dist/prefs.js:405
+#: dist/prefs.js:444
 msgid "Minimum travel per sweep"
 msgstr "Recorrido mínimo por barrido"
 
-#: dist/prefs.js:415
-msgid "Gesture Window (ms)"
-msgstr "Ventana del gesto (ms)"
+#: dist/prefs.js:454
+msgid "Gesture window"
+msgstr "Ventana del gesto"
 
-#: dist/prefs.js:416
+#: dist/prefs.js:455
 msgid "Time allowed for the whole gesture"
 msgstr "Tiempo permitido para todo el gesto"
 
-#: dist/prefs.js:426
-msgid "Settle Time (ms)"
-msgstr "Tiempo de parada (ms)"
+#: dist/prefs.js:465
+msgid "Settle time"
+msgstr "Tiempo de parada"
 
-#: dist/prefs.js:427
+#: dist/prefs.js:466
 msgid "Time allowed to stop after the last change"
 msgstr "Tiempo permitido para detenerse tras el último cambio"
 
-#: dist/prefs.js:437
-msgid "Cooldown (ms)"
-msgstr "Enfriamiento (ms)"
+#: dist/prefs.js:476
+msgid "Cooldown"
+msgstr "Enfriamiento"
 
-#: dist/prefs.js:438
+#: dist/prefs.js:477
 msgid "Ignore further gestures after activation"
 msgstr "Ignorar gestos posteriores tras la activación"
 
-#: dist/prefs.js:448
+#: dist/prefs.js:487
 msgid "Ignore Mouse Buttons"
 msgstr "Ignorar botones del ratón"
 
-#: dist/prefs.js:449
+#: dist/prefs.js:488
 msgid "Skip gestures while a mouse button is held down"
 msgstr "Ignorar gestos mientras se mantiene pulsado un botón del ratón"
 
-#: dist/prefs.js:454
+#: dist/prefs.js:493
 msgid "Ignore Fullscreen Apps"
 msgstr "Ignorar aplicaciones a pantalla completa"
 
-#: dist/prefs.js:455
+#: dist/prefs.js:494
 msgid "Skip gestures in fullscreen apps such as games"
 msgstr "Ignorar gestos en aplicaciones a pantalla completa como los juegos"
 
-#: dist/prefs.js:460
+#: dist/prefs.js:499
 msgid "Confirmation Sound"
 msgstr "Sonido de confirmación"
 
-#: dist/prefs.js:461
+#: dist/prefs.js:500
 msgid "Play a short sound when the spotlight appears"
 msgstr "Reproducir un sonido breve cuando aparece el foco"
 
-#: dist/prefs.js:466
+#: dist/prefs.js:505
 #, javascript-format
 msgid "Wave the pointer sideways with %s direction changes."
 msgstr "Agita el puntero lateralmente con %s cambios de dirección."
 
-#: dist/prefs.js:467
+#: dist/prefs.js:506
 #, javascript-format
 msgid "Cover at least %s px on each sweep."
 msgstr "Recorre al menos %s px en cada barrido."
 
-#: dist/prefs.js:468
+#: dist/prefs.js:507
 #, javascript-format
 msgid "Stop within %s ms after the last change."
 msgstr "Detente en un plazo de %s ms tras el último cambio."
 
-#: dist/prefs.js:469
+#: dist/prefs.js:508
 #, javascript-format
 msgid "Finish the whole gesture within %s ms."
 msgstr "Termina todo el gesto en un plazo de %s ms."
 
-#: dist/prefs.js:471
+#: dist/prefs.js:510
 msgid ""
 "Live practice is not available right now, so nothing is being detected. "
 "Follow these steps at your own pace."
@@ -334,178 +332,202 @@ msgstr ""
 "La práctica en directo no está disponible en este momento, por lo que no se "
 "detecta nada. Sigue estos pasos a tu ritmo."
 
-#: dist/prefs.js:472
+#: dist/prefs.js:511
 msgid "Live detection has stopped. Follow these steps at your own pace."
 msgstr "La detección en directo se ha detenido. Sigue estos pasos a tu ritmo."
 
-#: dist/prefs.js:484 dist/prefs.js:519
+#: dist/prefs.js:521 dist/prefs.js:555
 msgid "Try the Gesture"
 msgstr "Probar el gesto"
 
-#: dist/prefs.js:488
-msgid "Close"
-msgstr "Cerrar"
+#: dist/prefs.js:525
+msgid "_Close"
+msgstr "_Cerrar"
 
-#: dist/prefs.js:499
+#: dist/prefs.js:537
 msgid "Connecting to the shell extension…"
 msgstr "Conectando con la extensión del shell…"
 
-#: dist/prefs.js:520
+#: dist/prefs.js:556
 msgid ""
 "Gesture detection is live. The spotlight itself will not appear during "
 "practice — watch the progress ring near the pointer. Text-only steps are "
-"available below if you prefer."
-msgstr ""
-"La detección de gestos está activa. El foco no aparecerá durante la "
-"práctica: observa el anillo de progreso junto al puntero. Si lo prefieres, "
-"abajo tienes los pasos en texto."
+"available below."
+msgstr "La detección del gesto está activa. El foco no aparecerá durante la práctica: observa el anillo de progreso junto al puntero. Hay pasos en texto disponibles a continuación."
 
-#: dist/prefs.js:523
-msgid "Retry"
-msgstr "Reintentar"
+#: dist/prefs.js:559 dist/prefs.js:813 dist/prefs.js:871
+msgid "_Cancel"
+msgstr "_Cancelar"
 
-#: dist/prefs.js:524
-msgid "Text-only steps"
-msgstr "Pasos en texto"
+#: dist/prefs.js:560
+msgid "_Retry"
+msgstr "_Reintentar"
 
-#: dist/prefs.js:525
-msgid "Done"
-msgstr "Hecho"
+#: dist/prefs.js:561
+msgid "_Show text-only steps…"
+msgstr "Mostrar los pasos en _texto…"
 
-#: dist/prefs.js:559
+#: dist/prefs.js:595
 msgid "Starting practice…"
 msgstr "Iniciando la práctica…"
 
-#: dist/prefs.js:565
+#: dist/prefs.js:601
 msgid "Waiting for the gesture…"
 msgstr "Esperando el gesto…"
 
-#: dist/prefs.js:582
+#: dist/prefs.js:618
 msgid "Started — now wave"
 msgstr "Empezado: agita ahora"
 
-#: dist/prefs.js:585
+#: dist/prefs.js:621
 #, javascript-format
 msgid "%s/%s direction changes"
 msgstr "%s/%s cambios de dirección"
 
-#: dist/prefs.js:588
+#: dist/prefs.js:624
 msgid "Now stop"
 msgstr "Detente ahora"
 
-#: dist/prefs.js:595
-msgid "That's the gesture — press <Super>f or wave to reveal the pointer."
-msgstr "Ese es el gesto: pulsa <Super>f o agita el puntero para revelarlo."
+#: dist/prefs.js:631
+msgid "That's the gesture — press Super+F or wave to reveal the pointer."
+msgstr "Ese es el gesto: pulsa Super+F o agita el puntero para revelarlo."
 
-#: dist/prefs.js:598
+#: dist/prefs.js:634
 msgid "Stay horizontal, move faster, cover enough distance, then stop sharply."
 msgstr ""
 "Mantente horizontal, muévete más rápido, recorre suficiente distancia y "
 "detente con decisión."
 
-#: dist/prefs.js:630 dist/prefs.js:634 dist/prefs.js:637
+#: dist/prefs.js:669
 msgid "Practice"
 msgstr "Práctica"
 
-#: dist/prefs.js:631
+#: dist/prefs.js:670
 msgid "Try the gesture with live feedback"
 msgstr "Prueba el gesto con comentarios en directo"
 
-#: dist/prefs.js:645 dist/prefs.js:660
-msgid "Reset Mouse Gesture Settings to Defaults"
-msgstr ""
-"Restablecer los ajustes del gesto del ratón a los valores predeterminados"
+#: dist/prefs.js:673 dist/prefs.js:676
+msgid "Practice gesture…"
+msgstr "Practicar el gesto…"
 
-#: dist/prefs.js:665 dist/prefs.js:670
+#: dist/prefs.js:683
+msgid "Reset mouse gesture settings"
+msgstr "Restablecer los ajustes del gesto del ratón"
+
+#: dist/prefs.js:711 dist/prefs.js:716
 msgid "About"
 msgstr "Acerca de"
 
-#: dist/prefs.js:674
+#: dist/prefs.js:720
 msgid "Version"
 msgstr "Versión"
 
-#: dist/prefs.js:681
+#: dist/prefs.js:726
 msgid "Website"
 msgstr "Sitio web"
 
-#: dist/prefs.js:691
+#: dist/prefs.js:727
+msgid "GitHub project"
+msgstr "Proyecto en GitHub"
+
+#: dist/prefs.js:736
 msgid "Credits and License"
 msgstr "Créditos y licencia"
 
-#: dist/prefs.js:692
+#: dist/prefs.js:737
 msgid "View credits, license, and release notes"
 msgstr "Ver los créditos, la licencia y las notas de la versión"
 
-#: dist/prefs.js:700
+#: dist/prefs.js:745
 msgid "Logging"
 msgstr "Registro"
 
-#: dist/prefs.js:701
+#: dist/prefs.js:746
 msgid "Configure extension logging verbosity"
 msgstr "Configura el nivel de detalle del registro de la extensión"
 
-#: dist/prefs.js:705
-msgid "Log Level"
+#: dist/prefs.js:750
+msgid "Log level"
 msgstr "Nivel de registro"
 
-#: dist/prefs.js:706
+#: dist/prefs.js:751
 msgid "Set the maximum log level to display"
 msgstr "Establece el nivel máximo que se mostrará"
 
-#: dist/prefs.js:708
-msgid "Errors Only"
+#: dist/prefs.js:753
+msgid "Errors only"
 msgstr "Solo errores"
 
-#: dist/prefs.js:709
-msgid "Warnings and Errors"
+#: dist/prefs.js:754
+msgid "Warnings and errors"
 msgstr "Advertencias y errores"
 
-#: dist/prefs.js:710
-msgid "Info and Above"
+#: dist/prefs.js:755
+msgid "Info and above"
 msgstr "Información y superior"
 
-#: dist/prefs.js:711
-msgid "Debug (Verbose)"
-msgstr "Depuración (detallado)"
+#: dist/prefs.js:756
+msgid "Debug (verbose)"
+msgstr "Depuración (detallada)"
 
-#: dist/prefs.js:731 dist/prefs.js:743
-msgid "Reset Logging to Defaults"
-msgstr "Restablecer el registro a los valores predeterminados"
+#: dist/prefs.js:778
+msgid "Reset logging"
+msgstr "Restablecer el registro"
 
-#: dist/prefs.js:732
+#: dist/prefs.js:781
 msgid "Restore the default log level"
 msgstr "Restablecer el nivel de registro predeterminado"
 
-#: dist/prefs.js:753
-msgid "Set Activation Shortcut"
-msgstr "Establecer el atajo de activación"
+#: dist/prefs.js:811
+msgid "Your current values will be replaced with the defaults."
+msgstr "Tus valores actuales se sustituirán por los valores predeterminados."
 
-#: dist/prefs.js:766
+#: dist/prefs.js:814
+msgid "_Reset"
+msgstr "_Restablecer"
+
+#: dist/prefs.js:828
+msgid "_Undo"
+msgstr "_Deshacer"
+
+#: dist/prefs.js:853
 msgid "Press the new shortcut — modifiers appear as you type"
 msgstr "Pulsa el nuevo atajo; los modificadores aparecen mientras escribes"
 
-#: dist/prefs.js:777
-msgid "Escape to cancel, BackSpace to clear"
-msgstr "Escape para cancelar, Retroceso para borrar"
+#: dist/prefs.js:864
+msgid "Escape cancels, BackSpace clears the pending shortcut"
+msgstr "Escape cancela, Retroceso borra el atajo pendiente"
 
-#: dist/prefs.js:814
+#: dist/prefs.js:868
+msgid "Set Activation Shortcut"
+msgstr "Establecer el atajo de activación"
+
+#: dist/prefs.js:872
+msgid "_Set"
+msgstr "_Establecer"
+
+#: dist/prefs.js:894
+msgid "Shortcut cleared — press Set to apply"
+msgstr "Atajo borrado: pulsa Establecer para aplicar"
+
+#: dist/prefs.js:911
 msgid "Include at least one modifier key"
 msgstr "Incluye al menos una tecla modificadora"
 
-#: dist/prefs.js:819
+#: dist/prefs.js:918
 msgid "That key cannot be used as a shortcut"
 msgstr "Esa tecla no se puede usar como atajo"
 
-#: dist/prefs.js:848
+#: dist/prefs.js:955
 msgid "Find My Mouse"
 msgstr "Find My Mouse"
 
 #. Translators: replace this with your name and email, if you wish.
-#: dist/prefs.js:857
+#: dist/prefs.js:964
 msgid "translator-credits"
 msgstr ""
 
-#: dist/prefs.js:858
+#: dist/prefs.js:965
 msgid ""
 "A GNOME Shell extension that helps you locate your mouse cursor by creating "
 "a spotlight effect around it. Inspired by Microsoft PowerToys Find My Mouse "
@@ -515,11 +537,11 @@ msgstr ""
 "creando un efecto de foco a su alrededor. Inspirada en la función Find My "
 "Mouse de Microsoft PowerToys."
 
-#: dist/prefs.js:860
+#: dist/prefs.js:967
 msgid "What is new:"
 msgstr "Novedades:"
 
-#: dist/prefs.js:862
+#: dist/prefs.js:969
 msgid ""
 "Wave-and-stop mouse gesture: move the pointer sideways, then pause to reveal "
 "it."
@@ -527,17 +549,17 @@ msgstr ""
 "Gesto de agitar y detener: mueve el puntero lateralmente y haz una pausa "
 "para revelarlo."
 
-#: dist/prefs.js:863
+#: dist/prefs.js:970
 msgid "The keyboard shortcut is always available alongside the gesture."
 msgstr "El atajo de teclado siempre está disponible junto al gesto."
 
-#: dist/prefs.js:864
+#: dist/prefs.js:971
 msgid ""
 "A small progress ring follows the pointer while a gesture is in progress."
 msgstr ""
 "Un pequeño anillo de progreso sigue al puntero mientras se realiza un gesto."
 
-#: dist/prefs.js:865
+#: dist/prefs.js:972
 msgid ""
 "Light, Standard, and Firm presets, plus fine-grained controls for each "
 "threshold."
@@ -545,7 +567,7 @@ msgstr ""
 "Ajustes predefinidos Ligero, Estándar y Firme, además de controles "
 "detallados para cada umbral."
 
-#: dist/prefs.js:866
+#: dist/prefs.js:973
 msgid ""
 "Practice mode uses real gesture detection with live feedback in the "
 "preferences dialog."
@@ -553,9 +575,18 @@ msgstr ""
 "El modo Práctica usa la detección real de gestos con comentarios en directo "
 "en el diálogo de preferencias."
 
-#: dist/prefs.js:867
+#: dist/prefs.js:974
 msgid ""
 "A text-only fallback explains the gesture when live practice is unavailable."
 msgstr ""
 "Una alternativa en texto explica el gesto cuando la práctica en directo no "
 "está disponible."
+
+#~ msgid "Activation Method"
+#~ msgstr "Método de activación"
+
+#~ msgid "Shortcut and mouse gesture both work in the first mode"
+#~ msgstr "En el primer modo funcionan tanto el atajo como el gesto del ratón"
+
+#~ msgid "Done"
+#~ msgstr "Hecho"
