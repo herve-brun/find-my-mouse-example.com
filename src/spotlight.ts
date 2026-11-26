@@ -14,6 +14,19 @@ function easeOutQuad(t: number): number {
 }
 
 type MonitorGeometry = MonitorBox;
+type Rgba = [number, number, number, number];
+
+/** Normalized schema defaults (#00000080 and #FFFFFFCC). */
+const DEFAULT_DIM_COLOR: Rgba = [0, 0, 0, 128 / 255];
+const DEFAULT_RING_COLOR: Rgba = [1, 1, 1, 204 / 255];
+
+/** Only used in high-contrast mode when the user has not chosen custom colors. */
+const HIGH_CONTRAST_DIM_COLOR: Rgba = [0, 0, 0, 1];
+const HIGH_CONTRAST_RING_COLOR: Rgba = [1, 1, 1, 1];
+
+function isDefaultColor(color: Rgba, defaultValue: Rgba): boolean {
+    return color.every((channel, i) => Math.abs(channel - defaultValue[i]) < 0.001);
+}
 
 interface FadeParams {
     opacity: number;
@@ -42,6 +55,8 @@ export class SpotlightManager {
     private _lastMouseX: number = -1;
     private _lastMouseY: number = -1;
     private _interfaceSettings: Gio.Settings | null;
+    private _a11ySettings: Gio.Settings | null;
+    private _a11yChangedId: number;
 
     constructor(settingsManager: SettingsManager) {
         this._settingsManager = settingsManager;
@@ -52,6 +67,21 @@ export class SpotlightManager {
         } catch (e) {
             this._interfaceSettings = null;
             debugLog(`Cannot read interface settings: ${e}`, LogLevel.WARN);
+        }
+        try {
+            this._a11ySettings = new Gio.Settings({
+                schema_id: 'org.gnome.desktop.a11y.interface',
+            });
+        } catch (e) {
+            this._a11ySettings = null;
+            debugLog(`Cannot read accessibility settings: ${e}`, LogLevel.WARN);
+        }
+        this._a11yChangedId = 0;
+        if (this._a11ySettings) {
+            this._a11yChangedId = this._a11ySettings.connect(
+                'changed::high-contrast',
+                () => this._onHighContrastChanged(),
+            );
         }
         this._spotlight = null;
         this._mask = null;
@@ -70,6 +100,44 @@ export class SpotlightManager {
     /** Honour the system-wide "reduce animation" accessibility setting. */
     private _animationsEnabled(): boolean {
         return this._interfaceSettings?.get_boolean('enable-animations') ?? true;
+    }
+
+    /** Missing schema or key means standard contrast. */
+    private _highContrastEnabled(): boolean {
+        if (!this._a11ySettings) return false;
+        try {
+            return this._a11ySettings.get_boolean('high-contrast');
+        } catch (_error) {
+            return false;
+        }
+    }
+
+    /**
+     * Fallback only for untouched defaults: explicit user color choices always win,
+     * including while high contrast is active.
+     */
+    private _dimColor(): Rgba {
+        const color = this._settingsManager.cachedBgColorNormalized;
+        if (this._highContrastEnabled() && isDefaultColor(color, DEFAULT_DIM_COLOR))
+            return HIGH_CONTRAST_DIM_COLOR;
+        return color;
+    }
+
+    private _ringColor(): Rgba {
+        const color = this._settingsManager.cachedSpotlightColorNormalized;
+        if (this._highContrastEnabled() && isDefaultColor(color, DEFAULT_RING_COLOR))
+            return HIGH_CONTRAST_RING_COLOR;
+        return color;
+    }
+
+    private _onHighContrastChanged(): void {
+        // Force _updateDimColor() to restyle the four dim actors, then repaint
+        // the pointer-local mask so the ring also switches immediately.
+        this._dimColorStyle = '';
+        if (this._spotlight && this._mask) {
+            this._layoutOverlay();
+            this._mask.queue_repaint();
+        }
     }
 
     _getMonitorGeometry(showOnAllMonitors: boolean): MonitorGeometry {
@@ -290,6 +358,11 @@ export class SpotlightManager {
         this._currentZoom = 1;
         this._spotlight?.remove_all_transitions();
         this._destroySpotlightActor();
+        if (this._a11ySettings && this._a11yChangedId) {
+            this._a11ySettings.disconnect(this._a11yChangedId);
+            this._a11yChangedId = 0;
+        }
+        this._a11ySettings = null;
         this._interfaceSettings = null;
     }
 
@@ -302,7 +375,7 @@ export class SpotlightManager {
     }
 
     private _updateDimColor(): void {
-        const [r, g, b, a] = this._settingsManager.cachedBgColorNormalized;
+        const [r, g, b, a] = this._dimColor();
         const style =
             `background-color: rgba(${Math.round(r * 255)}, ${Math.round(g * 255)}, ` +
             `${Math.round(b * 255)}, ${a});`;
@@ -365,7 +438,7 @@ export class SpotlightManager {
 
         // Dark corners inside the small square; the four surrounding dim actors
         // cover the rest of the monitor.
-        const bgColor = this._settingsManager.cachedBgColorNormalized;
+        const bgColor = this._dimColor();
         cr.setOperator(Cairo.Operator.SOURCE);
         cr.setSourceRGBA(bgColor[0], bgColor[1], bgColor[2], bgColor[3]);
         cr.paint();
@@ -377,7 +450,7 @@ export class SpotlightManager {
 
         // Spotlight ring
         cr.setOperator(Cairo.Operator.OVER);
-        const spotlightColor = this._settingsManager.cachedSpotlightColorNormalized;
+        const spotlightColor = this._ringColor();
         cr.setSourceRGBA(
             spotlightColor[0],
             spotlightColor[1],
