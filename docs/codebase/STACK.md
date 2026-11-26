@@ -119,7 +119,7 @@ During practice, detector events → `PracticeService` → `Progress`/`Result` �
 ## CONCERNS.md
 
 - Wayland pointerWatcher sampling is absolute and irregular; the isolated, unit-tested detector consumes injected deltas and monotonic millisecond timestamps, with speed, reversal hysteresis and an amplitude floor.
-- Legacy `shake-*` keys are compatibility-only, hidden in Preferences and ignored by the detector.
+- Deprecated `shake-*` keys are compatibility-only, hidden in Preferences and not read by the detector.
 - Practice lifecycle: every terminal path (Result, Cancel, dialog destroy, prefs close, extension disable, bus-name loss, watchdog) must end the session; practice must never call the real activation path.
 - CI runs lint, type-check, schema/metadata validation and `npm test` (build + `node:test`).
 

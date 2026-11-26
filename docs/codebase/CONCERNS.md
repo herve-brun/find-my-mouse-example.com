@@ -42,7 +42,7 @@
 
 ## Validation Coverage
 
-- `npm test` runs `node --test` unit tests against the pure detector (deliberate wave, jitter, circles, drags, warps, cooldown, pause/gap, slow small pointer steps (~30 px steps 1500 ms apart) as a no-activation regression, and a normal 900 ms/180 ms gesture).
+- `npm test` runs `node --test` unit tests against the pure detector (deliberate wave, jitter, circles, drags, warps, cooldown, pause/gap, slow small pointer steps (~30 px steps 1500 ms apart) as a no-activation regression, and a normal 900 ms/180 ms gesture) and the pure spotlight layout (mask/dim tiling, negative origins, clipping and zoom).
 - Manual scenarios (fullscreen, GameMode, multi-monitor with negative X, settings extremes, practice success/failure/retry/cancel, extension reload, two prefs windows, watchdog) are listed in `docs/codebase/TESTING.md`; run them in a nested Wayland session following that guide.
 - CI runs lint, type-check, schema and metadata validation, and invokes `npm test` (build + `node:test`) in a dedicated job (see `.github/workflows/test.yml`).
 
@@ -51,6 +51,6 @@
 - `src/mouseTracking.ts` (sampling interval, guards, settle clock)
 - `src/gestureDetector.ts` (state machine and thresholds)
 - `src/practiceService.ts`, `src/practiceClient.ts` (practice lifecycle and D-Bus contract)
-- `test/gestureDetector.test.mjs` (unit scenarios)
-- `schemas/org.gnome.shell.extensions.find-my-mouse.gschema.xml` (legacy keys)
+- `test/gestureDetector.test.mjs` (gesture scenarios), `test/spotlightLayout.test.mjs` (layout tiling)
+- `schemas/org.gnome.shell.extensions.find-my-mouse.gschema.xml` (compatibility keys)
 - `.github/workflows/test.yml` (CI jobs)

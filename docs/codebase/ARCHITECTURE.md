@@ -14,7 +14,7 @@
 
 | Component | Source | Responsibility |
 |---|---|---|
-| `SettingsManager` | `settings.ts` | Caches and normalizes GSettings values (includes deprecated legacy getters). |
+| `SettingsManager` | `settings.ts` | Caches and normalizes GSettings values (includes deprecated compatibility getters). |
 | `SpotlightManager` | `spotlight.ts` | Rendering and zoom animation only; no idle timer. Exposes `isVisible` and delegates rectangle math to the import-free `spotlightLayout.ts`. |
 | `spotlightLayout.ts` | `spotlightLayout.ts` | Pure mask/dim rectangle computation, unit-tested without GNOME Shell. |
 | `MouseTracker` | `mouseTracking.ts` | pointerWatcher adapter; authoritative last pointer position, guards, 16 ms settle clock. |
@@ -25,7 +25,7 @@
 | `PracticeService` | `practiceService.ts` | Shell-side practice session: owns the D-Bus name, handles `Start()`/`Cancel()`, emits `Progress`/`Result`, 10 s watchdog. |
 | `PracticeClient` | `practiceClient.ts` | Prefs-side `Gio.DBusProxy` for practice; retries, dispatches signals, tolerates extension reload. |
 
-The extension core registers `find-my-mouse-activation` in `extension.ts` with `Main.wm.addKeybinding()`; it is used in **Shortcut and gesture** mode and is not used in **Always visible** mode, where the preferences row is disabled.
+The extension core registers `find-my-mouse-activation` in `extension.ts` with `Main.wm.addKeybinding()` in every activation mode; the callback calls `activate('shortcut')`. Preferences disables the shortcut row in **Always visible** mode.
 
 ### 3. Preferences UI (`src/prefs.ts`)
 GTK4/Adwaita pages: General, Appearance, Timing, **Mouse Gesture**, About. The Mouse Gesture page has Light/Standard/Firm presets, a "Fine-tune gesture" expander, a live **Practice** row (**Try the Gesture** dialog), and the sound toggle. Practice uses `PracticeClient` to start/cancel a shell-side session and display progress/results; instructions come from current GSettings values, there is no auto-close timer, and a text-only fallback is shown when D-Bus is unavailable. Compatibility shake rows are hidden; the shortcut row is available in **Shortcut and gesture** mode.
@@ -45,9 +45,9 @@ GTK4/Adwaita pages: General, Appearance, Timing, **Mouse Gesture**, About. The M
 ### Activation Flow
 1. Trigger: `<Super>f` shortcut, gesture `activated`, or always-visible mode.
 2. Both shortcut and gesture call `ActivationController.activate(source)`; activation is show-only.
-3. GameMode suppression is checked; if the spotlight is already visible, only the idle timeout is reset.
-4. Otherwise `SpotlightManager.show(show-on-all-monitors)` renders via `St.DrawingArea` and Cairo, with a `Clutter.Timeline` zoom.
-5. The idle timeout lives in `ActivationController` and calls `hide()` after `idle-timeout` ms.
+3. In **Shortcut and gesture** mode, GameMode suppression is checked; a repeat activation refreshes the visible spotlight with `queueRepaint()` and resets the idle timeout.
+4. Otherwise `SpotlightManager.show(show-on-all-monitors)` renders via `St.DrawingArea` and Cairo, with a `Clutter.Timeline` zoom. **Always visible** mode shows once and skips the idle timeout.
+5. For the gesture/shortcut modes, the idle timeout lives in `ActivationController` and calls `hide()` after `idle-timeout` ms.
 
 ### Gesture Flow
 1. `pointerWatcher` supplies absolute positions; `MouseTracker` keeps the authoritative last position and computes deltas.

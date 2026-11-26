@@ -57,7 +57,7 @@ if (!Number.isFinite(sample.dx) || !Number.isFinite(sample.tMs)) {
 - Cache settings in `SettingsManager`; pass derived config into `GestureDetector` via `setConfig()` rather than reading GSettings inside the detector.
 - Keep responsibilities separate: activation policy in `ActivationController`, rendering in `SpotlightManager`, pointer adaptation in `MouseTracker`, attempt feedback in `GestureFeedback`.
 - Activation is show-only: use `activate(source)` for shortcut, gesture and always mode; never hide the spotlight in response to an activation.
-- Practice sessions never call `ActivationController.activate('gesture')`: report `activated` through `PracticeService` as `Result(success=true, …)` and keep the progress ring visible.
+- Practice sessions never call `ActivationController.activate('gesture')`: report `activated` through `PracticeService` as `Result(success=true, …)`. The extension hides the progress ring when it handles the terminal gesture event (`activated` or `aborted`), as the session ends.
 - Keep the D-Bus contract in one place: bus name/interface `org.gnome.shell.extensions.find_my_mouse.Practice`, path `/org/gnome/shell/extensions/find_my_mouse/Practice`, methods `Start()`/`Cancel()`, signals `Progress(event: s, progress: i, total: i)` and `Result(success: b, detail: s)`.
 - End every practice session exactly once: route terminal paths through `_finish()` (Result, Cancel, dialog destroy, prefs close, extension disable, bus-name loss, 10 s watchdog) and clear the watchdog.
 - Disconnect signals and destroy actors in `disable()`; remove the 16 ms settle clock when an attempt ends.

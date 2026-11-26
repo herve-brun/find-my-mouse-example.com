@@ -70,7 +70,7 @@ Development is in `src/*.ts`; the Shell loads the compiled `dist/*.js`. The acti
 - `SettingsManager`: caches and normalizes the schema values used by the shell (including compatibility getters for the deprecated `shake-*` keys); the keybinding API handles `find-my-mouse-activation` and `ActivationController` reads `show-on-all-monitors` when showing the spotlight. The detector uses only the `gesture-*` values.
 
 ### `src/prefs.ts`
-- Pages: General, Appearance, Timing, Mouse Gesture, About. Presets, fine-tuning expander, live "Try the Gesture" practice with text-only fallback, hidden legacy rows.
+- Pages: General, Appearance, Timing, Mouse Gesture, About. Presets, fine-tuning expander, live "Try the Gesture" practice with text-only fallback, hidden compatibility rows.
 
 ### `src/practiceService.ts` and `src/practiceClient.ts`
 - Shell-side session over the session bus: `Start()`/`Cancel()`, `Progress`/`Result` signals, 10 s watchdog; practice never calls the real activation path.

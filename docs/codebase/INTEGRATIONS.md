@@ -44,7 +44,7 @@ const cr = area.get_context();
 
 - **Schema ID**: `org.gnome.shell.extensions.find-my-mouse`
 - **Path**: `/org/gnome/shell/extensions/find-my-mouse/`
-- **Keys**: 22 total, including the gesture tuning keys and two deprecated legacy keys.
+- **Keys**: 22 total, including the gesture tuning keys and two deprecated compatibility keys.
 
 | Key | Type | Default | Description |
 |---|---|---|---|
