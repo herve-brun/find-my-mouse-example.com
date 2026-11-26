@@ -58,8 +58,8 @@ const cr = area.get_context();
 | `gesture-ignore-buttons` | Bool | `true` | Ignore gestures while a mouse button is held |
 | `gesture-ignore-fullscreen` | Bool | `true` | Ignore gestures in fullscreen apps |
 | `gesture-sound` | Bool | `false` | Optional confirmation sound |
-| `shake-interval` | Int | `1000` | Deprecated/legacy; no longer read by the detector |
-| `shake-sensitivity` | Int | `400` | Deprecated/legacy; no longer read by the detector |
+| `shake-interval` | Int | `1000` | Deprecated compatibility key; the detector uses the `gesture-*` keys |
+| `shake-sensitivity` | Int | `400` | Deprecated compatibility key; the detector uses the `gesture-*` keys |
 | `do-not-activate-gamemode` | Bool | `true` | Suppress spotlight during GameMode |
 | `show-on-all-monitors` | Bool | `false` | Cover the bounding box of all monitors |
 | `background-color` | String | `'#00000080'` | Backdrop with alpha |
@@ -71,7 +71,7 @@ const cr = area.get_context();
 | `animation-duration` | Int | `500` | Zoom animation duration (ms) |
 | `log-level` | Int | `2` | 0 ERROR, 1 WARN, 2 INFO, 3 DEBUG |
 
-There is no minimum-distance setting. The gesture amplitude floor is `max(120 px, gesture-sweep × gesture-reversals)`.
+There is no minimum-distance setting or per-app exclusion key. The detector applies an amplitude floor of `max(120 px, gesture-sweep × gesture-reversals)`.
 
 ```typescript
 const radius = settings.get_int('spotlight-radius');
@@ -88,10 +88,10 @@ Practice uses the per-user session bus; the service lives in the shell extension
 | Object path | `/org/gnome/shell/extensions/find_my_mouse/Practice` |
 | Methods | `Start()`, `Cancel()` |
 | Signals | `Progress(event: s, progress: i, total: i)`, `Result(success: b, detail: s)` |
-| Service | `src/practiceService.ts` — owns the name, reuses the real detector/progress ring, 10 s watchdog, routes `activated` to `Result(true, 'gesture-completed')` instead of real activation |
+| Service | `src/practiceService.ts` — owns the name, reuses the real detector/progress ring, 10 s watchdog, routes `activated` to `Result(true, 'gesture-completed')` instead of real activation; the extension hides the progress ring when the terminal gesture event is handled |
 | Client | `src/practiceClient.ts` — `Gio.DBusProxy` with retry, signal dispatch, and a text-only fallback; never crashes on extension reload |
 
-Both sides converge on session teardown for `Result`, `Cancel()`, dialog destroy, prefs close, extension disable, bus-name loss and watchdog timeout. No new GSettings keys are involved: practice instructions are derived from the existing gesture keys.
+Both sides converge on session teardown for `Result`, `Cancel()`, dialog destroy, prefs close, extension disable, bus-name loss and watchdog timeout. Practice has no dedicated GSettings keys: instructions are derived from the existing gesture keys.
 
 ## External System Dependencies
 

@@ -5,12 +5,12 @@
 The Find My Mouse GNOME Shell extension (GNOME 46–50, Wayland) highlights the pointer with a circular spotlight, modelled on PowerToys Find My Mouse. Activation is show-only from the `<Super>f` shortcut or a deliberate horizontal wave followed by stopping; "Always visible" is opt-in. The extension supports multi-monitor setups, GameMode suppression, live gesture practice over D-Bus, and runtime log level changes. Version: 1.0.0.
 
 ### Key Features
-- Cairo spotlight with configurable radius, colors, ring width, zoom and animation duration.
+- Spotlight with configurable radius, colors, ring width, zoom and animation duration: four dim actors plus a small pointer-local Cairo mask.
 - Pure "wave then stop" gesture detector with a pointer-local progress ring and optional confirmation sound.
 - Keyboard shortcut active in the default gesture mode; repeat activation refreshes the spotlight instead of hiding it.
 - Live "Try the Gesture" practice: shell-side D-Bus service and prefs client, progress feedback, retry/cancel, text-only fallback; no real spotlight during practice.
 - GameMode suppression and multi-monitor bounding-box geometry.
-- Unit tests for the detector via `node:test`.
+- Unit tests for the detector and spotlight layout via `node:test`.
 
 ### Evidence
 - `README.md`, `metadata.json`, `package.json`
@@ -45,11 +45,11 @@ The Find My Mouse GNOME Shell extension (GNOME 46–50, Wayland) highlights the 
 ```
 src/
   extension.ts, prefs.ts, settings.ts, activationController.ts,
-  gestureDetector.ts, gestureFeedback.ts, spotlight.ts,
+  gestureDetector.ts, gestureFeedback.ts, spotlight.ts, spotlightLayout.ts,
   mouseTracking.ts, gamemodeClient.ts, practiceService.ts,
   practiceClient.ts, utils.ts
 schemas/            GSettings XML (22 keys) + compiled schema
-test/               gestureDetector.test.mjs (node:test)
+test/               gestureDetector.test.mjs, spotlightLayout.test.mjs (node:test)
 dist/               generated JavaScript (gitignored)
 docs/codebase/      these documents
 ```
@@ -83,7 +83,7 @@ During practice, detector events → `PracticeService` → `Progress`/`Result` �
 ## CONVENTIONS.md
 
 - PascalCase classes, camelCase methods, `_camelCase` private fields, UPPER_SNAKE_CASE constants.
-- TypeScript local imports use `.js` extensions; `gestureDetector.ts` has no imports.
+- TypeScript local imports use `.js` extensions; `gestureDetector.ts` and `spotlightLayout.ts` are import-free so `node:test` can exercise them directly.
 - 4-space indentation, semicolons, guard clauses, explicit signal/actor cleanup.
 - Conventional Commits enforced by commitlint and CI.
 
@@ -96,7 +96,7 @@ During practice, detector events → `PracticeService` → `Progress`/`Result` �
 
 - GNOME Shell APIs: extension/prefs base classes, `Main.uiGroup`, keybindings, pointerWatcher.
 - GJS: St, Cairo, Clutter, GLib, Gio, Gtk/Adw/Gdk, Meta/Shell.
-- GSettings schema `org.gnome.shell.extensions.find-my-mouse` (22 keys); gesture keys replace the old ratio setting, with `shake-interval`/`shake-sensitivity` retained as deprecated compatibility keys.
+- GSettings schema `org.gnome.shell.extensions.find-my-mouse` (22 keys); the `gesture-*` keys drive the detector, while `shake-interval`/`shake-sensitivity` are retained as deprecated compatibility keys.
 - GameMode D-Bus service; practice D-Bus service `org.gnome.shell.extensions.find_my_mouse.Practice` (`Start`/`Cancel`, `Progress`/`Result`, 10 s watchdog) implemented by `practiceService.ts`/`practiceClient.ts` on the session bus; `canberra-gtk-play` is an optional best-effort sound helper (no-op if absent).
 - `node:test` for unit tests.
 
@@ -107,18 +107,18 @@ During practice, detector events → `PracticeService` → `Progress`/`Result` �
 
 ## TESTING.md
 
-- Unit tests: `npm test` → `npm run build && node --test test/*.test.mjs`.
-- Manual: nested Wayland session (`--devkit` on GNOME 49+, `--nested` on older versions) or Xephyr for X11.
-- Scenarios include deliberate wave, jitter, circular motion, button drag, fullscreen/GameMode, multi-monitor with negative X, settings extremes, cooldown re-trigger, practice success/failure/retry/cancel, extension reload during practice, two prefs windows and the watchdog. Details in `TESTING.md`; these manual scenarios were not run for this documentation change.
+- Unit tests: `npm test` → `npm run build && node --test test/*.test.mjs` (detector and spotlight layout suites).
+- Manual: nested Wayland session (`--devkit` on GNOME 49+, `--nested` on earlier supported versions) or Xephyr for X11.
+- Scenarios include deliberate wave, jitter, circular motion, button drag, fullscreen/GameMode, multi-monitor with negative X, settings extremes, cooldown re-trigger, practice success/failure/retry/cancel, extension reload during practice, two prefs windows and the watchdog. Run them from a nested session as described in `TESTING.md`; GNOME 49+ `--devkit` needs `mutter-devkit` for a visible host window.
 
 ### Evidence
-- `package.json`, `test/gestureDetector.test.mjs`, `AGENTS.md`
+- `package.json`, `test/gestureDetector.test.mjs`, `test/spotlightLayout.test.mjs`, `AGENTS.md`
 
 ---
 
 ## CONCERNS.md
 
-- Wayland pointerWatcher sampling is absolute and irregular; pure per-sample ratio metrics were unreliable and were replaced by the isolated, unit-tested detector.
+- Wayland pointerWatcher sampling is absolute and irregular; the isolated, unit-tested detector consumes injected deltas and monotonic millisecond timestamps, with speed, reversal hysteresis and an amplitude floor.
 - Legacy `shake-*` keys are compatibility-only, hidden in Preferences and ignored by the detector.
 - Practice lifecycle: every terminal path (Result, Cancel, dialog destroy, prefs close, extension disable, bus-name loss, watchdog) must end the session; practice must never call the real activation path.
 - CI runs lint, type-check, schema/metadata validation and `npm test` (build + `node:test`).
@@ -130,8 +130,8 @@ During practice, detector events → `PracticeService` → `Progress`/`Result` �
 
 ## Intent vs. Reality
 
-- PowerToys parity covers the spotlight presentation. The activation model differs: activation is show-only, and gesture detection uses a wave-then-stop state machine rather than a sensitivity/distance ratio.
-- The schema contains no `excluded-apps` or minimum-distance keys; per-app exclusions and minimum-distance thresholds are not implemented.
+- PowerToys parity covers the spotlight presentation. This extension uses show-only activation and a configurable wave-then-stop state machine (reversals, sweep, window, settle).
+- The schema has no `excluded-apps` key and no user-facing minimum-distance key; per-app exclusions are not implemented. The detector applies a fixed amplitude floor of `max(120 px, gesture-sweep × gesture-reversals)`.
 - GameMode detection is implemented through D-Bus and can suppress activation when configured.
 
 ### Evidence

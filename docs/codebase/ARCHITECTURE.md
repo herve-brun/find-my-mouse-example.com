@@ -15,7 +15,8 @@
 | Component | Source | Responsibility |
 |---|---|---|
 | `SettingsManager` | `settings.ts` | Caches and normalizes GSettings values (includes deprecated legacy getters). |
-| `SpotlightManager` | `spotlight.ts` | Rendering and zoom animation only; no idle timer. Exposes `isVisible`. |
+| `SpotlightManager` | `spotlight.ts` | Rendering and zoom animation only; no idle timer. Exposes `isVisible` and delegates rectangle math to the import-free `spotlightLayout.ts`. |
+| `spotlightLayout.ts` | `spotlightLayout.ts` | Pure mask/dim rectangle computation, unit-tested without GNOME Shell. |
 | `MouseTracker` | `mouseTracking.ts` | pointerWatcher adapter; authoritative last pointer position, guards, 16 ms settle clock. |
 | `GestureDetector` | `gestureDetector.ts` | Pure "wave then stop" state machine with injected ms timestamps; no imports. |
 | `ActivationController` | `activationController.ts` | Show-only activation policy, GameMode suppression, idle timeout. |
@@ -24,10 +25,10 @@
 | `PracticeService` | `practiceService.ts` | Shell-side practice session: owns the D-Bus name, handles `Start()`/`Cancel()`, emits `Progress`/`Result`, 10 s watchdog. |
 | `PracticeClient` | `practiceClient.ts` | Prefs-side `Gio.DBusProxy` for practice; retries, dispatches signals, tolerates extension reload. |
 
-There is no separate keybindings module: `extension.ts` registers `find-my-mouse-activation` directly with `Main.wm.addKeybinding()`, and the shortcut is always active, including in the default gesture mode.
+The extension core registers `find-my-mouse-activation` in `extension.ts` with `Main.wm.addKeybinding()`; it is used in **Shortcut and gesture** mode and is not used in **Always visible** mode, where the preferences row is disabled.
 
 ### 3. Preferences UI (`src/prefs.ts`)
-GTK4/Adwaita pages: General, Appearance, Timing, **Mouse Gesture**, About. The Mouse Gesture page has Light/Standard/Firm presets, a "Fine-tune gesture" expander, a live "Try the Gesture" practice session, and the sound toggle. Practice uses `PracticeClient` to start/cancel a shell-side session and display progress/results; instructions come from current GSettings values, there is no auto-close timer, and a text-only fallback is shown when D-Bus is unavailable. Legacy shake rows are hidden; the shortcut row stays enabled in gesture mode.
+GTK4/Adwaita pages: General, Appearance, Timing, **Mouse Gesture**, About. The Mouse Gesture page has Light/Standard/Firm presets, a "Fine-tune gesture" expander, a live **Practice** row (**Try the Gesture** dialog), and the sound toggle. Practice uses `PracticeClient` to start/cancel a shell-side session and display progress/results; instructions come from current GSettings values, there is no auto-close timer, and a text-only fallback is shown when D-Bus is unavailable. Compatibility shake rows are hidden; the shortcut row is available in **Shortcut and gesture** mode.
 
 ## Patterns
 
@@ -50,7 +51,7 @@ GTK4/Adwaita pages: General, Appearance, Timing, **Mouse Gesture**, About. The M
 
 ### Gesture Flow
 1. `pointerWatcher` supplies absolute positions; `MouseTracker` keeps the authoritative last position and computes deltas.
-2. Guards reject attempts while a button/Ctrl/Alt is held, in fullscreen (configurable), on pointer jumps >250 px, on monitor/focus changes, while the spotlight is visible, and during GameMode suppression.
+2. `MouseTracker` rejects attempts while a button is held (`gesture-ignore-buttons`), while Ctrl or Alt is held, and in fullscreen (`gesture-ignore-fullscreen`); it also aborts on pointer jumps >250 px per sample or pauses >400 ms. `extension.ts` blocks detection while the spotlight is visible and outside gesture mode (practice sessions are the exception); GameMode suppression is enforced at activation time in `ActivationController`.
 3. `GestureDetector.feed()` arms on ≥400 px/s with ≥2:1 horizontal dominance, counts ≥90 px reversals with a speed-dip hysteresis (<20% of peak), requires 3 within 900 ms, then a settle <150 px/s within 180 ms. Cooldown is 1500 ms.
 4. The 16 ms clock in `MouseTracker` feeds zero-delta ticks while `tracking`/`ready` so a stationary pointer can settle.
 
@@ -71,7 +72,7 @@ GTK4/Adwaita pages: General, Appearance, Timing, **Mouse Gesture**, About. The M
 - `src/mouseTracking.ts` (adapter, guards, settle clock)
 - `src/activationController.ts` (show-only activation and idle timer)
 - `src/gestureFeedback.ts` (progress ring, optional sound)
-- `src/spotlight.ts` (Cairo rendering and zoom)
+- `src/spotlight.ts`, `src/spotlightLayout.ts`, `test/spotlightLayout.test.mjs` (rendering, pure layout math, tiling tests)
 - `src/practiceService.ts`, `src/practiceClient.ts` (practice session and D-Bus proxy)
 - `src/prefs.ts` (Mouse Gesture page and practice dialog)
 - `schemas/org.gnome.shell.extensions.find-my-mouse.gschema.xml` (22 keys)

@@ -1,9 +1,9 @@
 # Repository Atlas — find-my-mouse-example.com
 
-> **Revision**: 1.3
+> **Release**: 1.0.0
 > **Maintainer**: Hervé Brun
 > **License**: GPL-3.0-or-later
-> **Updated**: 2026-11-24
+> **Updated**: 2026-11-26
 
 ---
 
@@ -21,6 +21,7 @@
 - **Preferences UI** — Adwaita/GTK4 settings dialog with General, Appearance, Timing, Mouse Gesture, and About pages.
 - **Game Mode Integration** — D-Bus integration with `com.feralinteractive.GameMode` to suppress spotlight during gaming sessions.
 - **Practice Mode** — A shell-side D-Bus service runs the real gesture pipeline in a time-limited session and reports progress/results to the preferences client without showing the real spotlight.
+- **Accessibility & UI Polish** — High-contrast-adaptive spotlight and progress-ring palettes, respect for the GNOME "Enable Animations" setting, reset-to-defaults with Undo on every preferences page, and a shortcut capture modal with a live preview.
 - **GSettings Persistence** — All user preferences are persisted through `org.gnome.shell.extensions.find-my-mouse`.
 
 ### 1.3 What This Repository Does NOT Own
@@ -48,7 +49,7 @@ src/extension.ts  →  dist/extension.js
 ```
 src/prefs.ts  →  dist/prefs.js
 ```
-`FindMyMousePreferences` extends `ExtensionPreferences`. `fillPreferencesWindow(window: Adw.PreferencesWindow)` builds the whole dialog, including the Mouse Gesture page with presets, fine-tuning, the live "Try the Gesture" practice session, and About release notes (updated for the 1.0.0 release by the designer lane). User-facing strings are marked with `gettext` (`_()`); translations are initialized automatically from the `gettext-domain` in `metadata.json`. Practice instructions are derived from current GSettings values; the dialog has no auto-close timer and falls back to text-only instructions when the D-Bus service is unavailable.
+`FindMyMousePreferences` extends `ExtensionPreferences`. `fillPreferencesWindow(window: Adw.PreferencesWindow)` builds the whole dialog, including the Mouse Gesture page with presets, fine-tuning, the live "Try the Gesture" practice session, reset-to-defaults controls with Undo, a shortcut capture modal, runtime log-level control and the 1.0.0 About release notes. User-facing strings are marked with `gettext` (`_()`); translations are initialized automatically from the `gettext-domain` in `metadata.json`. Practice instructions are derived from current GSettings values; the dialog has no auto-close timer and falls back to text-only instructions when the D-Bus service is unavailable.
 
 ### 2.3 Spotlight Rendering Entry
 ```
@@ -163,7 +164,7 @@ pointerWatcher (16 ms requested, callbacks on change)
 MouseTracker._handleSample(x, y)
         │
         ├── authoritative last position (null sentinel until first sample)
-        ├── guards: buttons, Ctrl/Alt, fullscreen, GameMode, visible spotlight
+        ├── guards: buttons (configurable), Ctrl/Alt, fullscreen (configurable), visible spotlight
         ├── feed GestureDetector.feed({dx, dy, tMs}) using monotonic ms
         │     └── idle → tracking → ready → cooldown
         │           emits armed/progress/ready/activated/aborted
@@ -178,7 +179,7 @@ extension._handleGestureEvent(info)
         └── aborted → feedback.hide()
                       └── practice active? PracticeService.reportEvent(info) → Result(false, …)
     Practice mode never calls ActivationController.activate('gesture'); the real
-    progress ring stays visible until the session ends.
+    practice reports the terminal event before the ring is hidden; no spotlight is shown.
 
 shortcut (<Super>f) ────────────────► ActivationController.activate('shortcut')
         │
@@ -193,6 +194,10 @@ ActivationController.activate()
                   └── Clutter.Timeline zoom (easeOutQuad)
 idle timeout (idle-timeout ms) ─────► ActivationController.hide()
 ```
+
+Game Mode suppresses activation, not detection: `ActivationController.activate()`
+returns early while a game is active, the shell hides a visible spotlight, and
+**Always visible** mode is restored when Game Mode ends.
 
 ### 3.5 Data Flow: Practice Session (D-Bus)
 
@@ -231,6 +236,7 @@ prefs client degrades to a text-only fallback if the proxy cannot be created.
 | Node.js | 22 | TypeScript tooling and `node:test` |
 | npm | 10+ | Bundled with Node.js |
 | glib-compile-schemas | System | From `libglib2.0-bin` (Ubuntu) |
+| gettext (`msgfmt`) | System | Validates and compiles the `en`/`fr`/`es` catalogs during `npm run build`; Ubuntu: `sudo apt install gettext` |
 | mutter-devkit | GNOME 49+ | Needed by `gnome-shell --devkit` to draw the host window; Ubuntu: `sudo apt install mutter-dev-bin`. Without it, the nested shell runs headless. |
 
 ### 4.2 NPM Scripts Reference
@@ -240,13 +246,15 @@ prefs client degrades to a text-only fallback if the proxy cannot be created.
 | `npm run check` | `tsc --noEmit` | Type-check without emitting output |
 | `npm run lint` | `eslint src/` | Lint TypeScript sources |
 | `npm test` | `npm run build && node --test test/*.test.mjs` | Build, then run unit tests with `node:test` |
-| `npm run build` | `clean && tsc -p tsconfig.prod.json` | Clean `dist/` and compile TypeScript |
+| `npm run clean` | `rm -rf dist` | Remove generated output |
+| `npm run build` | `npm run clean && tsc -p tsconfig.prod.json` | Compile TypeScript; `postbuild` runs automatically |
 | `npm run build:schemas` | `glib-compile-schemas schemas/` | Compile GSettings XML |
 | `npm run i18n:pot` | `xgettext` on `dist/*.js` | Regenerate the gettext POT from compiled sources |
 | `npm run i18n:update` | `i18n:pot` + `msgmerge` | Refresh template and merge into `en`/`fr`/`es` PO files |
-| `npm run i18n:build` | `msgfmt --check` | Validate PO files and compile `.mo` files into `dist/locale/` |
-| `postbuild` | `build:schemas && i18n:build && cp metadata.json && cp schemas` | Auto-runs after build |
-| `npm run build:dist` | `build && cd dist && zip -qr ../find-my-mouse@herve-brun.github.io.zip .` | Distribution ZIP for EGO |
+| `npm run i18n:build` | `msgfmt --check --check-format` | Validate PO files and compile `.mo` files into `dist/locale/` |
+| `postbuild` | `build:schemas && i18n:build && cp metadata.json/LICENSE.md && cp schemas/*.gschema.xml schemas/gschemas.compiled dist/schemas/ && cp assets/*.svg dist/assets/` | Auto-runs after `build` |
+| `npm run build:dist` | `npm run build && cd dist && zip -qr ../find-my-mouse@herve-brun.github.io.zip .` | Distribution ZIP for EGO |
+| `prepare` | `husky install` | Installs the commitlint hook during `npm install` |
 
 ### 4.3 TypeScript Configurations
 
@@ -332,10 +340,12 @@ find-my-mouse-example.com/
 │   ├── INTEGRATIONS.md, STACK.md, STRUCTURE.md, TESTING.md
 │   └── .codebase-scan.txt
 │
+├── assets/                           # SVG icons copied into the distribution ZIP
 ├── screenshots/                      # README screenshots
 ├── node_modules/                     # Dependencies (gitignored)
 │
 ├── metadata.json                     # version-name 1.0.0; shell 46–50
+├── RELEASE_NOTES.md                  # Curated GitHub release body (body_path in release.yml)
 ├── ambient.d.ts
 ├── gnome-shell-extensions.d.ts
 ├── tsconfig.json
@@ -346,8 +356,16 @@ find-my-mouse-example.com/
 ├── AGENTS.md
 ├── README.md
 ├── LICENSE.md
-└── codemap.md                        # THIS FILE
+└── codemap.md                        # THIS FILE — root repository atlas
 ```
+
+### 5.1 Directory Atlases
+
+| Directory | Responsibility summary | Detailed map |
+|---|---|---|
+| `src/` | Lifecycle, settings, activation policy, gesture detector/adapter/feedback, spotlight rendering, Game Mode and practice D-Bus endpoints | [src/codemap.md](src/codemap.md) |
+| `schemas/` | Authoritative 22-key GSettings schema and compiled binary | [schemas/codemap.md](schemas/codemap.md) |
+| `docs/codebase/` | Seven verifiable developer guides: stack, structure, architecture, conventions, integrations, testing and concerns | [docs/codebase/STACK.md](docs/codebase/STACK.md), [ARCHITECTURE.md](docs/codebase/ARCHITECTURE.md), [TESTING.md](docs/codebase/TESTING.md) |
 
 ---
 
@@ -386,7 +404,7 @@ find-my-mouse-example.com/
 | Workflow | Trigger | Jobs |
 |---|---|---|
 | `test.yml` | Every push + PR | Validate metadata/schema; lint + `tsc --noEmit`; `xmllint` schema validation; `npm test` (build + `node:test`); commit message check. |
-| `release.yml` | Tag `v*` | Type check, build ZIP, validate ZIP contents, create GitHub Release |
+| `release.yml` | Tag `v*` | Lint, type check, build ZIP, validate exactly 22 expected files, create a GitHub Release using the curated `RELEASE_NOTES.md` body with the ZIP attached |
 | `lint-pr.yml` | PR events | PR title must follow Conventional Commits; bypass label `ignore-semantic-pull-request` |
 | `close-linear-issues.yml` | Push to main | Placeholder for `Fixes FIN-xxx` parsing |
 
@@ -396,7 +414,7 @@ find-my-mouse-example.com/
 
 | Type | Status | Details |
 |---|---|---|
-| Unit tests | ✅ `npm test` | `npm run build && node --test test/*.test.mjs`; synthesized pointer streams cover deliberate wave, jitter, circles, drags, warps, cooldown, pause/gap behavior, the retired 1500 ms/30 px tutorial cadence (no activation) and a normal 900 ms/180 ms gesture (activation); layout tests cover mask/dim tiling, negative monitor origins, edge clipping and zoom larger than the monitor |
+| Unit tests | ✅ `npm test` | `npm run build && node --test test/*.test.mjs`; synthesized pointer streams cover deliberate wave, jitter, circles, drags, warps, jumps, cooldown, pause/gap behavior, slow small steps that do not activate and a normal 900 ms/180 ms gesture that does; layout tests cover mask/dim tiling, negative monitor origins, edge clipping, fractional radius and zoom larger than the monitor |
 | Type checking | ✅ `npm run check` | `tsc --noEmit` |
 | Linting | ✅ `npm run lint` | ESLint with TypeScript rules |
 | Schema validation | ✅ CI job | `xmllint` + `glib-compile-schemas` |
@@ -429,8 +447,8 @@ The PowerToys-matched settings are the spotlight colors, radius, zoom, idle time
 
 | Setting | Key | Type | Default |
 |---|---|---|---|
-| Activation Method | `activation-method` | string | `"shake"` (Shortcut + Mouse Gesture) |
-| Activation Shortcut | `find-my-mouse-activation` | string[] | `['<Super>f']` (always active in gesture mode) |
+| Activation Method | `activation-method` | string | `"shake"` (**Shortcut and gesture**) |
+| Activation Shortcut | `find-my-mouse-activation` | string[] | `['<Super>f']` (used in **Shortcut and gesture** mode) |
 | Disable During Game Mode | `do-not-activate-gamemode` | boolean | `true` |
 | Show on All Monitors | `show-on-all-monitors` | boolean | `false` |
 | Log Level | `log-level` | int | `2` (INFO) |
@@ -467,9 +485,17 @@ The PowerToys-matched settings are the spotlight colors, radius, zoom, idle time
 
 Fixed detector thresholds: arm speed ≥400 px/s, horizontal dominance ≥2:1, reversal hysteresis <20% of sweep peak speed, settle speed <150 px/s, jump guard >250 px/sample, pause guard >400 ms. The amplitude floor is `max(120 px, sweep × reversals)`, so tiny jitter cannot qualify. There is no "minimum distance" setting.
 
+| Preset | Reversals | Sweep | Window | Settle | Cooldown |
+|---|---:|---:|---:|---:|---:|
+| Light | 2 | 60 px | 1200 ms | 260 ms | 1000 ms |
+| Standard (default) | 3 | 90 px | 900 ms | 180 ms | 1500 ms |
+| Firm | 4 | 140 px | 700 ms | 120 ms | 2000 ms |
+
+Custom is a display-only state shown when the fine-tune values do not match a preset.
+
 ### 10.5 Deprecated Keys
 
-`shake-interval` (1000 ms) and `shake-sensitivity` (400 %) remain in the schema with their original defaults so existing user settings stay valid. They are hidden in Preferences and no longer read by the detector.
+`shake-interval` (1000 ms) and `shake-sensitivity` (400 %) are compatibility-only schema keys. They are hidden in Preferences and are not read by the detector.
 
 ---
 
@@ -492,7 +518,7 @@ Fixed detector thresholds: arm speed ≥400 px/s, horizontal dominance ≥2:1, r
 ### 11.3 Wayland & Input
 - Ctrl double-press is unreliable in Wayland. The `<Super>f` shortcut and the mouse gesture are the supported activation paths; the shortcut is active in the default gesture mode.
 - `pointerWatcher` provides absolute positions at irregular intervals; `MouseTracker` owns the single authoritative last position (starting at `null`, so negative monitor X works), computes deltas, and runs a 16 ms clock only while a gesture is in progress so a stationary pointer can settle.
-- Gesture detection is disabled while the spotlight is visible, while a mouse button or Ctrl/Alt is held, in fullscreen apps (configurable), on jumps >250 px per sample, on monitor/focus changes, and during Game Mode suppression.
+- Gesture detection is disabled while the spotlight is visible, while a mouse button or Ctrl/Alt is held, in fullscreen apps (configurable) and on jumps >250 px per sample. Game Mode suppresses activation, not detection: a visible spotlight is hidden while a game is active and restored in **Always visible** mode when it ends.
 - No shell restart is needed for nested testing. GNOME 49+ `--devkit` requires `mutter-devkit` (`mutter-dev-bin` on Ubuntu); without it the shell starts headless.
 
 ### 11.4 GameMode Integration
@@ -501,19 +527,18 @@ Fixed detector thresholds: arm speed ≥400 px/s, horizontal dominance ≥2:1, r
 - `SettingsManager` keeps `do-not-activate-gamemode` in sync via `changed::do-not-activate-gamemode`; suppression is enforced in `ActivationController.activate()`.
 
 ### 11.5 TypeScript & ES Modules
-- Edit `src/*.ts` only; root `.js` files have been removed.
+- Edit `src/*.ts` only; the Shell loads compiled `dist/*.js`, and `dist/` is generated and gitignored.
 - Use `.js` extensions in TypeScript imports for NodeNext resolution.
 - GI imports use `gi://…`; GNOME Shell resource imports use `resource:///org/gnome/shell/...`; custom declarations live in `gnome-shell-extensions.d.ts` and `ambient.d.ts`.
 
 ### 11.6 Preferences UI
-- The page named **Mouse Gesture** provides Light/Standard/Firm presets, a "Fine-tune gesture" expander, a live "Try the Gesture" practice session, and the `gesture-sound` toggle. Instructions come from current GSettings values, and there is no auto-close timer.
-- The shortcut row is no longer disabled in gesture mode; GTK4 has no public shortcut entry, so Preferences captures accelerators with a modal dialog and live `Gtk.ShortcutLabel`.
-- Legacy `shake-interval` and `shake-sensitivity` rows are hidden; the keys stay in the schema for compatibility.
-- Accessible labels are set explicitly on suffix buttons; color conversion uses `#AARRGGBB` hex.
+- The **Mouse Gesture** page provides Light/Standard/Firm presets plus a display-only Custom state, a "Fine-tune gesture" expander with five numeric thresholds, a live **Practice** row (**Try the Gesture** dialog), and the `gesture-sound`, button and fullscreen toggles. Instructions come from current GSettings values, and there is no auto-close timer.
+- The shortcut row is available in **Shortcut and gesture** mode and disabled in **Always visible** mode. GTK4 has no public shortcut entry, so Preferences captures accelerators in a **Set Activation Shortcut** modal with a live `Gtk.ShortcutLabel`: at least one modifier is required, Escape cancels and BackSpace clears.
+- Every page has a reset-to-defaults control with an Undo toast. The compatibility-only `shake-interval` and `shake-sensitivity` rows are hidden.
+- Accessible labels are set explicitly on suffix buttons; colors use `#RRGGBBAA` hex.
 
 ### 11.7 Gesture Algorithm
-- The old squared-ratio shake metric (`Σ(dx²+dy²)/diagonal² > (sensitivity/100)²`) is gone. It rewarded one-pixel jitter and was not reliably triggerable by a deliberate shake.
-- Current algorithm: arm on ≥400 px/s with ≥2:1 horizontal dominance; count direction reversals with speed-dip hysteresis (<20% of peak) and ≥90 px per sweep; require 3 reversals within 900 ms; then require speed <150 px/s within 180 ms; cooldown 1500 ms.
+- Detector algorithm: arm on ≥400 px/s with ≥2:1 horizontal dominance; count direction reversals with speed-dip hysteresis (<20% of peak) and ≥90 px per sweep; require 3 reversals within 900 ms; then require speed <150 px/s within 180 ms; cooldown 1500 ms.
 - This logic is isolated in `gestureDetector.ts` with injected timestamps and unit tests; `MouseTracker` supplies the ticks needed for a stationary pointer to commit.
 
 ### 11.8 Multi-Monitor
@@ -524,7 +549,7 @@ Fixed detector thresholds: arm speed ≥400 px/s, horizontal dominance ≥2:1, r
 - Change log level at runtime in Preferences → About → Logging → Log Level.
 
 ### 11.10 Practice Mode
-- Practice is live: it reuses `MouseTracker`, `GestureDetector` and `GestureFeedback`, but an `activated` event is reported through `PracticeService.Result(success=true, …)` and must never call `ActivationController.activate('gesture')`; no real spotlight is shown and the progress ring stays visible.
+- Practice is live: it reuses `MouseTracker`, `GestureDetector` and `GestureFeedback`, but an `activated` event is reported through `PracticeService.Result(success=true, …)` and must never call `ActivationController.activate('gesture')`; no real spotlight is shown, and the progress ring is hidden when the terminal gesture event is handled.
 - `Start()` hides any visible spotlight and resets `MouseTracker`; the service owns the bus name, so extension disable or a bus-name loss must end the session.
 - Every terminal path — Result, Cancel, dialog destroy, prefs close, extension disable, bus-name loss and the 10 s watchdog — must call `_finish()` exactly once to clear the watchdog and notify the extension.
 - The prefs client retries proxy creation, tolerates an extension reload, and never crashes; if D-Bus is unavailable it shows text-only instructions derived from GSettings. The dialog has no auto-close timer, its accessible name matches the visible `Practice` label, and status changes are live announcements.
@@ -538,8 +563,8 @@ Fixed detector thresholds: arm speed ≥400 px/s, horizontal dominance ≥2:1, r
 org.gnome.shell.extensions.find-my-mouse  (22 keys)
 ├── activation-method          (s)  → "shake" | "always"
 ├── find-my-mouse-activation   (as) → ['<Super>f']
-├── shake-interval             (i)  → deprecated/legacy, default 1000
-├── shake-sensitivity          (i)  → deprecated/legacy, default 400
+├── shake-interval             (i)  → compatibility-only, default 1000
+├── shake-sensitivity          (i)  → compatibility-only, default 400
 ├── gesture-reversals          (i)  → 2–6 (default 3)
 ├── gesture-sweep              (i)  → 40–300 px (default 90)
 ├── gesture-window             (i)  → 400–1500 ms (default 900)

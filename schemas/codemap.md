@@ -1,14 +1,14 @@
 # schemas/
 
-> **Updated**: 2026-11-24
+> **Updated**: 2026-11-26
 
 ## Responsibility
 
 The `schemas/` directory owns the **GSettings schema definition** for the Find My Mouse GNOME Shell extension. The XML file `org.gnome.shell.extensions.find-my-mouse.gschema.xml` is the authoritative registry of all user-configurable settings — names, types, defaults, ranges and descriptions. `gschemas.compiled` is generated from it and loaded by `Gio.Settings`.
 
-The schema currently declares **22 keys**, covering activation, spotlight appearance/timing, GameMode suppression, and the mouse-gesture tuning keys. Defaults for colors, radius, zoom, idle timeout and animation duration follow PowerToys; `spotlight-color` is 80% opaque white for contrast and `find-my-mouse-activation` provides the GNOME keyboard shortcut.
+The schema declares **22 keys**, covering activation, spotlight appearance/timing, GameMode suppression, and the mouse-gesture tuning keys. The XML identifies the background color, radius, zoom, idle timeout and animation duration defaults as PowerToys defaults; `spotlight-color` is 80% opaque white for contrast, and `find-my-mouse-activation` provides the GNOME keyboard shortcut.
 
-Practice mode adds **no schema keys**: `src/prefs.ts` derives its instructions from the current gesture values (`gesture-reversals`, `gesture-sweep`, `gesture-window`, `gesture-settle`, and the ignore switches), and `src/practiceService.ts` reuses the same detector configuration. The retired fixed 1500 ms/30 px tutorial cadence could not satisfy these keys.
+Practice mode adds **no schema keys**: `src/prefs.ts` formats the practice instructions and text-only fallback from `gesture-reversals`, `gesture-sweep`, `gesture-window` and `gesture-settle`, while the shell-side session uses the live detector configuration that `MouseTracker` builds from the gesture keys.
 
 | File | Role |
 |---|---|
@@ -26,8 +26,8 @@ Keys use GLib's XML schema language (`<schemalist>`, `<schema>`, `<key>`):
 - kebab-case key names (e.g. `gesture-reversals`);
 - variant type signatures: `s` (string), `i` (int32), `d` (double), `b` (boolean), `as` (string array);
 - GVariant defaults (e.g. `'#00000080'`, `3`, `9.0`, `true`, `['<Super>f']`);
-- explicit `<range min="..." max="..."/>` on all new gesture keys and on `spotlight-ring-width`;
-- summary/description text; gesture keys describe the "wave then stop" behavior.
+- explicit `<range min="..." max="..."/>` on `gesture-reversals`, `gesture-sweep`, `gesture-window`, `gesture-settle`, `gesture-cooldown` and `spotlight-ring-width` only;
+- summary/description text for every key; gesture descriptions use "wave then stop" vocabulary.
 
 ### 2. Singleton Schema Instance
 
@@ -35,22 +35,22 @@ Schema ID `org.gnome.shell.extensions.find-my-mouse`, path `/org/gnome/shell/ext
 
 ### 3. Caching Layer (SettingsManager)
 
-`src/settings.ts` reads all keys into typed, normalized cached properties, converts hex colors to `[0,1]` float tuples for Cairo, and exposes getters. The deprecated `cachedShakeInterval` / `cachedShakeSensitivity` getters remain for compatibility but are not used by the detector. Gesture keys feed `MouseTracker._buildConfig()` into `GestureDetector.setConfig()`.
+`src/settings.ts` reads the keys into typed, normalized cached properties (the shortcut array is read directly through `settings.get_strv()` instead), converts hex colors to `[0,1]` float tuples for Cairo, and exposes getters. The `cachedShakeInterval` / `cachedShakeSensitivity` getters are compatibility-only; no runtime consumer reads them. Gesture keys feed `MouseTracker._buildConfig()` into `GestureDetector.setConfig()`.
 
 ### 4. Signal-Driven Reactivity
 
-| Where wired | Keys listened to |
+| Where wired | Keys / signals handled |
 |---|---|
-| `SettingsManager` constructor | `do-not-activate-gamemode` |
-| `FindMyMouseExtension.enable()` | `log-level`, `activation-method`, generic `changed` |
-| `prefs.ts` | `activation-method` (shortcut row availability) |
-| `src/practiceClient.ts` (prefs-side practice dialog) | Reads current gesture keys to build live instructions and the text-only fallback |
+| `SettingsManager` constructor | `changed::do-not-activate-gamemode` (updates that cached value only) |
+| `FindMyMouseExtension.enable()` / `_setupAlwaysVisible()` | `changed::log-level`, generic `changed`, `changed::activation-method`; `GameModeClient.onStateChanged()` is a D-Bus state callback, not a GSettings signal |
+| `src/prefs.ts` | `changed::activation-method` (radio state and shortcut row availability), `changed::find-my-mouse-activation` (shortcut label), `changed::background-color` / `changed::spotlight-color` (color buttons), `changed::<five numeric gesture keys>` (effort preset highlight), `changed::log-level`; plus `settings.bind()` for 16 keys |
+| `src/practiceClient.ts` (prefs-side practice dialog) | No settings signals — D-Bus transport only; `prefs.ts` reads gesture keys to build live instructions and the text-only fallback |
 
-A generic `changed` signal refreshes the cache, rebuilds the gesture detector config, refreshes the idle timeout and repaints the spotlight.
+A generic `changed` connection refreshes the cache, rebuilds the gesture detector config, refreshes the idle timeout and repaints the spotlight. `changed::log-level` calls `setLogLevel()` directly; the `changed::activation-method` handler cancels practice, resets the tracker and feedback, then applies the show/hide state for the selected mode. GameMode state changes hide a visible spotlight when suppression is enabled and restore always-visible mode when gaming ends.
 
 ### 5. Two Rendering Consumers
 
-Appearance keys feed the full-screen spotlight (`spotlight.ts`); gesture keys feed feedback (`gestureFeedback.ts`) indirectly through detector events. `gesture-sound` controls the optional confirmation sound only.
+Appearance keys feed `spotlight.ts`, which renders four solid dim actors plus a small pointer-local Cairo mask and ring. Gesture keys feed feedback (`gestureFeedback.ts`) indirectly through detector events. `gesture-sound` gates the optional confirmation sound, which `ActivationController` requests only for a gesture activation.
 
 ---
 
@@ -60,15 +60,16 @@ Appearance keys feed the full-screen spotlight (`spotlight.ts`); gesture keys fe
 
 ```
 Extension.enable()
-  ├── getSettings() ← gschemas.compiled
-  ├── setLogLevel(log-level); connect changed::log-level
-  ├── new GameModeClient(); setup()
-  ├── new SettingsManager(settings) → cacheSettings() reads all keys
+  ├── getSettings(); setLogLevel(log-level); connect changed::log-level
+  ├── new GameModeClient(); setup(); onStateChanged(...)
+  ├── new SettingsManager(settings) → cacheSettings() reads all cached keys
   ├── new SpotlightManager(); new GestureFeedback(); new ActivationController()
-  ├── Main.wm.addKeybinding('find-my-mouse-activation', ...)  // always registered
-  ├── new MouseTracker(...) → _buildConfig() from gesture-* keys
-  ├── connect changed → cacheSettings + updateConfig + refreshIdleTimeout + queueRepaint
-  └── await mouseTracker.setup()
+  ├── new PracticeService()                    // shell-side D-Bus session owner
+  ├── Main.wm.addKeybinding('find-my-mouse-activation', ...)  // registered in both modes
+  ├── GameMode startup check; new MouseTracker(...) → _buildConfig() from gesture-* keys
+  ├── connect generic changed → cacheSettings + updateConfig + refreshIdleTimeout + queueRepaint
+  ├── await mouseTracker.setup()
+  └── _setupAlwaysVisible(): activate('always') if selected; connect changed::activation-method
 ```
 
 ### Gesture Setting Change
@@ -86,23 +87,26 @@ mouseTracker.updateConfig()
 detector.setConfig() resets any in-progress attempt
 ```
 
+`MouseTracker._publish()` reports `total` from `cachedGestureReversals` for the feedback ring.
+
 ### Activation (runtime)
 
 ```
 shortcut / gesture 'activated' / always mode
         ▼
 ActivationController.activate(source)
-  ├── GameMode suppression check (do-not-activate-gamemode)
-  ├── if already visible → reset idle timeout only (no toggle)
-  ├── SpotlightManager.show(show-on-all-monitors)
-  └── gesture-sound → optional canberra-gtk-play confirmation
+  ├── always mode → show(false) on the current monitor if hidden; else queueRepaint(); no idle timeout
+  ├── GameMode suppression check (do-not-activate-gamemode) for shortcut/gesture
+  ├── if already visible → queueRepaint + reset idle timeout (no toggle)
+  ├── SpotlightManager.show(show-on-all-monitors) + pointer position + resetIdleTimeout()
+  └── source === 'gesture' && gesture-sound → GestureFeedback.playConfirmation()
         ▼
 idle-timeout ms → ActivationController.hide()
 ```
 
-During practice, gesture `activated` is reported as `Result(success=true, …)` via the
-D-Bus practice service instead of `ActivationController.activate('gesture')`; the
-progress ring still reflects detector events derived from the gesture keys above.
+Pointer movement calls `notifyActivity()`, which repaints and refreshes the idle timeout while the spotlight is visible.
+
+During practice, `activated` and `aborted` are reported to `PracticeService` before the extension hides the progress ring; `activate('gesture')` is skipped, so no real spotlight is shown. A practice session starts from a hidden spotlight and temporarily hides an always-visible spotlight, restoring it when the session ends.
 
 ---
 
@@ -122,8 +126,8 @@ progress ring still reflects detector events derived from the gesture keys above
 | `gesture-ignore-buttons` | `cachedGestureIgnoreButtons` | boolean | mouseTracking, prefs |
 | `gesture-ignore-fullscreen` | `cachedGestureIgnoreFullscreen` | boolean | mouseTracking, prefs |
 | `gesture-sound` | `cachedGestureSound` | boolean | activationController, prefs |
-| `shake-interval` | `cachedShakeInterval` (deprecated) | int32 | none — compatibility only |
-| `shake-sensitivity` | `cachedShakeSensitivity` (deprecated) | int32 | none — compatibility only |
+| `shake-interval` | `cachedShakeInterval` (compatibility-only) | int32 | none (cached by `SettingsManager` only) |
+| `shake-sensitivity` | `cachedShakeSensitivity` (compatibility-only) | int32 | none (cached by `SettingsManager` only) |
 | `do-not-activate-gamemode` | `cachedDoNotActivateInGameMode` | boolean | activationController, extension, prefs |
 | `background-color` | `cachedBgColorNormalized` | string→float[4] | spotlight |
 | `spotlight-color` | `cachedSpotlightColorNormalized` | string→float[4] | spotlight |
@@ -137,25 +141,25 @@ progress ring still reflects detector events derived from the gesture keys above
 
 ### 2. With `src/prefs.ts` (Preferences UI)
 
-Pages: General (activation method, shortcut, Game Mode, multi-monitor), Appearance (colors, radius, zoom, ring width), Timing (idle timeout, animation duration), **Mouse Gesture** (Light/Standard/Firm presets, "Fine-tune gesture" expander, live "Try the Gesture" practice session with text-only fallback, sound toggle), About (log level, release notes).
+Pages: General (activation method, shortcut capture, Game Mode, multi-monitor, reset), Appearance (colors, radius, zoom, ring width, reset), Timing (idle timeout, animation duration, reset), **Mouse Gesture** (Light/Standard/Firm/Custom effort, "Fine-tune gesture" expander, ignore switches, sound toggle, live "Try the Gesture" practice session with text-only fallback, reset), About (version, website, credits, log level, release notes).
 
-The legacy `shake-interval` and `shake-sensitivity` rows are hidden; their schema keys remain so existing user values stay valid. The shortcut row remains enabled in gesture mode. Most widgets use manual read/write; `spotlight-ring-width` and several other keys use `settings.bind()`.
+`settings.bind()` drives 16 keys: `do-not-activate-gamemode`, `show-on-all-monitors`, `spotlight-radius`, `spotlight-zoom`, `spotlight-ring-width`, `idle-timeout`, `animation-duration`, the five numeric gesture keys, `gesture-ignore-buttons`, `gesture-ignore-fullscreen`, `gesture-sound` and `log-level`. Colors, `activation-method` and `find-my-mouse-activation` use manual read/write; reset rows snapshot GVariant values and restore them through an Undo toast (or a confirmation dialog where toasts are unavailable). The shortcut row is sensitive/activatable only when `activation-method` is not `'always'`; the radio pair follows the key. The compatibility-only shake keys have no prefs rows.
 
 ### 3. With `src/gestureDetector.ts` (Pure detector)
 
-`MouseTracker` maps the five numeric gesture keys into `GestureConfig` plus fixed thresholds (400 px/s arm speed, 2:1 dominance, 20% dip ratio, 150 px/s settle speed, 250 px jump guard, 400 ms pause guard). The amplitude floor is `max(120, gesture-sweep × gesture-reversals)`. The detector never reads GSettings directly.
+`MouseTracker` maps the five numeric gesture keys into `GestureConfig` plus fixed thresholds (400 px/s arm speed, 2:1 dominance, 20% dip ratio, 150 px/s settle speed, 250 px jump guard, 400 ms pause guard, 80 ms arm-speed window, 16 ms first-sample interval). The amplitude floor is `max(120, gesture-sweep × gesture-reversals)`. The detector never reads GSettings directly; it receives injected monotonic millisecond timestamps from `MouseTracker`.
 
 ### 4. With `src/activationController.ts` (Activation policy)
 
-Reads `idle-timeout` for the hide timer, `gesture-sound` for the optional confirmation, `do-not-activate-gamemode` for suppression, and `show-on-all-monitors` for show geometry. Activation is show-only: repeated activations refresh the idle timer instead of toggling the spotlight off.
+Reads `idle-timeout` for the hide timer, `gesture-sound` for the gesture-only confirmation, `do-not-activate-gamemode` for suppression, and `show-on-all-monitors` for show geometry in non-always mode (always mode uses the current monitor). Activation is show-only: repeated activations repaint and refresh the idle timer instead of toggling the spotlight off.
 
 ### 5. With `src/gamemodeClient.ts` (GameMode integration)
 
-`do-not-activate-gamemode` is checked in `ActivationController.activate()` against the D-Bus state from `GameModeClient`.
+`do-not-activate-gamemode` is checked in `ActivationController.activate()` against the D-Bus `ClientCount` state from `GameModeClient` for shortcut and gesture activations; always mode bypasses that check at activation time. The extension also hides a visible spotlight when GameMode becomes active (with suppression enabled) and restores always mode when it ends, including a state re-check at the end of `enable()`.
 
 ### 6. With `src/utils.ts` (Shared utilities)
 
-`parseColor()` converts `#RRGGBBAA` strings to RGBA tuples for normalization; `setLogLevel()`/`debugLog()` implement the `log-level` key.
+`parseColor()` converts `#RRGGBBAA` (or six-digit) strings to RGBA byte tuples for normalization; `setLogLevel()`/`isLogLevelEnabled()`/`debugLog()` implement the `log-level` key.
 
 ### 7. Practice Service and Client (no new keys)
 
@@ -163,10 +167,12 @@ Reads `idle-timeout` for the hide timer, `gesture-sound` for the optional confir
 `Start()`/`Cancel()` and `Progress(event: s, progress: i, total: i)` /
 `Result(success: b, detail: s)` over the session bus on
 `org.gnome.shell.extensions.find_my_mouse.Practice` at
-`/org/gnome/shell/extensions/find_my_mouse/Practice`. They read the gesture keys
-indirectly through `SettingsManager`/`MouseTracker`; practice never writes GSettings
-and never calls the real activation path. Instructions and the text-only fallback
-are derived from the values in the 22-key table below.
+`/org/gnome/shell/extensions/find_my_mouse/Practice`. `prefs.ts` derives instructions
+from the gesture keys in the 22-key table; the service and client only carry D-Bus
+methods, signals and results. Practice never writes GSettings and never calls the
+real activation path. The service owns the bus name and ends every session path
+(Result, Cancel, dialog destroy, prefs close, extension disable, bus-name loss and
+10 s watchdog).
 
 ### 8. Build Integration
 
@@ -176,7 +182,7 @@ glib-compile-schemas schemas/
 npm run build:schemas
 ```
 
-`npm run build` runs `build:schemas` via `postbuild` and copies the XML and compiled schema into `dist/schemas/`, so `build:dist` includes the latest compiled schema.
+`npm run build` runs `postbuild`, which invokes `build:schemas` and `i18n:build` and copies the XML and compiled schema into `dist/schemas/`, so `build:dist` includes the latest compiled schema.
 
 ---
 
@@ -184,8 +190,8 @@ npm run build:schemas
 
 | # | Key | Type | Default | Declared range | Primary consumers | Status |
 |---|---|---|---|---|---|---|
-| 01 | `activation-method` | `s` | `'shake'` | — (shake/always) | extension, activationController, prefs | Current; "Shortcut + Mouse Gesture" |
-| 02 | `find-my-mouse-activation` | `as` | `['<Super>f']` | — | extension, prefs | Current; shortcut always active |
+| 01 | `activation-method` | `s` | `'shake'` | — (shake/always) | extension, activationController, prefs | Current; `'shake'` enables gesture detection |
+| 02 | `find-my-mouse-activation` | `as` | `['<Super>f']` | — | extension, prefs | Keybinding registered in both modes; prefs row disabled in always mode |
 | 03 | `gesture-reversals` | `i` | `3` | 2–6 | mouseTracking, prefs | Current |
 | 04 | `gesture-sweep` | `i` | `90` px | 40–300 | mouseTracking, prefs | Current |
 | 05 | `gesture-window` | `i` | `900` ms | 400–1500 | mouseTracking, prefs | Current |
@@ -193,11 +199,11 @@ npm run build:schemas
 | 07 | `gesture-cooldown` | `i` | `1500` ms | 500–4000 | mouseTracking, prefs | Current |
 | 08 | `gesture-ignore-buttons` | `b` | `true` | — | mouseTracking, prefs | Current |
 | 09 | `gesture-ignore-fullscreen` | `b` | `true` | — | mouseTracking, prefs | Current |
-| 10 | `gesture-sound` | `b` | `false` | — | activationController, prefs | Current; best-effort sound |
-| 11 | `shake-interval` | `i` | `1000` | — | none | Deprecated/legacy, hidden |
-| 12 | `shake-sensitivity` | `i` | `400` | — | none | Deprecated/legacy, hidden |
-| 13 | `do-not-activate-gamemode` | `b` | `true` | — | activationController, prefs | Current |
-| 14 | `show-on-all-monitors` | `b` | `false` | — | activationController, prefs | Current |
+| 10 | `gesture-sound` | `b` | `false` | — | activationController, prefs | Current; best-effort sound on gesture activation |
+| 11 | `shake-interval` | `i` | `1000` | — | none | Compatibility-only; no UI row or runtime consumer |
+| 12 | `shake-sensitivity` | `i` | `400` | — | none | Compatibility-only; no UI row or runtime consumer |
+| 13 | `do-not-activate-gamemode` | `b` | `true` | — | activationController, extension, prefs | Current; bypassed in always mode |
+| 14 | `show-on-all-monitors` | `b` | `false` | — | activationController, prefs | Current; used outside always mode |
 | 15 | `background-color` | `s` | `'#00000080'` | — | spotlight | Current |
 | 16 | `spotlight-color` | `s` | `'#FFFFFFCC'` | — | spotlight | Current |
 | 17 | `spotlight-radius` | `i` | `100` px | — | spotlight | Current |
@@ -210,19 +216,19 @@ npm run build:schemas
 ### Colour Normalization Pipeline
 
 ```
-hex string (#RRGGBBAA)
-    ├─ parseColor() in utils.ts → [r, g, b, a] (0–255 bytes)
+hex string (#RRGGBBAA or #RRGGBB)
+    ├─ parseColor() in utils.ts → [r, g, b, a] (0–255 bytes; default alpha 255)
     └─ / 255 in settings.ts     → [r, g, b, a] (0–1 floats)
 ```
-`Cairo.setSourceRGBA()` consumes the normalized floats.
+`Cairo.setSourceRGBA()` consumes the normalized floats; `setLineWidth()` uses the cached `spotlight-ring-width`.
 
 ### Maintenance Checklist
 
-1. Edit the XML `<key>` with correct type, default, range, summary and description.
+1. Edit the XML `<key>` with correct type, default, range (where applicable), summary and description.
 2. Run `glib-compile-schemas schemas/` (or `npm run build:schemas`).
-3. Add a cache property and getter in `src/settings.ts` and read it in `cacheSettings()`.
-4. Wire `changed::<key>` handling in `src/extension.ts` if runtime reactivity is needed.
-5. Add a widget in `src/prefs.ts` and a reset action where applicable.
+3. Add a cache property and getter in `src/settings.ts` and read it in `cacheSettings()` where needed.
+4. Rely on the generic `changed` handler in `src/extension.ts` for cache/config refresh; add a targeted `changed::<key>` handler only for distinct runtime behavior.
+5. Add a widget in `src/prefs.ts` (using `settings.bind()` for direct widget properties) and a reset action where applicable.
 6. Use the value in the consumer module (detector config, activation policy, rendering, etc.).
 7. Update this table, the integration table, the root `codemap.md` defaults, and `docs/codebase/`.
-8. For deprecated keys, keep the key and default, mark it hidden in prefs, and document that it is compatibility-only.
+8. For compatibility-only keys, keep the key and default, provide no prefs row, and document that there is no runtime consumer.

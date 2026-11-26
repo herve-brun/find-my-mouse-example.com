@@ -5,11 +5,53 @@
 .github/scripts/validate_metadata.py
 .github/workflows
 .github/workflows/close-linear-issues.yml
+.github/workflows/lint-pr.yml
+.github/workflows/release.yml
 .github/workflows/test.yml
 .gitignore
+.husky
+.husky/_
+.husky/_/.gitignore
+.husky/_/applypatch-msg
+.husky/_/commit-msg
+.husky/_/h
+.husky/_/husky.sh
+.husky/_/post-applypatch
+.husky/_/post-checkout
+.husky/_/post-commit
+.husky/_/post-merge
+.husky/_/post-rewrite
+.husky/_/pre-applypatch
+.husky/_/pre-auto-gc
+.husky/_/pre-commit
+.husky/_/pre-merge-commit
+.husky/_/pre-push
+.husky/_/pre-rebase
+.husky/_/prepare-commit-msg
+.husky/commit-msg
+.opencode
+.opencode/.gitignore
+.opencode/images
+.opencode/images/ses_df16827caffe65s4bvb25NBm5o
+.opencode/images/ses_df16827caffe65s4bvb25NBm5o/clipboard-03ef1275.png
+.opencode/images/ses_df1879e15ffelNWvh1vrFe7ump
+.opencode/images/ses_df1879e15ffelNWvh1vrFe7ump/clipboard-af09b078.png
+.opencode/images/ses_df18b70feffePgnjxzh6Q3dKee
+.opencode/images/ses_df18b70feffePgnjxzh6Q3dKee/clipboard-de047443.png
+.opencode/images/ses_df1d46d10ffeP7BV5FNPXkUnE5
+.opencode/images/ses_df1d46d10ffeP7BV5FNPXkUnE5/clipboard-de047443.png
+.slim
+.slim/codemap.json
 AGENTS.md
+DESIGN & ARCHITECTURAL CHOICES.md
 LICENSE.md
 README.md
+ambient.d.ts
+assets
+assets/find-my-mouse-symbolic.svg
+assets/find-my-mouse.svg
+codemap.md
+commitlint.config.cjs
 docs
 docs/codebase
 docs/codebase/.codebase-scan.txt
@@ -20,28 +62,170 @@ docs/codebase/INTEGRATIONS.md
 docs/codebase/STACK.md
 docs/codebase/STRUCTURE.md
 docs/codebase/TESTING.md
-extension.js
-keybindings.js
+eslint.config.js
+find-my-mouse@herve-brun.github.io.zip
+gnome-shell-extensions.d.ts
 metadata.json
-mouseTracking.js
-prefs.js
+package-lock.json
+package.json
+po
+po/en.po
+po/es.po
+po/find-my-mouse@herve-brun.github.io.pot
+po/fr.po
 schemas
+schemas/codemap.md
 schemas/gschemas.compiled
 schemas/org.gnome.shell.extensions.find-my-mouse.gschema.xml
 screenshots
 screenshots/.gitkeep
-settings.js
-spotlight.js
-utils.js
+src
+src/activationController.ts
+src/codemap.md
+src/extension.ts
+src/gamemodeClient.ts
+src/gestureDetector.ts
+src/gestureFeedback.ts
+src/mouseTracking.ts
+src/practiceClient.ts
+src/practiceService.ts
+src/prefs.ts
+src/settings.ts
+src/spotlight.ts
+src/spotlightLayout.ts
+src/utils.ts
+test
+test/gestureDetector.test.mjs
+test/spotlightLayout.test.mjs
+tsconfig.json
+tsconfig.prod.json
 
 === STACK DETECTION (manifest files) ===
-No recognized manifest files found in project root.
+
+--- package-lock.json ---
+{
+  "name": "find-my-mouse-example.com",
+  "lockfileVersion": 3,
+  "requires": true,
+  "packages": {
+    "": {
+      "dependencies": {
+        "@girs/cairo-1.0": "^1.0.0-4.0.0-rc.15",
+        "@girs/gjs": "^4.0.0-rc.15",
+        "@girs/gnome-shell": "^46.0"
+      },
+      "devDependencies": {
+        "@commitlint/cli": "^21.0.1",
+        "@commitlint/config-conventional": "^21.0.1",
+        "@eslint/js": "^10.0.1",
+        "eslint": "^10.3.0",
+        "husky": "^9.1.7",
+        "typescript": "^5.7",
+        "typescript-eslint": "^8.59.3"
+      }
+    },
+    "node_modules/@babel/code-frame": {
+      "version": "7.29.0",
+      "resolved": "https://registry.npmjs.org/@babel/code-frame/-/code-frame-7.29.0.tgz",
+      "integrity": "sha512-9NhCeYjq9+3uxgdtp20LSiJXJvN0FeCtNGpJxuMFZ1Kv3cWUNb6DOhJwUvcVCzKGR66cw4njwM6hrJLqgOwbcw==",
+      "dev": true,
+      "license": "MIT",
+      "dependencies": {
+        "@babel/helper-validator-identifier": "^7.28.5",
+        "js-tokens": "^4.0.0",
+        "picocolors": "^1.1.1"
+      },
+      "engines": {
+        "node": ">=6.9.0"
+      }
+    },
+    "node_modules/@babel/helper-validator-identifier": {
+      "version": "7.28.5",
+      "resolved": "https://registry.npmjs.org/@babel/helper-validator-identifier/-/helper-validator-identifier-7.28.5.tgz",
+      "integrity": "sha512-qSs4ifwzKJSV39ucNjsvc6WVHs6b7S03sOh2OcHF9UHfVPqWWALUsNUVzhSBiItjRZoLHx7nIarVjqKVusUZ1Q==",
+      "dev": true,
+      "license": "MIT",
+      "engines": {
+        "node": ">=6.9.0"
+      }
+    },
+    "node_modules/@commitlint/cli": {
+      "version": "21.0.1",
+      "resolved": "https://registry.npmjs.org/@commitlint/cli/-/cli-21.0.1.tgz",
+      "integrity": "sha512-8vq10krmbJwBkvzXKhbs4o4JQEVscd3pqOlWuDUaDBwbeL694/P33UC29tZQFTAgPU9fVJ2+f2m3zw16yKWxHg==",
+      "dev": true,
+      "license": "MIT",
+      "dependencies": {
+        "@commitlint/format": "^21.0.1",
+        "@commitlint/lint": "^21.0.1",
+        "@commitlint/load": "^21.0.1",
+        "@commitlint/read": "^21.0.1",
+        "@commitlint/types": "^21.0.1",
+        "tinyexec": "^1.0.0",
+        "yargs": "^18.0.0"
+      },
+      "bin": {
+        "commitlint": "cli.js"
+      },
+      "engines": {
+        "node": ">=22.12.0"
+      }
+    },
+    "node_modules/@commitlint/config-conventional": {
+      "version": "21.0.1",
+      "resolved": "https://registry.npmjs.org/@commitlint/config-conventional/-/config-conventional-21.0.1.tgz",
+      "integrity": "sha512-gRorrkfWOh/+V5X8GYWWbQvrzPczopGMS4CCNrQdHkK4xWElv82BDvIsDhJZWTlI7TazOlYea6VATufCsFs+sw==",
+      "dev": true,
+      "license": "MIT",
+      "dependencies": {
+        "@commitlint/types": "^21.0.1",
+        "conventional-changelog-conventionalcommits": "^9.2.0"
+      },
+      "engines": {
+        "node": ">=22.12.0"
+
+[TRUNCATED] Showing first 80 of 3671 lines.
+--- package.json ---
+{
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "clean": "rm -rf dist",
+    "build": "npm run clean && tsc -p tsconfig.prod.json",
+    "build:schemas": "glib-compile-schemas schemas/",
+    "postbuild": "npm run build:schemas && npm run i18n:build && cp metadata.json dist/ && cp LICENSE.md dist/ && mkdir -p dist/schemas && cp schemas/*.gschema.xml schemas/gschemas.compiled dist/schemas/ && mkdir -p dist/assets && cp assets/*.svg dist/assets/",
+    "i18n:pot": "mkdir -p po && xgettext --from-code=UTF-8 --language=JavaScript --keyword=_ --add-comments=Translators --copyright-holder='Hervé Brun' --msgid-bugs-address='https://github.com/herve-brun/find-my-mouse-example.com/issues' --package-name='Find My Mouse' --package-version=\"$(node -p \"require('./metadata.json')['version-name']\")\" --output=po/find-my-mouse@herve-brun.github.io.pot dist/*.js && sed -i -e '1s/.*/# Find My Mouse translation template./' -e '0,/^#, fuzzy$/s/^#, fuzzy$//' po/find-my-mouse@herve-brun.github.io.pot",
+    "i18n:build": "for lang in en fr es; do mkdir -p \"dist/locale/$lang/LC_MESSAGES\" && msgfmt --check --check-format --output-file=\"dist/locale/$lang/LC_MESSAGES/find-my-mouse@herve-brun.github.io.mo\" \"po/$lang.po\" || exit 1; done",
+    "i18n:update": "npm run i18n:pot && for lang in en fr es; do msgmerge --update --backup=none \"po/$lang.po\" po/find-my-mouse@herve-brun.github.io.pot || exit 1; done",
+    "build:dist": "npm run build && cd dist && zip -qr ../find-my-mouse@herve-brun.github.io.zip .",
+    "lint": "eslint src/",
+    "check": "tsc --noEmit",
+    "test": "npm run build && node --test test/*.test.mjs",
+    "prepare": "husky install"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^21.0.1",
+    "@commitlint/config-conventional": "^21.0.1",
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.3.0",
+    "husky": "^9.1.7",
+    "typescript": "^5.7",
+    "typescript-eslint": "^8.59.3"
+  },
+  "dependencies": {
+    "@girs/cairo-1.0": "^1.0.0-4.0.0-rc.15",
+    "@girs/gjs": "^4.0.0-rc.15",
+    "@girs/gnome-shell": "^46.0"
+  }
+}
+
 
 === ENTRY POINTS ===
 No common entry points found. Check 'main' or 'scripts.start' in manifest files above.
 
 === LINTING AND FORMATTING CONFIG ===
-No linting or formatting config files found in project root.
+Found: eslint.config.js
+Found: tsconfig.json
 
 === ENVIRONMENT VARIABLE TEMPLATES ===
 No .env.example or .env.template found. Identify required environment variables by searching the code and config for environment variable reads.
@@ -50,62 +234,73 @@ No .env.example or .env.template found. Identify required environment variables 
 None found.
 
 === GIT RECENT COMMITS (last 20) ===
-9defabf docs: add comprehensive codebase documentation
-a938f9b chore(ai): update AGENTS.md
-b0ada36 feat: complete workflow - activation refactor, animations, multi-monitor, CI/CD (#1)
-3413e73 Suppression de l'adresse e-mail du README.md (FIN-20)
-cfb0e5e Correction du README.md : remplacement OpenGL par Cairo (FIN-20)
-062c2a1 Ajout du README.md pour les utilisateurs finaux (FIN-20)
-4ac686d rebrand
-208ff4f chore(agents): add AGENTS.md
-74263eb Update defaults to match PowerToys and add configurable idle timeout
-2667d6e Initial implementation of Find My Mouse extension for GNOME 46+
+1fd6709 chore(i18n): refresh translations
+13de1ca fix(prefs): align preferences with GNOME HIG
+c0179cf docs: document HIG rationale and verification checklist
+b29fb65 fix(a11y): make gesture feedback high-contrast aware
+5c0555f build: bundle app icon assets
+5c28f21 perf(spotlight): reduce Cairo repaint to a pointer-local mask
+d7419ef fix(prefs): avoid invalid selection for custom gesture values
+95148fb ci: grant release workflow permissions
+3cf6d67 chore: set extension version to 1.0.0
+0d7b723 ci: fail commit message check on invalid messages
+4e9e3b9 ci: allow all conventional commit types in message check
+1187bfd ci: validate LICENSE.md in the release ZIP
+0bd2071 build: ship LICENSE.md in the extension ZIP
+aac4f44 docs: align license documentation with GPL-3.0-or-later
+b1854f5 chore(prefs): remove misleading PowerToys designer credit
+bb570cf fix(gamemode): disconnect proxy signal on destroy
+2601269 fix(spotlight): release interface settings on teardown
+1c185b8 fix(lifecycle): remove pointer watch when disable races with setup
+523f17c feat(i18n): add English, French and Spanish translations
+352a0e1 feat(gesture): add wave-and-stop activation and practice
 
 === HIGH-CHURN FILES (last 90 days, top 20) ===
-   4 README.md
-   3 AGENTS.md
-   3 extension.js
+   7 src/prefs.ts
+   7 src/spotlight.ts
+   7 codemap.md
+   6 src/codemap.md
+   6 src/extension.ts
+   5 README.md
+   5 .github/workflows/release.yml
+   5 package.json
+   4 po/en.po
+   4 po/es.po
+   4 po/find-my-mouse@herve-brun.github.io.pot
+   4 po/fr.po
+   4 .github/workflows/test.yml
+   4 src/gamemodeClient.ts
+   4 src/mouseTracking.ts
+   4 AGENTS.md
+   4 src/settings.ts
+   3 docs/codebase/INTEGRATIONS.md
+   3 docs/codebase/STACK.md
    3 metadata.json
-   3 prefs.js
-   3 schemas/gschemas.compiled
-   3 schemas/org.gnome.shell.extensions.find-my-mouse.gschema.xml
-   2 docs/codebase/.codebase-scan.txt
-   2 docs/codebase/ARCHITECTURE.md
-   2 docs/codebase/CONCERNS.md
-   2 docs/codebase/CONVENTIONS.md
-   2 docs/codebase/INTEGRATIONS.md
-   2 docs/codebase/STACK.md
-   2 docs/codebase/STRUCTURE.md
-   2 docs/codebase/TESTING.md
-   2 stylesheet.css
-   1 .github/scripts/validate_metadata.py
-   1 .github/workflows/close-linear-issues.yml
-   1 .github/workflows/test.yml
-   1 .gitignore
 
 === MONOREPO SIGNALS ===
 No monorepo signals detected.
 
 === CODE METRICS ===
-Total files scanned: 24
-Total lines of code: 1410
+Total files scanned: 59
+Total lines of code: 8111
 
 Files by language:
-  Other: 16
-  JavaScript: 7
+  Other: 42
+  TypeScript: 15
+  JavaScript: 1
   Python: 1
 
 Top 10 largest files:
-prefs.js: 16.8KB
-spotlight.js: 9.1KB
-README.md: 7.6KB
-extension.js: 7.0KB
-docs/codebase/STACK.md: 6.3KB
-docs/codebase/INTEGRATIONS.md: 4.6KB
-schemas/org.gnome.shell.extensions.find-my-mouse.gschema.xml: 3.7KB
-docs/codebase/STRUCTURE.md: 3.6KB
-mouseTracking.js: 3.2KB
-docs/codebase/ARCHITECTURE.md: 3.2KB
+.opencode/images/ses_df16827caffe65s4bvb25NBm5o/clipboard-03ef1275.png: 402.0KB
+.opencode/images/ses_df1879e15ffelNWvh1vrFe7ump/clipboard-af09b078.png: 242.0KB
+package-lock.json: 143.9KB
+.opencode/images/ses_df18b70feffePgnjxzh6Q3dKee/clipboard-de047443.png: 69.9KB
+.opencode/images/ses_df1d46d10ffeP7BV5FNPXkUnE5/clipboard-de047443.png: 69.9KB
+find-my-mouse@herve-brun.github.io.zip: 63.9KB
+src/prefs.ts: 46.4KB
+codemap.md: 37.1KB
+LICENSE.md: 34.6KB
+src/codemap.md: 26.4KB
 
 === CI/CD PIPELINES ===
 CI/CD: GitHub Actions

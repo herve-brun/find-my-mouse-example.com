@@ -86,4 +86,4 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: find-my-mouse@herve-brun.github.io.zip
-          generate_release_notes: true
+          body_path: RELEASE_NOTES.md

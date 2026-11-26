@@ -1,8 +1,8 @@
 {
   "metadata": {
     "version": "1.0.0",
-    "last_run": "2026-05-22T22:32:35.757Z",
-    "root": "/home/herve/Dev/Projets/find-my-mouse-example.com",
+    "last_run": "2026-11-26T10:12:23.969Z",
+    "root": "/home/herve/dev/projets/find-my-mouse-example.com",
     "include_patterns": [
       "src/**/*.ts",
       "*.json",
@@ -21,24 +21,30 @@
   },
   "file_hashes": {
     "commitlint.config.cjs": "767a97c2884c87eef3d44895c4ee132f",
-    "eslint.config.js": "910570da5ce3d8162f27f13404dd95dd",
-    "metadata.json": "8acda7e331603eb73853ac57d2fbe6de",
+    "eslint.config.js": "4ceaea51896ae543aa5be56572629476",
+    "metadata.json": "458b5266c368699edbc58705274a4ff1",
     "package-lock.json": "16a30798c6b343bd1f3f57c82f3fb089",
-    "package.json": "84dcc40f2394680a98bc4bcaad479139",
-    "schemas/org.gnome.shell.extensions.find-my-mouse.gschema.xml": "f3048911cecfc4e73fdb699578e61f85",
-    "src/extension.ts": "3e00f38eda19105d40f6a01a944e150b",
-    "src/gamemodeClient.ts": "560fdfbd3ecc6ccd9dfffdbeb9f0fc21",
-    "src/mouseTracking.ts": "bb01da2c2ffc3526c71ad1896d3c4175",
-    "src/prefs.ts": "63be3fffd698974d112408bd59b6cc32",
-    "src/settings.ts": "1716bab90e08727fb4a16bc512aa21db",
-    "src/spotlight.ts": "4053832b74539964eaa419071079b3b6",
-    "src/utils.ts": "1adda63fe5f9b4eae228469b46557ce4",
+    "package.json": "4a10e9a4635ccea6165e11d059da9184",
+    "schemas/org.gnome.shell.extensions.find-my-mouse.gschema.xml": "3a461a66ea9e9054a6d6e690757491f3",
+    "src/activationController.ts": "590aa582b9a8d35763d13e66ccfa3e4d",
+    "src/extension.ts": "599a6d3c68470eabcb4165792e23d514",
+    "src/gamemodeClient.ts": "b837026bd3b450c93808a5046b2551eb",
+    "src/gestureDetector.ts": "ceebb2c0faf0146edadc91cdc6deb610",
+    "src/gestureFeedback.ts": "b77266b0512bdb3a06d568d9b2b3e71e",
+    "src/mouseTracking.ts": "79740b23c8d97d856dfe5882ab1f2c0e",
+    "src/practiceClient.ts": "cf562dc8ac39cd060f37510cca071296",
+    "src/practiceService.ts": "b6af8e5601232a4296981aa4ee29e063",
+    "src/prefs.ts": "91cfef7344458dc2484e4a1e2f0f35fc",
+    "src/settings.ts": "6e91bee3627ac1606a915a78a449dd4c",
+    "src/spotlight.ts": "cb8b46e61f0c797c51fe65260ebd918a",
+    "src/spotlightLayout.ts": "25bac5065c9b77bb1eb4e32cdd17f517",
+    "src/utils.ts": "8de733d3cf2583e7465c1cb62e0e2e03",
     "tsconfig.json": "98b38e9377c79f59f6ad550b914f7335",
     "tsconfig.prod.json": "f39eb591d23e07ca4dd6b79277aecfdc"
   },
   "folder_hashes": {
-    ".": "b5def50f0610845b6a41af99a10bcaf6",
-    "schemas": "3e9e1eb602a191d79846d1bdf4a1d61e",
-    "src": "78ab6fbebab6be0db3ce9c3ad3f14aa6"
+    ".": "c853239bcb5fde47f8ee0d75c5915826",
+    "schemas": "b315588010b3a4968b3c4f0a245a3ad8",
+    "src": "259772013f59e8dfddc7b5b2572c4372"
   }
 }

@@ -50,7 +50,7 @@ if (!Number.isFinite(sample.dx) || !Number.isFinite(sample.tMs)) {
   import * as Main from 'resource:///org/gnome/shell/ui/main.js';
   ```
 - Local modules: relative paths with `.js` extensions.
-- `gestureDetector.ts` deliberately imports nothing; keep it free of GJS/GNOME dependencies so `node:test` can run it directly.
+- `gestureDetector.ts` deliberately imports nothing; keep it free of GJS/GNOME dependencies so `node:test` can run it directly. `spotlightLayout.ts` is likewise import-free for its tiling tests.
 
 ## Coding Practices
 
@@ -65,7 +65,7 @@ if (!Number.isFinite(sample.dx) || !Number.isFinite(sample.tMs)) {
 - Commit messages follow Conventional Commits (enforced by commitlint and CI).
 
 ## Evidence
-- `src/gestureDetector.ts` (pure module and guard style)
+- `src/gestureDetector.ts`, `src/spotlightLayout.ts` (pure modules and guard style)
 - `src/activationController.ts` (show-only policy, timer cleanup)
 - `src/practiceService.ts`, `src/practiceClient.ts` (D-Bus contract and session cleanup)
 - `src/mouseTracking.ts` (adapter and settle clock)
