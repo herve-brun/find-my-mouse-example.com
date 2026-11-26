@@ -12,7 +12,7 @@ A GNOME Shell extension (GNOME 46–50, Wayland) that highlights the pointer wit
 - **Spotlight**: Cairo-rendered overlay with configurable radius, colors, ring width, zoom and animation duration.
 - **Mouse Gesture**: wave the pointer horizontally and stop to show the spotlight. The detector is a pure state machine; a pointer-local progress ring shows attempt progress.
 - **Keyboard Shortcut**: `<Super>f` by default, active in the default gesture mode as well as in other modes.
-- **Always Visible**: opt-in mode that keeps the spotlight on screen.
+- **Always visible**: opt-in mode that keeps the spotlight on screen.
 - **Show-only activation**: activating again refreshes the spotlight and resets the idle timeout; it does not hide it. The spotlight hides on idle or via extension shutdown.
 - **Game Mode suppression**: optional suppression while `com.feralinteractive.GameMode` reports an active game.
 - **Multi-monitor**: show on the current monitor or on the bounding box of all monitors.
@@ -42,8 +42,10 @@ cp -r dist/* metadata.json ~/.local/share/gnome-shell/extensions/find-my-mouse@h
 
 | Method | Description |
 |---|---|
-| Shortcut + Mouse Gesture (default) | Press `<Super>f`, or wave and stop. Internal `activation-method` value is `'shake'` for compatibility. |
-| Always Visible | Set `activation-method` to `'always'`; the spotlight is shown continuously. |
+| Shortcut and gesture (default) | Press `<Super>f`, or wave and stop. Internal `activation-method` value is `'shake'` for compatibility. |
+| Always visible | Set `activation-method` to `'always'`; the spotlight is shown continuously. |
+
+`<Super>f` is kept as the default deliberately: this is a shell-wide shortcut for a shell-wide feature, treated as a system-level exception to the HIG's usual app-shortcut conventions. `<Control>f` is not a good replacement because the HIG reserves it for Find.
 
 ### Mouse gesture
 
@@ -146,7 +148,7 @@ fi
 
 X11 testing requires Xephyr: `Xephyr :1 -screen 1920x1080 &` then `DISPLAY=:1 dbus-run-session gnome-shell`.
 
-View logs with `journalctl --user -f | grep "Find My Mouse"`. Concrete manual scenarios are listed in `docs/codebase/TESTING.md`.
+View logs with `journalctl --user -f | grep "Find My Mouse"`. Concrete manual scenarios and the [manual HIG verification checklist](docs/codebase/TESTING.md#manual-hig-verification-checklist) are listed in `docs/codebase/TESTING.md`.
 
 ### Logging
 

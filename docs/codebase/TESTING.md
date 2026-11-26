@@ -57,7 +57,7 @@ DISPLAY=:1 dbus-run-session gnome-shell
 | Settings extremes | Set presets and fine-tune keys to both range ends (e.g. 2 vs 6 reversals, 40 vs 300 px sweep, 400 vs 1500 ms window, 80 vs 400 ms settle, 500 vs 4000 ms cooldown); toggle both ignore switches and the sound. | Detector config updates without restart; attempts succeed/fail according to the configured thresholds; no stale progress ring remains. |
 | Cooldown re-trigger | Activate with a wave, then immediately repeat the exact same wave; wait past `gesture-cooldown` and repeat again. | Second attempt ignored during cooldown; third activates normally. |
 | Show-only repeat | Press `<Super>f` while the spotlight is visible, then trigger a gesture while it is visible. | Spotlight stays shown and the idle timeout is refreshed; it is not toggled off. |
-| Idle timeout | Stop moving after activation. | Spotlight hides after `idle-timeout` ms (not in Always Visible mode). |
+| Idle timeout | Stop moving after activation. | Spotlight hides after `idle-timeout` ms (not in Always visible mode). |
 | Practice success | Start "Try the Gesture", then perform a deliberate wave and stop. | `Progress` fills the real pointer-local ring; `Result(success=true)` ends the session; no real spotlight appears and `ActivationController.activate('gesture')` is not called. |
 | Practice failure and retry | Start practice, make a small jitter or aborted wave, then press retry and perform a correct wave. | Failure reports `Result(success=false, 'gesture-aborted')`; retry starts a fresh session; the following correct wave succeeds. |
 | Practice cancel | Start practice, then press Cancel or close the preferences window. | `Cancel()`/dialog destroy ends the session, clears the watchdog and restores normal activation; no spotlight was shown. |
@@ -65,6 +65,20 @@ DISPLAY=:1 dbus-run-session gnome-shell
 | Two prefs windows | Open two preferences windows and start practice from both. | The service is the single session owner; both clients see the same `Progress`/`Result`, and a terminal result ends the shared session. |
 | Practice watchdog | Start practice and do nothing for 10 s. | `Result(success=false, 'timeout')` ends the session, clears the watchdog and restores normal activation. |
 | Text-only fallback | Make the practice D-Bus service unavailable (e.g. extension disabled) and open the dialog. | Text-only instructions derived from current gesture keys are shown; no crash and no auto-close timer. |
+
+### Manual HIG verification checklist
+
+Do a quick pass in Preferences with the mouse untouched where noted; no test harness is needed.
+
+- [ ] Sentence case: labels, buttons and dialog titles use sentence case, with no Title Case leftovers.
+- [ ] Reset buttons: each reset applies immediately and offers Undo; Undo restores the previous values.
+- [ ] Activation choice: the two activation options behave as radio rows — selecting one deselects the other and the choice persists.
+- [ ] Keyboard-only navigation: Tab/Shift+Tab reach every control, focus is visible, and Enter/Space activate the focused control.
+- [ ] Shortcut dialog: pressing a key updates the preview without committing; Cancel or Escape discards it, Set applies it.
+- [ ] Practice dialog: Cancel/Close come before Retry and the text-only option; Cancel/Escape end safely without starting a session.
+- [ ] High contrast: enable high contrast and confirm progress/spotlight cues are still visible and not color-only.
+- [ ] Large text: increase the text scale and confirm Preferences and dialogs reflow without clipped or overlapping labels.
+- [ ] Reduced animation: enable reduced animation and confirm there is no long spotlight zoom.
 
 ## Evidence
 - `package.json` (`test` script)

@@ -48,7 +48,7 @@ const cr = area.get_context();
 
 | Key | Type | Default | Description |
 |---|---|---|---|
-| `activation-method` | String | `'shake'` | "Shortcut + Mouse Gesture" (`'shake'`) or `'always'` |
+| `activation-method` | String | `'shake'` | "Shortcut and gesture" (`'shake'`) or "Always visible" (`'always'`) |
 | `find-my-mouse-activation` | String[] | `['<Super>f']` | Activation shortcut; active in gesture mode |
 | `gesture-reversals` | Int | `3` | Reversals required (2–6) |
 | `gesture-sweep` | Int | `90` px | Minimum travel per sweep (40–300) |
